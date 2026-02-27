@@ -1,94 +1,131 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
 
-    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+    <!-- ============================================================
+         VOID Launcher — Dark-only theme (black background, white text)
+         No light mode. No system theme following.
+    ============================================================ -->
+    <style name="AppTheme" parent="Theme.Material3.Dark.NoActionBar">
 
+        <!-- Disable forced dark (we ARE dark already) -->
         <item name="android:forceDarkAllowed" tools:targetApi="q">false</item>
 
-        <item name="android:windowLayoutInDisplayCutoutMode" tools:targetApi="o_mr1">shortEdges
-        </item>
-        <item name="android:windowTranslucentStatus">true</item>
-        <item name="android:windowTranslucentNavigation">true</item>
+        <!-- Window decoration -->
+        <item name="android:windowLayoutInDisplayCutoutMode" tools:targetApi="o_mr1">shortEdges</item>
+        <item name="android:windowTranslucentStatus">false</item>
+        <item name="android:windowTranslucentNavigation">false</item>
         <item name="android:colorEdgeEffect">@android:color/transparent</item>
-
         <item name="android:fitsSystemWindows">false</item>
-        <item name="android:windowShowWallpaper">true</item>
-        <item name="android:windowBackground">@android:color/transparent</item>
+
+        <!-- Solid black background -->
+        <item name="android:windowShowWallpaper">false</item>
+        <item name="android:windowBackground">@color/black</item>
         <item name="android:windowFullscreen">false</item>
-        <item name="android:windowLightStatusBar">true</item>
-        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
+        <!-- Dark bars — icons are white -->
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
         <item name="android:windowContentOverlay">@null</item>
-        <item name="android:windowAnimationStyle">@style/WindowAnimationTransition</item>
+        <item name="android:windowAnimationStyle">@style/VoidWindowAnimation</item>
         <item name="android:colorBackgroundCacheHint">@null</item>
 
+        <!-- Transparent system bars -->
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <!--        <item name="android:enforceStatusBarContrast">false</item>-->
         <item name="android:enforceNavigationBarContrast" tools:targetApi="q">false</item>
-        <!--        <item name="android:windowTranslucentStatus">false</item>-->
-        <!--        <item name="android:windowTranslucentNavigation">true</item>-->
 
-        <item name="colorPrimary">@color/black</item>
-        <item name="colorPrimaryDark">@android:color/darker_gray</item>
-        <item name="colorAccent">@color/black</item>
+        <!-- MD3 color roles — Dark -->
+        <item name="colorPrimary">@color/white</item>
+        <item name="colorPrimaryDark">@color/black</item>
+        <item name="colorAccent">@color/white</item>
+        <item name="colorSurface">@color/black</item>
+        <item name="colorOnSurface">@color/white</item>
+        <item name="colorOutline">#33FFFFFF</item>
 
-        <item name="primaryColor">@color/black</item>
-        <item name="primaryInverseColor">@color/blackInverse</item>
+        <!-- Custom attributes — dark -->
+        <item name="primaryColor">@color/white</item>
+        <item name="primaryInverseColor">@color/black</item>
         <item name="primaryTextShadowColor">@color/blackInverseTrans50</item>
-        <item name="primaryColorTrans50">@color/blackTrans50</item>
-        <item name="primaryColorTrans80">@color/blackTrans80</item>
+        <item name="primaryColorTrans50">@color/whiteTrans50</item>
+        <item name="primaryColorTrans80">@color/whiteTrans80</item>
         <item name="primaryColorInverseTrans50">@color/blackInverseTrans50</item>
         <item name="primaryColorInverseTrans80">@color/blackInverseTrans80</item>
         <item name="primaryColorInverseTrans90">@color/blackInverseTrans90</item>
         <item name="primaryShadeColor">@color/blackInverseTrans10</item>
         <item name="primaryShadeDarkColor">@color/blackInverseTrans25</item>
         <item name="dialogShadeColor">@color/blackInverseTrans50</item>
-
     </style>
 
-    <style name="WindowAnimationTransition">
-        <item name="android:windowEnterAnimation">@android:anim/fade_in</item>
-        <item name="android:windowExitAnimation">@android:anim/fade_out</item>
+    <!-- Window enter/exit animation -->
+    <style name="VoidWindowAnimation">
+        <item name="android:windowEnterAnimation">@anim/fade_enter</item>
+        <item name="android:windowExitAnimation">@anim/fade_exit</item>
     </style>
 
-    <style name="AppSearchText" parent="Widget.AppCompat.SearchView">
-        <item name="android:maxLength">200</item>
-        <item name="android:textSize">@dimen/text_large</item>
-        <item name="android:textColor">?attr/primaryColor</item>
-        <item name="android:editTextColor">?attr/primaryColor</item>
-        <item name="android:textColorHint">?attr/primaryColor</item>
-        <item name="android:fontFamily">sans-serif-light</item>
-        <item name="android:inputType">textCapSentences|textNoSuggestions</item>
-        <item name="android:cursorVisible">false</item>
-    </style>
+    <!-- ============================================================
+         Text Appearances — Roboto / Google Sans
+    ============================================================ -->
 
-    <style name="TextDefault" parent="@android:style/TextAppearance.Large">
+    <!-- Base: all VOID text shares this foundation -->
+    <style name="TextDefault" parent="TextAppearance.Material3.BodyLarge">
         <item name="android:textColor">@drawable/text_colors_default</item>
         <item name="android:textColorHint">?attr/primaryColorTrans80</item>
-        <item name="android:shadowColor">?attr/primaryTextShadowColor</item>
-        <item name="android:shadowDx">0</item>
-        <item name="android:shadowDy">2</item>
-        <item name="android:shadowRadius">4</item>
+        <item name="android:fontFamily">sans-serif</item>
     </style>
 
-    <style name="TextLarge" parent="TextDefault">
+    <!-- Display: Clock / large headings — Google Sans Display fallback → sans-serif-light -->
+    <style name="TextDisplay" parent="TextAppearance.Material3.DisplaySmall">
+        <item name="android:textColor">?attr/primaryColor</item>
         <item name="android:fontFamily">sans-serif-light</item>
-        <item name="android:textSize">@dimen/text_large</item>
+        <item name="android:letterSpacing">-0.02</item>
     </style>
 
+    <!-- Title / section headers — Google Sans Medium fallback → sans-serif-medium -->
+    <style name="TextTitle" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:textColor">?attr/primaryColor</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:letterSpacing">0.01</item>
+    </style>
+
+    <!-- Large: home screen app labels -->
+    <style name="TextLarge" parent="TextDefault">
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">22sp</item>
+        <item name="android:letterSpacing">0.005</item>
+    </style>
+
+    <!-- Medium: secondary labels -->
     <style name="TextMedium" parent="TextDefault">
-        <item name="android:textSize">20sp</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:fontFamily">sans-serif</item>
     </style>
 
-    <style name="TextSmall" parent="TextDefault">
-        <item name="android:textSize">@dimen/text_small</item>
+    <!-- Small: body / hints -->
+    <style name="TextSmall" parent="TextAppearance.Material3.BodyMedium">
+        <item name="android:textColor">@drawable/text_colors_default</item>
+        <item name="android:textColorHint">?attr/primaryColorTrans80</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textSize">15sp</item>
     </style>
 
+    <!-- Small Bold: setting values, badges -->
     <style name="TextSmallBold" parent="TextSmall">
-        <item name="android:textStyle">bold</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
     </style>
 
+    <!-- Deprecated — kept for backward compat -->
     <style name="TextSmallLight" parent="TextSmall">
-        <item name="android:textColor">@drawable/text_colors_light</item>
+        <item name="android:alpha">0.7</item>
+    </style>
+
+    <!-- Search field — 18sp to match app list rows -->
+    <style name="AppSearchText" parent="Widget.AppCompat.SearchView">
+        <item name="android:maxLength">200</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:textColor">?attr/primaryColor</item>
+        <item name="android:editTextColor">?attr/primaryColor</item>
+        <item name="android:textColorHint">?attr/primaryColorTrans80</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:inputType">textCapSentences|textNoSuggestions</item>
+        <item name="android:cursorVisible">false</item>
     </style>
 
 </resources>

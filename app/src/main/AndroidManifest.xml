@@ -59,6 +59,8 @@
             </intent-filter>
         </activity>
 
+
+
         <activity
             android:name=".helper.FakeHomeActivity"
             android:enabled="false"

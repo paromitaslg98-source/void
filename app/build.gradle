@@ -14,8 +14,8 @@ android {
     }
 
     defaultConfig {
-        applicationId "app.olauncher"
-        minSdkVersion 24
+        applicationId "com.voidlauncher.app"
+        minSdkVersion 26
         targetSdkVersion 35
         versionCode 97
         versionName "v6.2.18"
@@ -28,20 +28,21 @@ android {
         release {
             debuggable false
             minifyEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt')
         }
         debug {
             debuggable true
             minifyEnabled false
             applicationIdSuffix ".debug"
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt')
         }
     }
     buildFeatures {
         viewBinding = true
         buildConfig = true
     }
-    namespace 'app.olauncher'
+    namespace 'com.voidlauncher.app'
 }
 
 dependencies {
@@ -63,5 +64,8 @@ dependencies {
 
     //Material dependency
     implementation libs.material
+
+    // App Optimization (Baseline Profiles)
+    implementation "androidx.profileinstaller:profileinstaller:1.4.1"
 
 }

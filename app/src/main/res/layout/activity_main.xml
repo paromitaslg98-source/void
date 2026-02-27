@@ -16,6 +16,7 @@
         app:navGraph="@navigation/nav_graph"
         tools:ignore="FragmentTagUsage" />
 
+    <!-- Dialog overlay — theme-adaptive, fully readable in both light & dark -->
     <FrameLayout
         android:id="@+id/messageLayout"
         android:layout_width="match_parent"
@@ -24,7 +25,7 @@
         android:clickable="true"
         android:clipToPadding="false"
         android:focusable="true"
-        android:padding="32dp"
+        android:padding="28dp"
         android:visibility="gone"
         tools:visibility="visible">
 
@@ -32,68 +33,87 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:background="@drawable/rounded_rectangle_dark"
+            android:background="@drawable/md3_dialog_card"
             android:elevation="8dp"
             android:orientation="vertical"
-            android:outlineAmbientShadowColor="@color/colorPrimaryDark"
-            android:outlineSpotShadowColor="@color/colorPrimaryDark"
-            android:paddingVertical="24dp"
-            android:paddingStart="24dp"
-            android:paddingEnd="16dp"
+            android:padding="24dp"
             tools:targetApi="p">
 
+            <!-- Title row with close button -->
             <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-
-                <ImageView
-                    android:id="@+id/ivClose"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="end|center_vertical"
-                    android:alpha="0.5"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/close"
-                    android:padding="6dp"
-                    android:src="@drawable/ic_close" />
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp">
 
                 <TextView
                     android:id="@+id/tvTitle"
-                    style="@style/TextLarge"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
-                    android:layout_marginEnd="48dp"
+                    android:layout_marginEnd="44dp"
                     android:clickable="false"
+                    android:fontFamily="sans-serif-medium"
                     android:includeFontPadding="false"
+                    android:letterSpacing="-0.01"
                     android:text="@string/app_name"
-                    android:textColor="?attr/primaryColor" />
+                    android:textColor="?attr/primaryColor"
+                    android:textSize="20sp" />
+
+                <ImageView
+                    android:id="@+id/ivClose"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_gravity="end|center_vertical"
+                    android:alpha="0.6"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/close"
+                    android:padding="6dp"
+                    android:src="@drawable/ic_close"
+                    android:tint="?attr/primaryColor" />
             </FrameLayout>
 
+            <!-- Divider -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginBottom="16dp"
+                android:background="@drawable/md3_divider" />
+
+            <!-- Message body -->
             <TextView
                 android:id="@+id/tvMessage"
-                style="@style/TextSmall"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:lineSpacingExtra="2dp"
+                android:fontFamily="sans-serif"
+                android:lineSpacingExtra="3dp"
                 android:textColor="?attr/primaryColor"
-                tools:text="@string/rate_us_message" />
+                android:textSize="15sp"
+                tools:text="@string/welcome_to_olauncher_settings" />
 
+            <!-- Divider -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="20dp"
+                android:layout_marginBottom="4dp"
+                android:background="@drawable/md3_divider" />
+
+            <!-- Action button — right-aligned -->
             <TextView
                 android:id="@+id/tvAction"
-                style="@style/TextSmallBold"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="end"
-                android:layout_marginTop="20dp"
+                android:layout_marginTop="4dp"
                 android:background="?attr/selectableItemBackground"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.06"
                 android:padding="8dp"
                 android:text="@string/okay"
-                android:textAllCaps="false"
-                android:textSize="18sp" />
+                android:textAllCaps="true"
+                android:textColor="?attr/primaryColor"
+                android:textSize="13sp" />
 
         </LinearLayout>
-
     </FrameLayout>
 </FrameLayout>

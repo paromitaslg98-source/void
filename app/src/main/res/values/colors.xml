@@ -1,31 +1,60 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">@android:color/white</color>
-    <color name="colorPrimaryDark">@android:color/darker_gray</color>
-    <color name="colorAccent">#FFEB3B</color>
+    <!-- === VOID Launcher Color System === -->
 
-    <!--White-->
-    <color name="white">#FFFFFF</color>
-    <color name="whiteTrans90">#E6FFFFFF</color>
-    <color name="whiteTrans80">#CCFFFFFF</color>
-    <color name="whiteTrans50">#80FFFFFF</color>
-    <color name="whiteInverse">#000000</color>
-    <color name="whiteInverseTrans10">#1A000000</color>
-    <color name="whiteInverseTrans25">#40000000</color>
-    <color name="whiteInverseTrans50">#80000000</color>
-    <color name="whiteInverseTrans80">#CC000000</color>
-    <color name="whiteInverseTrans90">#E6000000</color>
+    <!-- Pure backgrounds -->
+    <color name="void_black">#FF000000</color>
+    <color name="void_white">#FFFFFFFF</color>
 
-    <!--Black-->
-    <color name="black">#000000</color>
+    <!-- Primary text on black bg -->
+    <color name="void_text_primary_dark">#FFFFFFFF</color>
+    <color name="void_text_secondary_dark">#99FFFFFF</color>
+    <color name="void_text_hint_dark">#4DFFFFFF</color>
+
+    <!-- Primary text on white bg -->
+    <color name="void_text_primary_light">#FF000000</color>
+    <color name="void_text_secondary_light">#99000000</color>
+    <color name="void_text_hint_light">#4D000000</color>
+
+    <!-- Surfaces (slightly elevated from bg) -->
+    <color name="void_surface_dark">#FF0D0D0D</color>
+    <color name="void_surface_light">#FFF5F5F5</color>
+
+    <!-- Outlines for cards/dividers -->
+    <color name="void_outline_dark">#33FFFFFF</color>
+    <color name="void_outline_light">#33000000</color>
+
+    <!-- Ripple / pressed states -->
+    <color name="void_ripple_dark">#1AFFFFFF</color>
+    <color name="void_ripple_light">#1A000000</color>
+
+    <!-- Legacy aliases (used by existing code, mapped to new system) -->
+    <color name="colorPrimary">#FF000000</color>
+    <color name="colorPrimaryDark">#FF121212</color>
+    <color name="colorAccent">#FFFFFFFF</color>
+
+    <color name="white">#FFFFFFFF</color>
+    <color name="black">#FF000000</color>
+
+    <!-- Semi-transparent blacks -->
     <color name="blackTrans90">#E6000000</color>
     <color name="blackTrans80">#CC000000</color>
     <color name="blackTrans50">#80000000</color>
-    <color name="blackInverse">#FFFFFF</color>
+    <color name="blackInverse">#FFFFFFFF</color>
     <color name="blackInverseTrans10">#1AFFFFFF</color>
     <color name="blackInverseTrans25">#40FFFFFF</color>
     <color name="blackInverseTrans50">#80FFFFFF</color>
     <color name="blackInverseTrans80">#CCFFFFFF</color>
     <color name="blackInverseTrans90">#E6FFFFFF</color>
 
+    <!-- Semi-transparent whites -->
+    <color name="whiteTrans90">#E6FFFFFF</color>
+    <color name="whiteTrans80">#CCFFFFFF</color>
+    <color name="whiteTrans50">#80FFFFFF</color>
+    <color name="whiteInverse">#FF000000</color>
+    <color name="whiteInverseTrans10">#1A000000</color>
+    <color name="whiteInverseTrans25">#40000000</color>
+    <color name="whiteInverseTrans50">#80000000</color>
+    <color name="whiteInverseTrans80">#CC000000</color>
+    <color name="whiteInverseTrans90">#E6000000</color>
 </resources>

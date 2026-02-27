@@ -5,13 +5,12 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:animateLayoutChanges="true"
-    android:background="?attr/primaryShadeDarkColor">
+    android:background="?attr/colorSurface">
 
     <ScrollView
         android:id="@+id/scrollView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginVertical="8dp"
         android:animateLayoutChanges="true"
         android:clipChildren="false"
         android:clipToPadding="false"
@@ -27,962 +26,350 @@
             android:clipChildren="false"
             android:clipToPadding="false"
             android:orientation="vertical"
-            android:paddingVertical="64dp">
+            android:paddingTop="72dp"
+            android:paddingBottom="56dp"
+            android:paddingHorizontal="20dp">
 
+            <!-- =====================================================
+                 SECTION: App Header
+            ===================================================== -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
-                android:layout_marginEnd="12dp"
-                android:background="@drawable/rounded_rect_shade_color"
+                android:background="@drawable/md3_outlined_card"
                 android:orientation="vertical"
-                android:padding="12dp">
+                android:padding="20dp">
 
                 <FrameLayout
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp">
+                    android:layout_height="wrap_content">
 
+                    <!-- "VOID Launcher" also acts as hidden-apps trigger (long press) -->
                     <TextView
                         android:id="@+id/olauncherHiddenApps"
-                        style="@style/TextLarge"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:text="@string/app_name" />
+                        android:fontFamily="sans-serif-medium"
+                        android:letterSpacing="-0.01"
+                        android:text="@string/app_name"
+                        android:textColor="?attr/primaryColor"
+                        android:textSize="22sp" />
 
                     <ImageView
                         android:id="@+id/appInfo"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
                         android:layout_gravity="end|center_vertical"
+                        android:contentDescription="@string/info"
                         android:padding="4dp"
-                        android:src="@drawable/ic_info" />
+                        android:src="@drawable/ic_info"
+                        android:tint="?attr/primaryColorTrans80" />
                 </FrameLayout>
+
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginVertical="14dp" android:background="@drawable/md3_divider" />
 
                 <TextView
                     android:id="@+id/setLauncher"
-                    style="@style/TextSmall"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:layout_marginTop="20dp"
-                    android:layout_marginBottom="8dp"
-                    android:text="@string/set_as_default_launcher" />
+                    android:fontFamily="sans-serif"
+                    android:paddingVertical="10dp"
+                    android:text="@string/set_as_default_launcher"
+                    android:textColor="?attr/primaryColor"
+                    android:textSize="15sp" />
 
-                <TextView
-                    android:id="@+id/aboutOlauncher"
-                    style="@style/TextSmall"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:layout_marginTop="12dp"
-                    android:layout_marginBottom="8dp"
-                    android:drawablePadding="8dp"
-                    android:gravity="center"
-                    android:text="@string/about_olauncher" />
-
-                <TextView
-                    android:id="@+id/moreFeatures"
-                    style="@style/TextSmall"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:layout_marginTop="12dp"
-                    android:layout_marginBottom="8dp"
-                    android:text="@string/more_features" />
+                <!-- Hidden stubs — code references them but we don't show them -->
+                <TextView android:id="@+id/aboutOlauncher" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
+                <TextView android:id="@+id/moreFeatures" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
 
             </LinearLayout>
 
+            <View android:layout_width="match_parent" android:layout_height="14dp" />
+
+            <!-- =====================================================
+                 SECTION: Home Screen
+            ===================================================== -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginHorizontal="12dp"
-                android:layout_marginTop="12dp"
-                android:background="@drawable/rounded_rect_shade_color"
+                android:background="@drawable/md3_outlined_card"
                 android:clipChildren="false"
                 android:clipToPadding="false"
                 android:orientation="vertical"
-                android:padding="12dp"
-                tools:visibility="visible">
+                android:padding="20dp">
 
                 <TextView
-                    style="@style/TextLarge"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:layout_marginTop="12dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="0.10"
                     android:text="@string/home_screen"
-                    android:textColor="?attr/primaryColor" />
+                    android:textAllCaps="true"
+                    android:textColor="?attr/primaryColorTrans80"
+                    android:textSize="10sp" />
 
-                <FrameLayout
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginTop="12dp" android:layout_marginBottom="4dp" android:background="@drawable/md3_divider" />
+
+                <!-- # Apps on Home -->
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
                     android:animateLayoutChanges="true"
                     android:clipChildren="false"
-                    android:clipToPadding="false">
+                    android:clipToPadding="false"
+                    android:orientation="vertical">
 
-                    <TextView
-                        style="@style/TextSmall"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:paddingVertical="8dp"
-                        android:text="@string/apps_on_home_screen"
-                        android:textColor="?attr/primaryColor" />
-
-                    <TextView
-                        android:id="@+id/homeAppsNum"
-                        style="@style/TextSmallBold"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="end|bottom"
-                        android:layout_marginEnd="4dp"
-                        android:paddingVertical="8dp"
-                        android:paddingStart="24dp"
-                        android:paddingEnd="8dp"
-                        tools:text="@string/_8" />
-
-                    <!-- Home apps numbers layout-->
-                    <LinearLayout
-                        android:id="@+id/appsNumSelectLayout"
+                    <FrameLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:animateLayoutChanges="true"
-                        android:background="@drawable/rounded_primary_gradient"
-                        android:elevation="8dp"
-                        android:orientation="horizontal"
-                        android:outlineAmbientShadowColor="@color/colorPrimaryDark"
-                        android:outlineSpotShadowColor="@color/colorPrimaryDark"
-                        android:visibility="gone"
-                        tools:ignore="UnusedAttribute">
-
+                        android:layout_height="wrap_content">
                         <TextView
-                            android:id="@+id/maxApps0"
-                            style="@style/TextSmall"
-                            android:layout_width="0dp"
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:gravity="center"
-                            android:paddingVertical="8dp"
-                            android:text="@string/_0" />
-
+                            android:fontFamily="sans-serif"
+                            android:paddingVertical="14dp"
+                            android:text="@string/apps_on_home_screen"
+                            android:textColor="?attr/primaryColor"
+                            android:textSize="15sp" />
                         <TextView
-                            android:id="@+id/maxApps1"
-                            style="@style/TextSmall"
-                            android:layout_width="0dp"
+                            android:id="@+id/homeAppsNum"
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:gravity="center"
-                            android:paddingVertical="8dp"
-                            android:text="@string/_1" />
+                            android:layout_gravity="end|center_vertical"
+                            android:fontFamily="sans-serif-medium"
+                            android:paddingVertical="14dp"
+                            android:textColor="?attr/primaryColor"
+                            android:textSize="15sp"
+                            tools:text="4" />
+                    </FrameLayout>
 
-                        <TextView
-                            android:id="@+id/maxApps2"
-                            style="@style/TextSmall"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:gravity="center"
-                            android:paddingVertical="8dp"
-                            android:text="@string/_2" />
+                        <!-- Moved appsNumSelectLayout to popupOverlay -->
+                </LinearLayout>
 
-                        <TextView
-                            android:id="@+id/maxApps3"
-                            style="@style/TextSmall"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:gravity="center"
-                            android:paddingVertical="8dp"
-                            android:text="@string/_3" />
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@drawable/md3_divider" />
 
-                        <TextView
-                            android:id="@+id/maxApps4"
-                            style="@style/TextSmall"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:gravity="center"
-                            android:paddingVertical="8dp"
-                            android:text="@string/_4" />
-
-                        <TextView
-                            android:id="@+id/maxApps5"
-                            style="@style/TextSmall"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:gravity="center"
-                            android:paddingVertical="8dp"
-                            android:text="@string/_5" />
-
-                        <TextView
-                            android:id="@+id/maxApps6"
-                            style="@style/TextSmall"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:gravity="center"
-                            android:paddingVertical="8dp"
-                            android:text="@string/_6" />
-
-                        <TextView
-                            android:id="@+id/maxApps7"
-                            style="@style/TextSmall"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:gravity="center"
-                            android:paddingVertical="8dp"
-                            android:text="@string/_7" />
-
-                        <TextView
-                            android:id="@+id/maxApps8"
-                            style="@style/TextSmall"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:gravity="center"
-                            android:paddingVertical="8dp"
-                            android:text="@string/_8" />
-
-                    </LinearLayout>
-
-                </FrameLayout>
-
-                <FrameLayout
+                <!-- Show date/time -->
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:animateLayoutChanges="true">
+                    android:animateLayoutChanges="true"
+                    android:orientation="vertical">
 
-                    <TextView
-                        style="@style/TextSmall"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:paddingVertical="8dp"
-                        android:text="@string/show_date_time"
-                        android:textColor="?attr/primaryColor" />
-
-                    <TextView
-                        android:id="@+id/dateTime"
-                        style="@style/TextSmallBold"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="end|bottom"
-                        android:layout_marginEnd="4dp"
-                        android:padding="8dp"
-                        android:text="@string/on" />
-
-                    <!-- date time layout-->
-                    <LinearLayout
-                        android:id="@+id/dateTimeSelectLayout"
+                    <FrameLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:animateLayoutChanges="true"
-                        android:background="@drawable/rounded_primary_gradient"
-                        android:elevation="8dp"
-                        android:orientation="horizontal"
-                        android:outlineAmbientShadowColor="@color/colorPrimaryDark"
-                        android:outlineSpotShadowColor="@color/colorPrimaryDark"
-                        android:paddingHorizontal="12dp"
-                        android:paddingVertical="2dp"
-                        android:visibility="gone"
-                        tools:ignore="UnusedAttribute">
+                        android:layout_height="wrap_content">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif" android:paddingVertical="14dp" android:text="@string/show_date_time" android:textColor="?attr/primaryColor" android:textSize="15sp" />
+                        <TextView android:id="@+id/dateTime" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="end|center_vertical" android:fontFamily="sans-serif-medium" android:paddingVertical="14dp" android:text="@string/on" android:textColor="?attr/primaryColor" android:textSize="15sp" />
+                    </FrameLayout>
 
-                        <Space
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1" />
+                    <!-- Moved dateTimeSelectLayout to popupOverlay -->
+                </LinearLayout>
 
-                        <TextView
-                            android:id="@+id/dateTimeOn"
-                            style="@style/TextSmallBold"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginEnd="24dp"
-                            android:gravity="center"
-                            android:paddingVertical="6dp"
-                            android:text="@string/on" />
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@drawable/md3_divider" />
 
-                        <TextView
-                            android:id="@+id/dateTimeOff"
-                            style="@style/TextSmallBold"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="4dp"
-                            android:layout_marginEnd="24dp"
-                            android:gravity="center"
-                            android:paddingVertical="6dp"
-                            android:text="@string/off" />
-
-                        <TextView
-                            android:id="@+id/dateOnly"
-                            style="@style/TextSmallBold"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:gravity="center"
-                            android:paddingVertical="6dp"
-                            android:text="@string/date_only" />
-
-                    </LinearLayout>
-
-                </FrameLayout>
-
-                <FrameLayout
+                <!-- App Alignment -->
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
                     android:animateLayoutChanges="true"
                     android:clipChildren="false"
-                    android:clipToPadding="false">
+                    android:orientation="vertical">
 
-                    <TextView
-                        style="@style/TextSmall"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:paddingVertical="8dp"
-                        android:text="@string/home_layout_alignment"
-                        android:textColor="?attr/primaryColor" />
-
-                    <TextView
-                        android:id="@+id/alignment"
-                        style="@style/TextSmallBold"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="end|bottom"
-                        android:layout_marginEnd="4dp"
-                        android:padding="8dp"
-                        android:text="@string/left" />
-
-                    <!-- alignment layout-->
-                    <HorizontalScrollView
-                        android:id="@+id/alignmentSelectLayout"
+                    <FrameLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:animateLayoutChanges="true"
-                        android:background="@drawable/rounded_primary_gradient"
-                        android:elevation="8dp"
-                        android:fadingEdgeLength="8dp"
-                        android:outlineAmbientShadowColor="@color/colorPrimaryDark"
-                        android:outlineSpotShadowColor="@color/colorPrimaryDark"
-                        android:paddingHorizontal="10dp"
-                        android:paddingVertical="2dp"
-                        android:requiresFadingEdge="horizontal"
-                        android:visibility="gone"
-                        tools:ignore="UnusedAttribute">
+                        android:layout_height="wrap_content">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif" android:paddingVertical="14dp" android:text="@string/home_layout_alignment" android:textColor="?attr/primaryColor" android:textSize="15sp" />
+                        <TextView android:id="@+id/alignment" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="end|center_vertical" android:fontFamily="sans-serif-medium" android:paddingVertical="14dp" android:text="@string/left" android:textColor="?attr/primaryColor" android:textSize="15sp" />
+                    </FrameLayout>
 
-                        <LinearLayout
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_gravity="end"
-                            android:orientation="horizontal">
+                    <!-- Moved alignmentSelectLayout to popupOverlay -->
+                </LinearLayout>
 
-                            <Space
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1" />
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@drawable/md3_divider" />
 
-                            <TextView
-                                android:id="@+id/alignmentBottom"
-                                style="@style/TextSmallBold"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginEnd="16dp"
-                                android:paddingVertical="6dp"
-                                android:text="@string/bottom_off" />
-
-                            <View
-                                android:layout_width="0.5dp"
-                                android:layout_height="match_parent"
-                                android:layout_marginVertical="4dp"
-                                android:layout_marginEnd="16dp"
-                                android:background="?attr/primaryColorTrans50" />
-
-                            <TextView
-                                android:id="@+id/alignmentLeft"
-                                style="@style/TextSmallBold"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginEnd="16dp"
-                                android:gravity="center"
-                                android:paddingVertical="6dp"
-                                android:text="@string/left" />
-
-                            <TextView
-                                android:id="@+id/alignmentCenter"
-                                style="@style/TextSmallBold"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="4dp"
-                                android:layout_marginEnd="16dp"
-                                android:gravity="center"
-                                android:paddingVertical="6dp"
-                                android:text="@string/center" />
-
-                            <TextView
-                                android:id="@+id/alignmentRight"
-                                style="@style/TextSmallBold"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:gravity="center"
-                                android:paddingVertical="6dp"
-                                android:text="@string/right" />
-
-                        </LinearLayout>
-                    </HorizontalScrollView>
-
-                </FrameLayout>
-
+                <!-- Screen Time -->
                 <FrameLayout
                     android:id="@+id/screenTimeLayout"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:layout_marginBottom="4dp"
-                    android:animateLayoutChanges="true"
-                    android:clipChildren="false"
-                    android:clipToPadding="false">
-
-                    <TextView
-                        style="@style/TextSmall"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:paddingVertical="8dp"
-                        android:text="@string/screen_time"
-                        android:textColor="?attr/primaryColor" />
-
-                    <TextView
-                        android:id="@+id/screenTimeOnOff"
-                        style="@style/TextSmallBold"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="end|bottom"
-                        android:layout_marginEnd="4dp"
-                        android:padding="8dp"
-                        android:text="@string/off" />
-
+                    android:layout_height="wrap_content">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif" android:paddingVertical="14dp" android:text="@string/screen_time" android:textColor="?attr/primaryColor" android:textSize="15sp" />
+                    <TextView android:id="@+id/screenTimeOnOff" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="end|center_vertical" android:fontFamily="sans-serif-medium" android:paddingVertical="14dp" android:text="@string/off" android:textColor="?attr/primaryColor" android:textSize="15sp" />
                 </FrameLayout>
 
             </LinearLayout>
 
+            <View android:layout_width="match_parent" android:layout_height="14dp" />
+
+            <!-- =====================================================
+                 SECTION: Appearance
+            ===================================================== -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginHorizontal="12dp"
-                android:layout_marginTop="12dp"
-                android:background="@drawable/rounded_rect_shade_color"
+                android:background="@drawable/md3_outlined_card"
                 android:clipChildren="false"
                 android:clipToPadding="false"
                 android:orientation="vertical"
-                android:padding="12dp"
-                tools:visibility="visible">
+                android:padding="20dp">
 
                 <TextView
-                    style="@style/TextLarge"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:layout_marginTop="12dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="0.10"
                     android:text="@string/appearance"
-                    android:textColor="?attr/primaryColor" />
+                    android:textAllCaps="true"
+                    android:textColor="?attr/primaryColorTrans80"
+                    android:textSize="10sp" />
 
-                <FrameLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:animateLayoutChanges="true">
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginTop="12dp" android:layout_marginBottom="4dp" android:background="@drawable/md3_divider" />
 
-                    <TextView
-                        style="@style/TextSmall"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:paddingVertical="8dp"
-                        android:text="@string/auto_show_keyboard"
-                        android:textColor="?attr/primaryColor" />
-
-                    <TextView
-                        android:id="@+id/autoShowKeyboard"
-                        style="@style/TextSmallBold"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="end|bottom"
-                        android:layout_marginEnd="4dp"
-                        android:padding="8dp"
-                        android:text="@string/on" />
+                <!-- Auto-keyboard -->
+                <FrameLayout android:layout_width="match_parent" android:layout_height="wrap_content">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif" android:paddingVertical="14dp" android:text="@string/auto_show_keyboard" android:textColor="?attr/primaryColor" android:textSize="15sp" />
+                    <TextView android:id="@+id/autoShowKeyboard" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="end|center_vertical" android:fontFamily="sans-serif-medium" android:paddingVertical="14dp" android:text="@string/on" android:textColor="?attr/primaryColor" android:textSize="15sp" />
                 </FrameLayout>
 
-                <FrameLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:animateLayoutChanges="true">
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@drawable/md3_divider" />
 
-                    <TextView
-                        android:id="@+id/dailyWallpaperUrl"
-                        style="@style/TextSmall"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:paddingVertical="8dp"
-                        android:text="@string/daily_wallpaper_update" />
-
-                    <TextView
-                        android:id="@+id/dailyWallpaper"
-                        style="@style/TextSmallBold"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="end|bottom"
-                        android:layout_marginEnd="4dp"
-                        android:padding="8dp"
-                        android:text="@string/off" />
+                <!-- Notification bar -->
+                <FrameLayout android:layout_width="match_parent" android:layout_height="wrap_content">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif" android:paddingVertical="14dp" android:text="@string/notification_bar" android:textColor="?attr/primaryColor" android:textSize="15sp" />
+                    <TextView android:id="@+id/statusBar" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="end|center_vertical" android:fontFamily="sans-serif-medium" android:paddingVertical="14dp" android:text="@string/off" android:textColor="?attr/primaryColor" android:textSize="15sp" />
                 </FrameLayout>
 
-                <FrameLayout
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@drawable/md3_divider" />
+
+                <!-- Text size — KEY FIX: selector appears BELOW the row, not overlapping it -->
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:animateLayoutChanges="true">
-
-                    <TextView
-                        style="@style/TextSmall"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:paddingVertical="8dp"
-                        android:text="@string/notification_bar"
-                        android:textColor="?attr/primaryColor" />
-
-                    <TextView
-                        android:id="@+id/statusBar"
-                        style="@style/TextSmallBold"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="end|bottom"
-                        android:layout_marginEnd="4dp"
-                        android:padding="8dp"
-                        android:text="@string/off" />
-                </FrameLayout>
-
-                <FrameLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:animateLayoutChanges="true">
-
-                    <TextView
-                        style="@style/TextSmall"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:paddingVertical="8dp"
-                        android:text="@string/theme_mode"
-                        android:textColor="?attr/primaryColor" />
-
-                    <TextView
-                        android:id="@+id/appThemeText"
-                        style="@style/TextSmallBold"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="end|bottom"
-                        android:layout_marginEnd="4dp"
-                        android:padding="8dp"
-                        android:text="@string/dark" />
-
-                    <!-- theme color select layout-->
-                    <LinearLayout
-                        android:id="@+id/appThemeSelectLayout"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:animateLayoutChanges="true"
-                        android:background="@drawable/rounded_primary_gradient"
-                        android:elevation="8dp"
-                        android:orientation="horizontal"
-                        android:outlineAmbientShadowColor="@color/colorPrimaryDark"
-                        android:outlineSpotShadowColor="@color/colorPrimaryDark"
-                        android:paddingHorizontal="12dp"
-                        android:paddingVertical="2dp"
-                        android:visibility="gone"
-                        tools:ignore="UnusedAttribute">
-
-                        <Space
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1" />
-
-                        <TextView
-                            android:id="@+id/themeSystem"
-                            style="@style/TextSmallBold"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginEnd="24dp"
-                            android:gravity="center"
-                            android:paddingVertical="6dp"
-                            android:text="@string/system_default"
-                            android:visibility="gone" />
-
-                        <TextView
-                            android:id="@+id/themeLight"
-                            style="@style/TextSmallBold"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginEnd="24dp"
-                            android:gravity="center"
-                            android:paddingVertical="6dp"
-                            android:text="@string/light" />
-
-                        <TextView
-                            android:id="@+id/themeDark"
-                            style="@style/TextSmallBold"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:gravity="center"
-                            android:paddingVertical="6dp"
-                            android:text="@string/dark" />
-
-                    </LinearLayout>
-
-                </FrameLayout>
-
-                <FrameLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:layout_marginBottom="4dp"
                     android:animateLayoutChanges="true"
                     android:clipChildren="false"
-                    android:clipToPadding="false">
+                    android:orientation="vertical">
 
-                    <TextView
-                        style="@style/TextSmall"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:paddingVertical="8dp"
-                        android:text="@string/text_size"
-                        android:textColor="?attr/primaryColor" />
-
-                    <TextView
-                        android:id="@+id/textSizeValue"
-                        style="@style/TextSmallBold"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="end|bottom"
-                        android:layout_marginEnd="4dp"
-                        android:paddingVertical="8dp"
-                        android:paddingStart="24dp"
-                        android:paddingEnd="8dp"
-                        tools:text="1.0" />
-
-                    <!-- Text size +/- controls -->
-                    <LinearLayout
-                        android:id="@+id/textSizesLayout"
+                    <FrameLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:animateLayoutChanges="true"
-                        android:background="@drawable/rounded_primary_gradient"
-                        android:elevation="8dp"
-                        android:gravity="center"
-                        android:orientation="horizontal"
-                        android:outlineAmbientShadowColor="@color/colorPrimaryDark"
-                        android:outlineSpotShadowColor="@color/colorPrimaryDark"
-                        android:visibility="gone"
-                        tools:ignore="UnusedAttribute"
-                        tools:visibility="gone">
+                        android:layout_height="wrap_content">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif" android:paddingVertical="14dp" android:text="@string/text_size" android:textColor="?attr/primaryColor" android:textSize="15sp" />
+                        <TextView android:id="@+id/textSizeValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="end|center_vertical" android:fontFamily="sans-serif-medium" android:paddingVertical="14dp" android:textColor="?attr/primaryColor" android:textSize="15sp" tools:text="1.0" />
+                    </FrameLayout>
 
-                        <TextView
-                            android:id="@+id/textSizeMinus"
-                            style="@style/TextSmallBold"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:gravity="center"
-                            android:paddingVertical="8dp"
-                            android:text="\u2212" />
+                    <!-- Moved textSizesLayout to popupOverlay -->
+                </LinearLayout>
 
-                        <TextView
-                            android:id="@+id/textSizeCurrent"
-                            style="@style/TextSmallBold"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:gravity="center"
-                            android:paddingVertical="8dp"
-                            tools:text="1.0" />
-
-                        <TextView
-                            android:id="@+id/textSizePlus"
-                            style="@style/TextSmallBold"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:gravity="center"
-                            android:paddingVertical="8dp"
-                            android:text="+" />
-
-                    </LinearLayout>
-
-                </FrameLayout>
+                <!-- Hidden stubs for wallpaper/theme (kept for Kotlin compat) -->
+                <TextView android:id="@+id/dailyWallpaperUrl" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
+                <TextView android:id="@+id/dailyWallpaper" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
+                <TextView android:id="@+id/appThemeText" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
+                <LinearLayout android:id="@+id/appThemeSelectLayout" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone">
+                    <TextView android:id="@+id/themeSystem" android:layout_width="0dp" android:layout_height="0dp" />
+                    <TextView android:id="@+id/themeLight" android:layout_width="0dp" android:layout_height="0dp" />
+                    <TextView android:id="@+id/themeDark" android:layout_width="0dp" android:layout_height="0dp" />
+                </LinearLayout>
 
             </LinearLayout>
 
+            <View android:layout_width="match_parent" android:layout_height="14dp" />
+
+            <!-- =====================================================
+                 SECTION: Gestures
+            ===================================================== -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginHorizontal="12dp"
-                android:layout_marginTop="12dp"
                 android:animateLayoutChanges="true"
-                android:background="@drawable/rounded_rect_shade_color"
+                android:background="@drawable/md3_outlined_card"
                 android:orientation="vertical"
-                android:padding="12dp">
+                android:padding="20dp">
 
                 <TextView
                     android:id="@+id/tvGestures"
-                    style="@style/TextLarge"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:layout_marginTop="12dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="0.10"
                     android:text="@string/gestures"
-                    android:textColor="?attr/primaryColor" />
+                    android:textAllCaps="true"
+                    android:textColor="?attr/primaryColorTrans80"
+                    android:textSize="10sp" />
 
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginTop="12dp" android:layout_marginBottom="4dp" android:background="@drawable/md3_divider" />
+
+                <!-- Swipe Left -->
+                <FrameLayout android:layout_width="match_parent" android:layout_height="wrap_content">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif" android:paddingVertical="14dp" android:text="@string/swipe_left_app" android:textColor="?attr/primaryColor" android:textSize="15sp" />
+                    <TextView android:id="@+id/swipeLeftApp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="end|center_vertical" android:fontFamily="sans-serif-medium" android:maxLines="1" android:paddingVertical="14dp" android:textColor="?attr/primaryColor" android:textSize="15sp" />
+                </FrameLayout>
+
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@drawable/md3_divider" />
+
+                <!-- Swipe Right -->
+                <FrameLayout android:layout_width="match_parent" android:layout_height="wrap_content">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif" android:paddingVertical="14dp" android:text="@string/swipe_right_app" android:textColor="?attr/primaryColor" android:textSize="15sp" />
+                    <TextView android:id="@+id/swipeRightApp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="end|center_vertical" android:fontFamily="sans-serif-medium" android:maxLines="1" android:paddingVertical="14dp" android:textColor="?attr/primaryColor" android:textSize="15sp" />
+                </FrameLayout>
+
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@drawable/md3_divider" />
+
+                <!-- Swipe Down -->
                 <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:orientation="horizontal">
-
-                    <TextView
-                        style="@style/TextSmall"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:layout_marginEnd="24dp"
-                        android:layout_weight="1"
-                        android:lines="1"
-                        android:paddingVertical="8dp"
-                        android:text="@string/swipe_left_app"
-                        android:textColor="?attr/primaryColor" />
-
-                    <TextView
-                        android:id="@+id/swipeLeftApp"
-                        style="@style/TextSmallBold"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="end|bottom"
-                        android:layout_marginEnd="4dp"
-                        android:lines="1"
-                        android:padding="8dp" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:orientation="horizontal">
-
-                    <TextView
-                        style="@style/TextSmall"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:layout_marginEnd="24dp"
-                        android:layout_weight="1"
-                        android:lines="1"
-                        android:paddingVertical="8dp"
-                        android:text="@string/swipe_right_app"
-                        android:textColor="?attr/primaryColor" />
-
-                    <TextView
-                        android:id="@+id/swipeRightApp"
-                        style="@style/TextSmallBold"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="end|bottom"
-                        android:layout_marginEnd="4dp"
-                        android:lines="1"
-                        android:padding="8dp" />
-                </LinearLayout>
-
-                <FrameLayout
                     android:id="@+id/flSwipeDown"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
                     android:animateLayoutChanges="true"
-                    android:orientation="horizontal"
+                    android:orientation="vertical"
                     android:visibility="gone">
 
-                    <TextView
-                        style="@style/TextSmall"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:layout_marginEnd="24dp"
-                        android:lines="1"
-                        android:paddingVertical="8dp"
-                        android:text="@string/swipe_down_for"
-                        android:textColor="?attr/primaryColor" />
+                    <FrameLayout android:layout_width="match_parent" android:layout_height="wrap_content">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif" android:paddingVertical="14dp" android:text="@string/swipe_down_for" android:textColor="?attr/primaryColor" android:textSize="15sp" />
+                        <TextView android:id="@+id/swipeDownAction" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="end|center_vertical" android:fontFamily="sans-serif-medium" android:maxLines="1" android:paddingVertical="14dp" android:textColor="?attr/primaryColor" android:textSize="15sp" tools:text="@string/search" />
+                    </FrameLayout>
 
-                    <TextView
-                        android:id="@+id/swipeDownAction"
-                        style="@style/TextSmallBold"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="end|bottom"
-                        android:layout_marginEnd="4dp"
-                        android:lines="1"
-                        android:padding="8dp"
-                        tools:text="@string/search" />
+                    <!-- Moved swipeDownSelectLayout to popupOverlay -->
 
-                    <!-- Swipe down select layout-->
-                    <LinearLayout
-                        android:id="@+id/swipeDownSelectLayout"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:animateLayoutChanges="true"
-                        android:background="@drawable/rounded_primary_gradient"
-                        android:elevation="8dp"
-                        android:orientation="horizontal"
-                        android:outlineAmbientShadowColor="@color/colorPrimaryDark"
-                        android:outlineSpotShadowColor="@color/colorPrimaryDark"
-                        android:paddingHorizontal="12dp"
-                        android:paddingVertical="2dp"
-                        android:visibility="gone"
-                        tools:ignore="UnusedAttribute">
+                    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@drawable/md3_divider" />
+                </LinearLayout>
 
-                        <Space
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1" />
-
-                        <TextView
-                            android:id="@+id/notifications"
-                            style="@style/TextSmallBold"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginEnd="24dp"
-                            android:gravity="center"
-                            android:paddingVertical="6dp"
-                            android:text="@string/notifications" />
-
-                        <TextView
-                            android:id="@+id/search"
-                            style="@style/TextSmallBold"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:gravity="center"
-                            android:paddingVertical="6dp"
-                            android:text="@string/search" />
-
-                    </LinearLayout>
-
+                <!-- Double-tap lock -->
+                <FrameLayout android:layout_width="match_parent" android:layout_height="wrap_content">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif" android:paddingVertical="14dp" android:text="@string/double_tap_to_lock_screen" android:textColor="?attr/primaryColor" android:textSize="15sp" />
+                    <TextView android:id="@+id/toggleLock" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="end|center_vertical" android:fontFamily="sans-serif-medium" android:paddingVertical="14dp" android:text="@string/off" android:textColor="?attr/primaryColor" android:textSize="15sp" />
                 </FrameLayout>
 
-                <FrameLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:layout_marginTop="12dp"
-                    android:visibility="visible">
-
-                    <TextView
-                        style="@style/TextSmall"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:paddingVertical="8dp"
-                        android:text="@string/double_tap_to_lock_screen"
-                        android:textColor="?attr/primaryColor" />
-
-                    <TextView
-                        android:id="@+id/toggleLock"
-                        style="@style/TextSmallBold"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="end"
-                        android:padding="10dp"
-                        android:text="@string/off" />
-                </FrameLayout>
             </LinearLayout>
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:gravity="center_horizontal"
-                android:orientation="horizontal">
+            <View android:layout_width="match_parent" android:layout_height="24dp" />
 
-                <TextView
-                    android:id="@+id/twitter"
-                    style="@style/TextSmall"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:padding="10dp"
-                    android:text="@string/twitter" />
-
-                <TextView
-                    android:id="@+id/share"
-                    style="@style/TextSmall"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:padding="10dp"
-                    android:text="@string/share" />
-
-                <TextView
-                    android:id="@+id/rate"
-                    style="@style/TextSmall"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:padding="10dp"
-                    android:text="@string/rate" />
-
-                <TextView
-                    android:id="@+id/github"
-                    style="@style/TextSmall"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:padding="10dp"
-                    android:text="@string/github" />
-
-                <TextView
-                    android:id="@+id/privacy"
-                    style="@style/TextSmall"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:padding="10dp"
-                    android:text="@string/privacy" />
-            </LinearLayout>
-
+            <!-- =====================================================
+                 FOOTER — Credit line only, no redirecting links
+            ===================================================== -->
             <TextView
                 android:id="@+id/footer"
-                style="@style/TextSmall"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:fontFamily="sans-serif"
                 android:gravity="center"
-                android:letterSpacing="0.03"
+                android:letterSpacing="0.04"
                 android:padding="12dp"
-                android:text="@string/new_app_note_to_self" />
+                android:text="Made by Surajit Das"
+                android:textColor="?attr/primaryColorTrans80"
+                android:textSize="13sp" />
+
+            <!-- Hidden stubs for Kotlin click-handler references -->
+            <LinearLayout android:layout_width="0dp" android:layout_height="0dp" android:orientation="horizontal">
+                <TextView android:id="@+id/twitter" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
+                <TextView android:id="@+id/share" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
+                <TextView android:id="@+id/rate" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
+                <TextView android:id="@+id/github" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
+                <TextView android:id="@+id/privacy" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
+            </LinearLayout>
 
         </LinearLayout>
-
     </ScrollView>
 
+    <!-- =====================================================
+         Accessibility dialog overlay
+    ===================================================== -->
     <FrameLayout
         android:id="@+id/accessibilityLayout"
         android:layout_width="match_parent"
@@ -991,7 +378,7 @@
         android:clickable="true"
         android:clipToPadding="false"
         android:focusable="true"
-        android:padding="20dp"
+        android:padding="28dp"
         android:visibility="gone"
         tools:visibility="gone">
 
@@ -999,73 +386,199 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:background="@drawable/rounded_rectangle_dark"
+            android:background="@drawable/md3_dialog_card"
             android:elevation="8dp"
             android:orientation="vertical"
-            android:outlineAmbientShadowColor="@color/colorPrimaryDark"
-            android:outlineSpotShadowColor="@color/colorPrimaryDark"
-            android:padding="20dp"
-            tools:targetApi="p">
+            android:padding="24dp">
 
             <TextView
-                style="@style/TextLarge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="-0.01"
                 android:text="@string/double_tap_lock"
-                android:textColor="?attr/primaryColor" />
+                android:textColor="?attr/primaryColor"
+                android:textSize="20sp" />
+
+            <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginVertical="16dp" android:background="@drawable/md3_divider" />
 
             <TextView
-                style="@style/TextSmall"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:clickable="false"
+                android:fontFamily="sans-serif"
+                android:lineSpacingExtra="3dp"
                 android:text="@string/accessibility_disclosure"
-                android:textColor="?attr/primaryColor" />
+                android:textColor="?attr/primaryColor"
+                android:textSize="14sp" />
+
+            <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginVertical="16dp" android:background="@drawable/md3_divider" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
+                android:gravity="end"
                 android:orientation="horizontal">
 
                 <TextView
                     android:id="@+id/notWorking"
-                    style="@style/TextSmall"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:paddingVertical="4dp"
+                    android:layout_weight="1"
+                    android:fontFamily="sans-serif"
+                    android:paddingVertical="8dp"
                     android:text="@string/not_working"
+                    android:textColor="?attr/primaryColorTrans80"
+                    android:textSize="13sp"
                     android:visibility="gone"
                     tools:visibility="visible" />
 
-                <Space
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1" />
-
                 <TextView
                     android:id="@+id/closeAccessibility"
-                    style="@style/TextSmallBold"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginEnd="20dp"
-                    android:paddingVertical="4dp"
-                    android:text="@string/close" />
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="0.06"
+                    android:paddingVertical="8dp"
+                    android:paddingHorizontal="16dp"
+                    android:text="@string/close"
+                    android:textAllCaps="true"
+                    android:textColor="?attr/primaryColorTrans80"
+                    android:textSize="13sp" />
 
                 <TextView
                     android:id="@+id/actionAccessibility"
-                    style="@style/TextSmallBold"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginEnd="4dp"
-                    android:paddingVertical="4dp"
-                    android:text="@string/enable" />
+                    android:background="@drawable/md3_outlined_card"
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="0.06"
+                    android:paddingVertical="8dp"
+                    android:paddingHorizontal="16dp"
+                    android:text="@string/enable"
+                    android:textAllCaps="true"
+                    android:textColor="?attr/primaryColor"
+                    android:textSize="13sp" />
+            </LinearLayout>
+        </LinearLayout>
+    </FrameLayout>
 
+    <!-- =====================================================
+         Pop-up overlay for settings controls
+    ===================================================== -->
+    <FrameLayout
+        android:id="@+id/popupOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="?attr/dialogShadeColor"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone">
+
+        <!-- Container for dynamically centered select layouts -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:paddingHorizontal="24dp">
+
+            <LinearLayout
+                android:id="@+id/appsNumSelectLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:animateLayoutChanges="true"
+                android:background="@drawable/md3_outlined_card"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <TextView android:id="@+id/maxApps0" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:gravity="center" android:paddingVertical="12dp" android:text="@string/_0" android:textColor="?attr/primaryColor" android:textSize="14sp" />
+                <View android:layout_width="1dp" android:layout_height="18dp" android:layout_gravity="center_vertical" android:background="@drawable/md3_divider" />
+                <TextView android:id="@+id/maxApps1" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:gravity="center" android:paddingVertical="12dp" android:text="@string/_1" android:textColor="?attr/primaryColor" android:textSize="14sp" />
+                <View android:layout_width="1dp" android:layout_height="18dp" android:layout_gravity="center_vertical" android:background="@drawable/md3_divider" />
+                <TextView android:id="@+id/maxApps2" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:gravity="center" android:paddingVertical="12dp" android:text="@string/_2" android:textColor="?attr/primaryColor" android:textSize="14sp" />
+                <View android:layout_width="1dp" android:layout_height="18dp" android:layout_gravity="center_vertical" android:background="@drawable/md3_divider" />
+                <TextView android:id="@+id/maxApps3" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:gravity="center" android:paddingVertical="12dp" android:text="@string/_3" android:textColor="?attr/primaryColor" android:textSize="14sp" />
+                <View android:layout_width="1dp" android:layout_height="18dp" android:layout_gravity="center_vertical" android:background="@drawable/md3_divider" />
+                <TextView android:id="@+id/maxApps4" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:gravity="center" android:paddingVertical="12dp" android:text="@string/_4" android:textColor="?attr/primaryColor" android:textSize="14sp" />
+                <View android:layout_width="1dp" android:layout_height="18dp" android:layout_gravity="center_vertical" android:background="@drawable/md3_divider" />
+                <TextView android:id="@+id/maxApps5" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:gravity="center" android:paddingVertical="12dp" android:text="@string/_5" android:textColor="?attr/primaryColor" android:textSize="14sp" />
+                <View android:layout_width="1dp" android:layout_height="18dp" android:layout_gravity="center_vertical" android:background="@drawable/md3_divider" />
+                <TextView android:id="@+id/maxApps6" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:gravity="center" android:paddingVertical="12dp" android:text="@string/_6" android:textColor="?attr/primaryColor" android:textSize="14sp" />
+                <View android:layout_width="1dp" android:layout_height="18dp" android:layout_gravity="center_vertical" android:background="@drawable/md3_divider" />
+                <TextView android:id="@+id/maxApps7" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:gravity="center" android:paddingVertical="12dp" android:text="@string/_7" android:textColor="?attr/primaryColor" android:textSize="14sp" />
+                <View android:layout_width="1dp" android:layout_height="18dp" android:layout_gravity="center_vertical" android:background="@drawable/md3_divider" />
+                <TextView android:id="@+id/maxApps8" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:gravity="center" android:paddingVertical="12dp" android:text="@string/_8" android:textColor="?attr/primaryColor" android:textSize="14sp" />
+                <View android:layout_width="1dp" android:layout_height="18dp" android:layout_gravity="center_vertical" android:background="@drawable/md3_divider" />
+                <TextView android:id="@+id/maxApps9" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:gravity="center" android:paddingVertical="12dp" android:text="@string/_9" android:textColor="?attr/primaryColor" android:textSize="14sp" />
+                <View android:layout_width="1dp" android:layout_height="18dp" android:layout_gravity="center_vertical" android:background="@drawable/md3_divider" />
+                <TextView android:id="@+id/maxApps10" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:gravity="center" android:paddingVertical="12dp" android:text="@string/_10" android:textColor="?attr/primaryColor" android:textSize="14sp" />
             </LinearLayout>
 
-        </LinearLayout>
+            <LinearLayout
+                android:id="@+id/dateTimeSelectLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:animateLayoutChanges="true"
+                android:background="@drawable/md3_outlined_card"
+                android:gravity="end"
+                android:orientation="horizontal"
+                android:visibility="gone">
+                <TextView android:id="@+id/dateTimeOn" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:gravity="center" android:paddingVertical="12dp" android:text="@string/on" android:textColor="?attr/primaryColor" android:textSize="14sp" />
+                <View android:layout_width="1dp" android:layout_height="18dp" android:layout_gravity="center_vertical" android:background="@drawable/md3_divider" />
+                <TextView android:id="@+id/dateTimeOff" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:gravity="center" android:paddingVertical="12dp" android:text="@string/off" android:textColor="?attr/primaryColor" android:textSize="14sp" />
+                <View android:layout_width="1dp" android:layout_height="18dp" android:layout_gravity="center_vertical" android:background="@drawable/md3_divider" />
+                <TextView android:id="@+id/dateOnly" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:gravity="center" android:paddingVertical="12dp" android:text="@string/date_only" android:textColor="?attr/primaryColor" android:textSize="14sp" />
+            </LinearLayout>
 
+            <HorizontalScrollView
+                android:id="@+id/alignmentSelectLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/md3_outlined_card"
+                android:fadingEdgeLength="8dp"
+                android:requiresFadingEdge="horizontal"
+                android:visibility="gone">
+                <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal">
+                    <TextView android:id="@+id/alignmentBottom" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:paddingVertical="12dp" android:paddingHorizontal="20dp" android:text="@string/bottom_off" android:textColor="?attr/primaryColor" android:textSize="14sp" />
+                    <View android:layout_width="1dp" android:layout_height="18dp" android:layout_gravity="center_vertical" android:background="@drawable/md3_divider" />
+                    <TextView android:id="@+id/alignmentLeft" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:gravity="center" android:paddingVertical="12dp" android:paddingHorizontal="20dp" android:text="@string/left" android:textColor="?attr/primaryColor" android:textSize="14sp" />
+                    <View android:layout_width="1dp" android:layout_height="18dp" android:layout_gravity="center_vertical" android:background="@drawable/md3_divider" />
+                    <TextView android:id="@+id/alignmentCenter" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:gravity="center" android:paddingVertical="12dp" android:paddingHorizontal="20dp" android:text="@string/center" android:textColor="?attr/primaryColor" android:textSize="14sp" />
+                    <View android:layout_width="1dp" android:layout_height="18dp" android:layout_gravity="center_vertical" android:background="@drawable/md3_divider" />
+                    <TextView android:id="@+id/alignmentRight" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:gravity="center" android:paddingVertical="12dp" android:paddingHorizontal="20dp" android:text="@string/right" android:textColor="?attr/primaryColor" android:textSize="14sp" />
+                </LinearLayout>
+            </HorizontalScrollView>
+
+            <LinearLayout
+                android:id="@+id/textSizesLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:animateLayoutChanges="true"
+                android:background="@drawable/md3_outlined_card"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:visibility="gone">
+                <TextView android:id="@+id/textSizeMinus" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:gravity="center" android:paddingVertical="14dp" android:text="&#x2212;" android:textColor="?attr/primaryColor" android:textSize="20sp" />
+                <View android:layout_width="1dp" android:layout_height="18dp" android:layout_gravity="center_vertical" android:background="@drawable/md3_divider" />
+                <TextView android:id="@+id/textSizeCurrent" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:gravity="center" android:paddingVertical="14dp" android:textColor="?attr/primaryColor" android:textSize="15sp" tools:text="1.0" />
+                <View android:layout_width="1dp" android:layout_height="18dp" android:layout_gravity="center_vertical" android:background="@drawable/md3_divider" />
+                <TextView android:id="@+id/textSizePlus" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:gravity="center" android:paddingVertical="14dp" android:text="+" android:textColor="?attr/primaryColor" android:textSize="20sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/swipeDownSelectLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:animateLayoutChanges="true"
+                android:background="@drawable/md3_outlined_card"
+                android:gravity="end"
+                android:orientation="horizontal"
+                android:visibility="gone">
+                <TextView android:id="@+id/notifications" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:gravity="center" android:paddingVertical="12dp" android:text="@string/notifications" android:textColor="?attr/primaryColor" android:textSize="14sp" />
+                <View android:layout_width="1dp" android:layout_height="18dp" android:layout_gravity="center_vertical" android:background="@drawable/md3_divider" />
+                <TextView android:id="@+id/search" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:gravity="center" android:paddingVertical="12dp" android:text="@string/search" android:textColor="?attr/primaryColor" android:textSize="14sp" />
+            </LinearLayout>
+
+        </FrameLayout>
     </FrameLayout>
 
 </FrameLayout>
