@@ -95,14 +95,17 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
         binding.appThemeSelectLayout.visibility = View.GONE
         binding.swipeDownSelectLayout.visibility = View.GONE
         
-        if (view.id == R.id.textSizeMinus || view.id == R.id.textSizePlus) {
+        val isTextSizeClick = view.id == R.id.textSizeMinus || view.id == R.id.textSizePlus || view.id == R.id.textSizeCurrent || view.id == R.id.textSizesLayout
+        if (isTextSizeClick) {
             hideOverlay = false
-            binding.textSizesLayout.visibility = View.VISIBLE
         } else {
             if (binding.textSizesLayout.visibility == View.VISIBLE) {
-                binding.textSizesLayout.visibility = View.GONE
                 applyTextSizeScale()
             }
+        }
+        
+        if (hideOverlay && view.id != R.id.textSizeValue) {
+            binding.textSizesLayout.visibility = View.GONE
         }
 
         if (view.id == R.id.alignmentBottom) {
@@ -111,7 +114,7 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
             binding.alignmentSelectLayout.visibility = View.GONE
         }
 
-        if (hideOverlay) {
+        if (hideOverlay && view.id != R.id.textSizeValue && view.id != R.id.homeAppsNum && view.id != R.id.alignment && view.id != R.id.dateTime && view.id != R.id.appThemeText && view.id != R.id.swipeDownAction) {
             binding.popupOverlay.isVisible = false
         }
 

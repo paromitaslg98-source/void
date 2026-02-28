@@ -19,7 +19,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.voidlauncher.app.R
 import com.voidlauncher.app.data.AppModel
 import com.voidlauncher.app.data.Constants
-import com.voidlauncher.app.databinding.AdapterAppDrawerBinding
+import com.voidlauncher.app.databinding.ItemAppDrawerBinding
 import com.voidlauncher.app.databinding.AdapterPrivateSpaceBinding
 import com.voidlauncher.app.databinding.AdapterSectionHeaderBinding
 import com.voidlauncher.app.helper.hideKeyboard
@@ -104,7 +104,7 @@ class AppDrawerAdapter(
                 AdapterSectionHeaderBinding.inflate(LayoutInflater.from(parent.context), parent, false)
             )
             else -> AppViewHolder(
-                AdapterAppDrawerBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+                ItemAppDrawerBinding.inflate(LayoutInflater.from(parent.context), parent, false)
             )
         }
 
@@ -136,27 +136,44 @@ class AppDrawerAdapter(
                 currentQuery = charSearch ?: ""
                 isBangSearch = charSearch?.startsWith("!") ?: false
 
-                val combinedTarget = appsList + privateAppsList
-                val filtered: MutableList<AppModel> = if (charSearch.isNullOrBlank()) combinedTarget.toMutableList()
-                else combinedTarget.filter { app ->
+                val filteredMain: MutableList<AppModel> = if (charSearch.isNullOrBlank()) appsList.toMutableList()
+                else appsList.filter { app ->
                     appLabelMatches(app.appLabel, charSearch)
                 } as MutableList<AppModel>
 
-                return FilterResults().apply { values = filtered }
+                val filteredPrivate: MutableList<AppModel> = if (charSearch.isNullOrBlank()) privateAppsList.toMutableList()
+                else privateAppsList.filter { app ->
+                    appLabelMatches(app.appLabel, charSearch)
+                } as MutableList<AppModel>
+
+                return FilterResults().apply {
+                    values = Pair(filteredMain, filteredPrivate)
+                }
             }
 
             @Suppress("UNCHECKED_CAST")
             override fun publishResults(constraint: CharSequence?, results: FilterResults?) {
                 results?.values?.let {
-                    val filtered = it as MutableList<AppModel>
-                    appFilteredList = filtered
+                    val pair = it as Pair<MutableList<AppModel>, MutableList<AppModel>>
+                    val filteredMain = pair.first
+                    val filteredPrivate = pair.second
 
-                    // Build DrawerItem list, optionally prepending the Private Space synthetic row
+                    appFilteredList = filteredMain
+
+                    // Build DrawerItem list
                     val drawerItems = mutableListOf<DrawerItem>()
                     if (showPrivateSpaceItem) {
                         drawerItems.add(DrawerItem.PrivateSpace)
                     }
-                    filtered.forEach { app -> drawerItems.add(DrawerItem.AppItem(app)) }
+                    
+                    // Add main apps
+                    filteredMain.forEach { app -> drawerItems.add(DrawerItem.AppItem(app)) }
+                    
+                    // Add private space apps under a section header if there are any
+                    if (filteredPrivate.isNotEmpty()) {
+                        drawerItems.add(DrawerItem.SectionHeader("Private Space"))
+                        filteredPrivate.forEach { app -> drawerItems.add(DrawerItem.AppItem(app)) }
+                    }
 
                     submitList(drawerItems)
                 }
@@ -173,18 +190,8 @@ class AppDrawerAdapter(
     }
 
     fun setAppList(appsList: MutableList<AppModel>) {
-        // Add empty app for bottom padding
-        appsList.add(
-            AppModel.App(
-                appLabel = "", key = null, appPackage = "",
-                activityClassName = "", isNew = false,
-                user = android.os.Process.myUserHandle()
-            )
-        )
         this.appsList = appsList
-        this.appFilteredList = appsList
-        val drawerItems = appsList.map { DrawerItem.AppItem(it) }.toMutableList<DrawerItem>()
-        submitList(drawerItems)
+        appFilter.filter(currentQuery)
     }
 
     fun launchFirstInList() {
@@ -211,7 +218,7 @@ class AppDrawerAdapter(
     }
 
     // ─── ViewHolder: real app item ────────────────────────────────────────────
-    class AppViewHolder(private val binding: AdapterAppDrawerBinding) :
+    class AppViewHolder(private val binding: ItemAppDrawerBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
         fun bind(

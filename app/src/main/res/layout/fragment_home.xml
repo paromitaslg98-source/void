@@ -14,21 +14,7 @@
         android:layout_height="1dp"
         android:contentDescription="@string/lock_layout_description" />
 
-    <!-- Screen time — top trailing, clear of notch -->
-    <androidx.appcompat.widget.AppCompatTextView
-        android:id="@+id/tvScreenTime"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="top|end"
-        android:layout_marginTop="56dp"
-        android:layout_marginEnd="24dp"
-        android:fontFamily="sans-serif"
-        android:letterSpacing="0.03"
-        android:textColor="?attr/primaryColorTrans80"
-        android:textSize="11sp"
-        android:visibility="gone"
-        tools:text="2h 11m"
-        tools:visibility="visible" />
+    <!-- Screen time moved inside dateTimeLayout -->
 
     <!-- Clock + Date — top-left, with generous top clearance for status bar -->
     <LinearLayout
@@ -66,6 +52,20 @@
             android:textColor="?attr/primaryColorTrans80"
             android:textSize="13sp"
             tools:text="WED, 25 FEB" />
+
+        <!-- Screen time + Unlocks -->
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/tvScreenTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:fontFamily="sans-serif"
+            android:letterSpacing="0.03"
+            android:textColor="?attr/primaryColorTrans80"
+            android:textSize="13sp"
+            android:visibility="gone"
+            tools:text="2h 11m • 15 unlocks"
+            tools:visibility="visible" />
 
     </LinearLayout>
 
