@@ -160,7 +160,8 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
                 binding.textSizesLayout.visibility = View.VISIBLE
             }
             R.id.actionAccessibility -> openAccessibilityService()
-            R.id.closeAccessibility -> toggleAccessibilityVisibility(false)
+            R.id.closeAccessibility,
+            R.id.accessibilityLayout -> toggleAccessibilityVisibility(false)
             R.id.notWorking -> { /* URL redirect removed */ }
 
             R.id.tvGestures -> binding.flSwipeDown.visibility = View.VISIBLE
@@ -259,6 +260,7 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
         binding.textSizeValue.setOnClickListener(this)
         binding.actionAccessibility.setOnClickListener(this)
         binding.closeAccessibility.setOnClickListener(this)
+        binding.accessibilityLayout.setOnClickListener(this)
         binding.notWorking.setOnClickListener(this)
         // Footer stubs — hidden, no-op
         binding.twitter.setOnClickListener(this)
@@ -407,6 +409,15 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
             binding.notWorking.visibility = View.VISIBLE
         if (isAccessServiceEnabled(requireContext()))
             binding.actionAccessibility.text = getString(R.string.disable)
+        if (show) {
+            binding.popupOverlay.isVisible = false
+            binding.appsNumSelectLayout.visibility = View.GONE
+            binding.dateTimeSelectLayout.visibility = View.GONE
+            binding.alignmentSelectLayout.visibility = View.GONE
+            binding.textSizesLayout.visibility = View.GONE
+            binding.swipeDownSelectLayout.visibility = View.GONE
+            binding.accessibilityLayout.bringToFront()
+        }
         binding.accessibilityLayout.isVisible = show
         binding.scrollView.animateAlpha(if (show) 0.5f else 1f)
     }
