@@ -269,27 +269,36 @@ class AppDrawerFragment : Fragment() {
             val launcherApps = requireContext()
                 .getSystemService(LauncherApps::class.java) ?: return
             val infoList = launcherApps.getActivityList(null, handle)
-            val privateModels = infoList.mapNotNull { info ->
+            val privateModels = infoList
+                // Intentional UX: keep private-space management in Settings, not app library.
+                .filterNot { info ->
+                    val label = info.label?.toString()?.trim().orEmpty()
+                    val packageName = info.applicationInfo.packageName
+                    val className = info.componentName.className
+                    val classNameLower = className.lowercase()
+
+                    val isPrivateSettingsActivity = packageName == "com.android.settings" &&
+                            (classNameLower.contains("private") ||
+                                    classNameLower.contains("manage") ||
+                                    classNameLower.contains("config") ||
+                                    classNameLower.contains("add"))
+                    val isPrivateSettingsLabel = packageName == "com.android.settings" &&
+                            label.equals("Add app", ignoreCase = true)
+
+                    isPrivateSettingsActivity || isPrivateSettingsLabel
+                }
+                .mapNotNull { info ->
                 val label = info.label?.toString()?.trim().orEmpty()
                 val packageName = info.applicationInfo.packageName
                 val className = info.componentName.className
-                val isPrivateSpaceSettingsEntry =
-                    packageName == "com.android.settings" &&
-                            (label.equals("Add", ignoreCase = true) ||
-                                    className.contains("PrivateSpace", ignoreCase = true))
-
-                if (isPrivateSpaceSettingsEntry) {
-                    null
-                } else {
-                    AppModel.App(
-                        appLabel = label,
-                        key = null,
-                        appPackage = packageName,
-                        activityClassName = className,
-                        isNew = false,
-                        user = handle
-                    )
-                }
+                AppModel.App(
+                    appLabel = label,
+                    key = null,
+                    appPackage = packageName,
+                    activityClassName = className,
+                    isNew = false,
+                    user = handle
+                )
             }.sortedBy { it.appLabel }
             adapter.injectPrivateApps(privateModels)
             viewModel.getAppList()
