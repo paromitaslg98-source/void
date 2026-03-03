@@ -104,8 +104,8 @@ class AppDrawerFragment : Fragment() {
                 )
             searchAutoComplete?.apply {
                 // paddingStart = 28dp (20dp icon + 8dp margin) to not overlap with the icon initially
-                setPadding((28 * resources.displayMetrics.density).toInt(), paddingTop, paddingRight, paddingBottom)
-                textSize = (prefs.textSizeScale * 18).toFloat()
+                setPadding((28 * resources.displayMetrics.density).toInt(), 0, paddingRight, 0)
+                textSize = (prefs.textSizeScale * 17).toFloat()
                 gravity = prefs.appLabelAlignment or android.view.Gravity.CENTER_VERTICAL
             }
         } catch (e: Exception) {
@@ -151,9 +151,9 @@ class AppDrawerFragment : Fragment() {
                     // Remove padding when focused so text can use the space
                     searchAutoComplete.setPadding(
                         if (hasFocus) 0 else initialPadding,
-                        searchAutoComplete.paddingTop,
+                        0,
                         searchAutoComplete.paddingRight,
-                        searchAutoComplete.paddingBottom
+                        0
                     )
                 }
             }
@@ -269,15 +269,27 @@ class AppDrawerFragment : Fragment() {
             val launcherApps = requireContext()
                 .getSystemService(LauncherApps::class.java) ?: return
             val infoList = launcherApps.getActivityList(null, handle)
-            val privateModels = infoList.map { info ->
-                AppModel.App(
-                    appLabel = info.label.toString(),
-                    key = null,
-                    appPackage = info.applicationInfo.packageName,
-                    activityClassName = info.componentName.className,
-                    isNew = false,
-                    user = handle
-                )
+            val privateModels = infoList.mapNotNull { info ->
+                val label = info.label?.toString()?.trim().orEmpty()
+                val packageName = info.applicationInfo.packageName
+                val className = info.componentName.className
+                val isPrivateSpaceSettingsEntry =
+                    packageName == "com.android.settings" &&
+                            (label.equals("Add", ignoreCase = true) ||
+                                    className.contains("PrivateSpace", ignoreCase = true))
+
+                if (isPrivateSpaceSettingsEntry) {
+                    null
+                } else {
+                    AppModel.App(
+                        appLabel = label,
+                        key = null,
+                        appPackage = packageName,
+                        activityClassName = className,
+                        isNew = false,
+                        user = handle
+                    )
+                }
             }.sortedBy { it.appLabel }
             adapter.injectPrivateApps(privateModels)
             viewModel.getAppList()

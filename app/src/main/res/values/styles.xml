@@ -119,11 +119,12 @@
     <!-- Search field — 18sp to match app list rows -->
     <style name="AppSearchText" parent="Widget.AppCompat.SearchView">
         <item name="android:maxLength">200</item>
-        <item name="android:textSize">18sp</item>
+        <item name="android:textSize">17sp</item>
         <item name="android:textColor">?attr/primaryColor</item>
         <item name="android:editTextColor">?attr/primaryColor</item>
         <item name="android:textColorHint">?attr/primaryColorTrans80</item>
         <item name="android:fontFamily">sans-serif</item>
+        <item name="android:includeFontPadding">false</item>
         <item name="android:inputType">textCapSentences|textNoSuggestions</item>
         <item name="android:cursorVisible">false</item>
     </style>
