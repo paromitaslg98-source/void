@@ -18,7 +18,7 @@ import com.voidlauncher.app.helper.WallpaperWorker
 import com.voidlauncher.app.helper.formattedTimeSpent
 import com.voidlauncher.app.helper.getAppsList
 import com.voidlauncher.app.helper.hasBeenMinutes
-import com.voidlauncher.app.helper.isOlauncherDefault
+import com.voidlauncher.app.helper.isVoidDefault
 import com.voidlauncher.app.helper.isPackageInstalled
 import com.voidlauncher.app.helper.showToast
 import com.voidlauncher.app.helper.usageStats.EventLogWrapper
@@ -37,7 +37,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val updateSwipeApps = MutableLiveData<Any>()
     val appList = MutableLiveData<List<AppModel>?>()
     val hiddenApps = MutableLiveData<List<AppModel>?>()
-    val isOlauncherDefault = MutableLiveData<Boolean>()
+    val isVoidDefault = MutableLiveData<Boolean>()
     val launcherResetFailed = MutableLiveData<Boolean>()
     val homeAppAlignment = MutableLiveData<Int>()
     val screenTimeValue = MutableLiveData<String>()
@@ -376,6 +376,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             ComponentName(packageName, activityClassName)
         }
 
+        // Directional animation: the entering window slides in FROM the direction swiped.
+        // swipe-left  → user moves finger left → new content comes FROM the right
+        // swipe-right → user moves finger right → new content comes FROM the left
+        // swipe-up    → user moves finger up   → new content comes FROM the bottom (app drawer style)
         val opts = when (swipeDirection) {
             "left" -> ActivityOptions.makeCustomAnimation(
                 appContext, R.anim.slide_in_right, R.anim.slide_out_left
@@ -383,19 +387,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             "right" -> ActivityOptions.makeCustomAnimation(
                 appContext, R.anim.slide_in_left, R.anim.slide_out_right
             ).toBundle()
+            "up" -> ActivityOptions.makeCustomAnimation(
+                appContext, R.anim.slide_in_bottom, R.anim.slide_out_top
+            ).toBundle()
             else -> null
         }
 
         try {
             launcher.startMainActivity(component, userHandle, null, opts)
-        } catch (e: SecurityException) {
+        } catch (e: Exception) {
+            // Stored activity class may be stale (e.g. app updated its launcher activity).
+            // Re-resolve from the package and retry.
+            if (!activityClassName.isNullOrBlank() && activityInfo.isNotEmpty()) {
+                val freshComponent = ComponentName(packageName, activityInfo[0].name)
+                try {
+                    launcher.startMainActivity(freshComponent, userHandle, null, opts)
+                    return // success after re-resolve
+                } catch (_: Exception) { /* fall through to next fallback */ }
+            }
+            // Final fallback: try with own user handle
             try {
                 launcher.startMainActivity(component, android.os.Process.myUserHandle(), null, opts)
-            } catch (e: Exception) {
+            } catch (e2: Exception) {
                 appContext.showToast(appContext.getString(R.string.unable_to_open_app))
             }
-        } catch (e: Exception) {
-            appContext.showToast(appContext.getString(R.string.unable_to_open_app))
         }
     }
 
@@ -413,8 +428,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun isOlauncherDefault() {
-        isOlauncherDefault.value = isOlauncherDefault(appContext)
+    fun isVoidDefault() {
+        isVoidDefault.value = isVoidDefault(appContext)
     }
 
     /**

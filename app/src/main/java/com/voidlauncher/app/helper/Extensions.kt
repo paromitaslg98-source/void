@@ -93,26 +93,6 @@ fun Context.isEinkDisplay(): Boolean {
         val windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         windowManager.defaultDisplay.refreshRate <= Constants.MIN_ANIM_REFRESH_RATE
     } catch (e: Exception) {
-        e.printStackTrace()
-        false
-    }
-}
-
-fun Context.searchOnPlayStore(query: String? = null): Boolean {
-    return try {
-        startActivity(
-            Intent(
-                Intent.ACTION_VIEW,
-                Uri.parse("https://play.google.com/store/search?q=$query&c=apps")
-            ).addFlags(
-                Intent.FLAG_ACTIVITY_NO_HISTORY or
-                        Intent.FLAG_ACTIVITY_NEW_DOCUMENT or
-                        Intent.FLAG_ACTIVITY_MULTIPLE_TASK
-            )
-        )
-        true
-    } catch (e: Exception) {
-        e.printStackTrace()
         false
     }
 }

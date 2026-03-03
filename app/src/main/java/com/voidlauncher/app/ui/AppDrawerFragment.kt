@@ -15,7 +15,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.AnimationUtils
-import android.widget.TextView
+//import android.widget.TextView
 import androidx.appcompat.widget.SearchView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -108,7 +108,7 @@ class AppDrawerFragment : Fragment() {
                 val verticalPadding = (8 * density).toInt()
 
                 setPadding(startPadding, verticalPadding, paddingRight, verticalPadding)
-                textSize = (prefs.textSizeScale * 16).toFloat()
+                textSize = (prefs.textSizeScale * 24).toFloat()
                 gravity = prefs.appLabelAlignment or android.view.Gravity.CENTER_VERTICAL
             }
         } catch (e: Exception) {
@@ -279,18 +279,10 @@ class AppDrawerFragment : Fragment() {
                 .filterNot { info ->
                     val label = info.label?.toString()?.trim().orEmpty()
                     val packageName = info.applicationInfo.packageName
-                    val className = info.componentName.className
-                    val classNameLower = className.lowercase()
-
-                    val isPrivateSettingsActivity = packageName == "com.android.settings" &&
-                            (classNameLower.contains("private") ||
-                                    classNameLower.contains("manage") ||
-                                    classNameLower.contains("config") ||
-                                    classNameLower.contains("add"))
-                    val isPrivateSettingsLabel = packageName == "com.android.settings" &&
-                            label.equals("Add app", ignoreCase = true)
-
-                    isPrivateSettingsActivity || isPrivateSettingsLabel
+                    // Hide ALL settings activities from Private Space section
+                    packageName == "com.android.settings" ||
+                    // Also catch any "Add" label regardless of package
+                    label.equals("Add", ignoreCase = true)
                 }
                 .mapNotNull { info ->
                 val label = info.label?.toString()?.trim().orEmpty()
@@ -350,7 +342,7 @@ class AppDrawerFragment : Fragment() {
                     binding.appRename.visibility =
                         if (canRename && newText.isNotBlank()) View.VISIBLE else View.GONE
                         
-                    // If text is cleared and we don't have focus, revert animation
+                    // If text is cleared, and we don't have focus, revert animation
                     if (newText.isEmpty() && !binding.search.hasFocus()) {
                         val searchIcon = binding.searchIcon
                         ObjectAnimator.ofFloat(searchIcon, "translationX", 0f).apply {

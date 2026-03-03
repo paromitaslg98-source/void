@@ -88,7 +88,7 @@
                 android:lineSpacingExtra="3dp"
                 android:textColor="?attr/primaryColor"
                 android:textSize="15sp"
-                tools:text="@string/welcome_to_olauncher_settings" />
+                tools:text="@string/welcome_to_void_settings" />
 
             <!-- Divider -->
             <View

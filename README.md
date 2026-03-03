@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="fastlane/metadata/android/en-US/images/icon.png" alt="VOID Launcher" width="100" height="100">
+  <img src="fastlane/metadata/android/en-US/images/icon.png" alt="VOID Launcher" width="100" height="100" style="border-radius: 50%;">
 </p>
 
 <h1 align="center">VOID Launcher</h1>
@@ -21,99 +21,77 @@
 
 ## Philosophy
 
-VOID replaces the traditional grid of attention-grabbing app icons with a clean, text-based interface. No ads, no tracking, no distractions — just the essentials you need, accessible through intuitive gestures.
+**VOID** is not just a launcher; it's a tool for digital minimalism. By stripping away colorful icons, badges, and the traditional grid layout, VOID forces intentionality. We present a hyper-clean, text-based interface where your focus dictates your actions, not the other way around. No ads, no tracking, no distractions.
 
 ---
 
-## Features
+## Core Features
 
-| Feature | Description |
-|---|---|
-| **Text-Only Home Screen** | Up to 10 pinned apps displayed as clean text shortcuts |
-| **Fast Search & App Drawer** | Swipe up for all apps; unified search bar for apps and web |
-| **Private Space** *(Android 15+)* | Biometric-secured access to hidden/work-profile apps |
-| **Digital Wellbeing** | Real-time screen time and unlock count on the home screen |
-| **Swipe Gestures** | Left/right swipe to quick-launch designated apps |
-| **Double Tap to Lock** | Lock device by double-tapping empty space |
-| **Hidden Apps** | Long-press any app to hide it from the drawer |
-| **Daily Wallpapers** | Fresh minimalist wallpapers fetched in the background |
-| **Theme Support** | Light, Dark, or System default themes |
-| **Text & Layout Controls** | Adjustable text size and home screen alignment |
+- **Text-Only Home Screen:** Up to 10 of your most important apps are pinned to the home screen as clean, customizable text labels.
+- **Robust App Launcher:** Advanced component resolution ensures that even when applications update their internal packages or icon labels (e.g., Duolingo emojis), VOID will dynamically re-resolve their launch intents so you're never disconnected from your apps.
+- **Deep Private Space Integration:** Built for Android 15+. Access your hidden, secure, or work-profile apps directly from the main drawer. Private apps are cleanly marked with secure lock icons.
+- **Digital Wellbeing Built-in:** See your actual screen time and unlock count overlaid on the home screen immediately, promoting moment-to-moment awareness.
+- **Fluid Inline Settings UI:** Configure your launcher entirely within the app. Expandable smooth-animated inline cards allow you to tweak text sizes, gesture actions, themes, and alignments quickly without jarring popup overlays.
+- **Daily Wallpapers:** Automatically fetch and apply fresh, minimalist wallpapers curated to reduce visual noise. (Opt-in).
+- **Advanced Gestures:** 
+  - *Swipe Up* for unified app and web search.
+  - *Swipe Left/Right* to instantly launch your custom designated apps.
+  - *Double Tap* empty space to lock your device securely.
 
 ---
 
-## Gestures
+## Interaction & Gestures
 
-```
+```text
 Home Screen
-├── Swipe Up         → App Drawer
-├── Swipe Down       → Notification Panel / Search (configurable)
-├── Swipe Left/Right → Quick-launch app
-├── Long Press        → Settings
-└── Double Tap       → Lock Screen
+├── Swipe Up         → Opens App Drawer (Auto-focuses search bar)
+├── Swipe Down       → Expands Notification Panel / Web Search (Configurable)
+├── Swipe Left/Right → Quick-launch specific pinned app
+├── Long Press       → Advanced Inline Settings Panel
+└── Double Tap       → Sleep/Lock Screen
 
 App Drawer
-├── Type to search   → Filter apps or search the web
-├── Type "private"   → Reveal Private Space apps
-└── Long Press App   → Hide / App Info / Uninstall
+├── Type to search   → Instantly filter apps or query the web via DuckDuckGo
+├── Type "private"   → Unlock biometric Private Space and reveal hidden apps
+└── Long Press App   → Hide App / Open System App Info / Uninstall
 ```
 
 ---
 
-## Project Structure
+## Technical Architecture
 
-```
-app/src/main/java/com/voidlauncher/app/
-├── MainActivity.kt              # Single-activity entry point
-├── MainViewModel.kt             # Shared ViewModel
-├── ui/
-│   ├── HomeFragment.kt          # Home screen with time, metrics, pinned apps
-│   ├── AppDrawerFragment.kt     # App list, search, Private Space
-│   ├── AppDrawerAdapter.kt      # RecyclerView adapter for app rows
-│   └── SettingsFragment.kt      # Configuration panel with pop-up dialogs
-├── helper/
-│   ├── Utils.kt                 # App resolving, intents, permissions
-│   └── usageStats/              # Screen time & unlock tracking
-├── data/
-│   └── Prefs.kt                 # SharedPreferences delegates
-├── worker/
-│   └── WallpaperWorker.kt       # Daily wallpaper fetch via WorkManager
-└── listener/
-    ├── OnSwipeTouchListener.kt  # Swipe gesture detection
-    └── ViewSwipeTouchListener.kt
-```
+VOID Launcher embraces modern Android development practices, ensuring a tiny memory footprint while remaining highly performant.
 
----
-
-## Tech Stack
-
-- **Language:** Kotlin
-- **UI:** Android ViewBinding + XML Layouts + Material Design 3
-- **Architecture:** Single Activity, Fragments, ViewModels, LiveData, Navigation Component
-- **Background Work:** WorkManager
-- **Build System:** Gradle with Version Catalogs (`libs.versions.toml`)
+- **Stack:** 100% Kotlin
+- **UI:** XML Layouts, Material Design 3 guidelines (M3 typography, outlined cards, clean padding), and Android ViewBinding. 
+- **Architecture:** Single-Activity, Fragment-based navigation powered by a shared `MainViewModel` utilizing `LiveData` and Kotlin Coroutines.
+- **Background Processes:** Reliable `WorkManager` API to execute low-impact background fetches (e.g., daily wallpaper downloads) without violating Android battery policies.
+- **Hardware Integrations:** Fully compatible with specialized hardware like E-Ink arrays utilizing dynamic refresh rate checks.
 
 ---
 
 ## Building from Source
 
-**Prerequisites:** Android Studio (Koala+), Android SDK API 35
+**Prerequisites:** 
+- Android Studio Koala (or newer)
+- Android SDK API 35
+- JDK 17+
 
 ```bash
-# Clone
+# Clone the repository
 git clone https://github.com/knownassurajit/void.git
 cd void
 
-# Build debug APK
+# Ensure standard Gradle execution and build the debug APK
 ./gradlew clean assembleDebug
 ```
 
-The output APK will be at `app/build/outputs/apk/debug/`.
+The output APK will be generated at `app/build/outputs/apk/debug/`.
 
 ---
 
-## License
+## Acknowledgments & License
 
 This project is licensed under the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.en.html).
 
-Restructured and renamed from the original open-source project [Olauncher](https://github.com/tanujnotes/olauncher). Special thanks to the original contributors.
+VOID is a heavily restructured, modernized, and refined fork of the original open-source project [Olauncher](https://github.com/knownassurajit/olauncher). Special thanks and credit to the original contributors for laying the foundational concept of a text-only, minimalist interface.

@@ -14,7 +14,7 @@ class WallpaperWorker(appContext: Context, workerParams: WorkerParameters) : Cor
 
     override suspend fun doWork(): Result = coroutineScope {
         val success =
-            if (isOlauncherDefault(applicationContext).not())
+            if (isVoidDefault(applicationContext).not())
                 true
             else if (prefs.dailyWallpaper) {
                 val wallType = checkWallpaperType()

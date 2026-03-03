@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Slide out to right — current window exits when navigating back -->
+<!-- Slide out to bottom — used for app drawer dismiss -->
 <set xmlns:android="http://schemas.android.com/apk/res/android"
     android:shareInterpolator="false">
     <translate
-        android:fromXDelta="0"
-        android:toXDelta="60%p"
-        android:duration="260"
+        android:fromYDelta="0"
+        android:toYDelta="100%p"
+        android:duration="280"
         android:interpolator="@android:anim/accelerate_interpolator" />
     <alpha
         android:fromAlpha="1.0"
         android:toAlpha="0.0"
-        android:duration="260"
+        android:duration="240"
         android:interpolator="@android:anim/accelerate_interpolator" />
 </set>

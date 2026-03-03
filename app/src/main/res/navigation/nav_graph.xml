@@ -10,15 +10,17 @@
         android:name="com.voidlauncher.app.ui.HomeFragment"
         android:label="main_fragment"
         tools:layout="@layout/fragment_home">
-        <!-- App drawer: slides up on enter, slides down on back -->
+
+        <!-- App drawer: swipe-up gesture → drawer slides in from bottom, home scales back slightly -->
         <action
             android:id="@+id/action_mainFragment_to_appListFragment"
             app:destination="@id/appListFragment"
             app:enterAnim="@anim/slide_up_enter"
-            app:exitAnim="@anim/fade_exit"
-            app:popEnterAnim="@anim/fade_enter"
+            app:exitAnim="@anim/slide_out_top"
+            app:popEnterAnim="@anim/slide_in_bottom"
             app:popExitAnim="@anim/slide_down_exit" />
-        <!-- Settings: fades in with subtle upward drift -->
+
+        <!-- Settings: long-press → fades in with subtle upward drift; back fades out -->
         <action
             android:id="@+id/action_mainFragment_to_settingsFragment"
             app:destination="@id/settingsFragment"
@@ -33,12 +35,13 @@
         android:name="com.voidlauncher.app.ui.AppDrawerFragment"
         android:label="app_list_fragment"
         tools:layout="@layout/fragment_app_drawer">
+        <!-- App Drawer → Settings: slides right (settings is "behind/above") -->
         <action
             android:id="@+id/action_appListFragment_to_settingsFragment2"
             app:destination="@id/settingsFragment"
             app:enterAnim="@anim/fade_enter"
-            app:exitAnim="@anim/fade_exit"
-            app:popEnterAnim="@anim/fade_enter"
+            app:exitAnim="@anim/slide_out_top"
+            app:popEnterAnim="@anim/slide_in_bottom"
             app:popExitAnim="@anim/fade_exit"
             app:popUpTo="@+id/appListFragment"
             app:popUpToInclusive="true" />
@@ -53,8 +56,8 @@
             android:id="@+id/action_settingsFragment_to_appListFragment"
             app:destination="@id/appListFragment"
             app:enterAnim="@anim/slide_up_enter"
-            app:exitAnim="@anim/fade_exit"
-            app:popEnterAnim="@anim/fade_enter"
+            app:exitAnim="@anim/slide_out_top"
+            app:popEnterAnim="@anim/slide_in_bottom"
             app:popExitAnim="@anim/slide_down_exit" />
     </fragment>
 

@@ -29,7 +29,7 @@ import com.voidlauncher.app.helper.isDarkThemeOn
 import com.voidlauncher.app.helper.isDaySince
 import com.voidlauncher.app.helper.isDefaultLauncher
 import com.voidlauncher.app.helper.isEinkDisplay
-import com.voidlauncher.app.helper.isOlauncherDefault
+import com.voidlauncher.app.helper.isVoidDefault
 import com.voidlauncher.app.helper.isTablet
 import com.voidlauncher.app.helper.openUrl
 import com.voidlauncher.app.helper.rateApp
@@ -158,7 +158,7 @@ class MainActivity : AppCompatActivity() {
         viewModel.showDialog.observe(this) {
             when (it) {
                 Constants.Dialog.ABOUT -> {
-                    showMessageDialog(R.string.app_name, R.string.welcome_to_olauncher_settings, R.string.okay) {
+                    showMessageDialog(R.string.app_name, R.string.welcome_to_void_settings, R.string.okay) {
                         binding.messageLayout.visibility = View.GONE
                     }
                 }
@@ -198,18 +198,6 @@ class MainActivity : AppCompatActivity() {
         if (prefs.firstOpenTime == 0L)
             prefs.firstOpenTime = System.currentTimeMillis()
 
-        val calendar = Calendar.getInstance()
-        val dayOfYear = calendar.get(Calendar.DAY_OF_YEAR)
-        if (dayOfYear == 1 && dayOfYear != prefs.shownOnDayOfYear) {
-            prefs.shownOnDayOfYear = dayOfYear
-            showMessageDialog(R.string.hey, R.string.new_year_wish, R.string.cheers) {}
-            return
-        } else if (dayOfYear == 32 && dayOfYear != prefs.shownOnDayOfYear) {
-            prefs.shownOnDayOfYear = dayOfYear
-            showMessageDialog(R.string.hey, R.string.new_year_wish_1, R.string.cheers) {}
-            return
-        }
-
         when (prefs.userState) {
             Constants.UserState.START -> {
                 if (prefs.firstOpenTime.hasBeenMinutes(10))
@@ -217,34 +205,14 @@ class MainActivity : AppCompatActivity() {
             }
 
             Constants.UserState.WALLPAPER -> {
-                if (prefs.wallpaperMsgShown || prefs.dailyWallpaper)
-                    prefs.userState = Constants.UserState.REVIEW
-                else if (isOlauncherDefault(this))
+                if (prefs.wallpaperMsgShown || prefs.dailyWallpaper) {
+                    // Transition straight to end states since rate/share are removed
+                    prefs.userState = Constants.UserState.SHARE 
+                } else if (isVoidDefault(this)) {
                     viewModel.showDialog.postValue(Constants.Dialog.WALLPAPER)
+                }
             }
-
-            Constants.UserState.REVIEW -> {
-                if (prefs.rateClicked)
-                    prefs.userState = Constants.UserState.SHARE
-                else if (isOlauncherDefault(this) && prefs.firstOpenTime.hasBeenHours(1))
-                    viewModel.showDialog.postValue(Constants.Dialog.REVIEW)
-            }
-
-            Constants.UserState.RATE -> {
-                if (prefs.rateClicked)
-                    prefs.userState = Constants.UserState.SHARE
-                else if (isOlauncherDefault(this)
-                    && prefs.firstOpenTime.isDaySince() >= 7
-                    && calendar.get(Calendar.HOUR_OF_DAY) >= 16
-                ) viewModel.showDialog.postValue(Constants.Dialog.RATE)
-            }
-
-            Constants.UserState.SHARE -> {
-                if (isOlauncherDefault(this) && prefs.firstOpenTime.hasBeenDays(14)
-                    && prefs.shareShownTime.isDaySince() >= 70
-                    && calendar.get(Calendar.HOUR_OF_DAY) >= 16
-                ) viewModel.showDialog.postValue(Constants.Dialog.SHARE)
-            }
+            else -> { /* Rate, Review, and Share popups removed */ }
         }
     }
 

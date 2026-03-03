@@ -81,7 +81,7 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
     override fun onResume() {
         super.onResume()
         populateHomeScreen(false)
-        viewModel.isOlauncherDefault()
+        viewModel.isVoidDefault()
         if (prefs.showStatusBar) showStatusBar()
         else hideStatusBar()
     }
@@ -158,7 +158,7 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
             R.id.setDefaultLauncher -> {
                 prefs.hideSetDefaultLauncher = true
                 binding.setDefaultLauncher.visibility = View.GONE
-                if (viewModel.isOlauncherDefault.value != true) {
+                if (viewModel.isVoidDefault.value != true) {
                     requireContext().showToast(R.string.set_as_default_launcher)
                     findNavController().navigate(R.id.action_mainFragment_to_settingsFragment)
                 }
@@ -176,7 +176,7 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
         viewModel.refreshHome.observe(viewLifecycleOwner) {
             populateHomeScreen(it)
         }
-        viewModel.isOlauncherDefault.observe(viewLifecycleOwner, Observer {
+        viewModel.isVoidDefault.observe(viewLifecycleOwner, Observer {
             if (it != true) {
                 if (prefs.dailyWallpaper) {
                     prefs.dailyWallpaper = false
@@ -487,9 +487,6 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
             fallback = { openDialerApp(requireContext()) },
             swipeDirection = "right"
         )
-        try {
-            requireActivity().overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
-        } catch (_: Exception) {}
     }
 
     private fun openSwipeLeftApp() {
@@ -504,9 +501,6 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
             fallback = { openCameraApp(requireContext()) },
             swipeDirection = "left"
         )
-        try {
-            requireActivity().overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
-        } catch (_: Exception) {}
     }
 
     private fun showAppList(flag: Int, rename: Boolean = false, includeHiddenApps: Boolean = false) {
