@@ -26,7 +26,6 @@ import com.voidlauncher.app.R
 import com.voidlauncher.app.data.Constants
 import com.voidlauncher.app.data.Prefs
 import com.voidlauncher.app.databinding.FragmentSettingsBinding
-import com.voidlauncher.app.helper.animateAlpha
 import com.voidlauncher.app.helper.appUsagePermissionGranted
 import com.voidlauncher.app.helper.getColorFromAttr
 import com.voidlauncher.app.helper.isAccessServiceEnabled
@@ -419,7 +418,6 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
             binding.accessibilityLayout.bringToFront()
         }
         binding.accessibilityLayout.isVisible = show
-        binding.scrollView.animateAlpha(if (show) 0.5f else 1f)
     }
 
     private fun openAccessibilityService() {
