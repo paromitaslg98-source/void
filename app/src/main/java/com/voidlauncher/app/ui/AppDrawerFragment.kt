@@ -103,9 +103,12 @@ class AppDrawerFragment : Fragment() {
                     androidx.appcompat.R.id.search_src_text
                 )
             searchAutoComplete?.apply {
-                // paddingStart = 28dp (20dp icon + 8dp margin) to not overlap with the icon initially
-                setPadding((28 * resources.displayMetrics.density).toInt(), 0, paddingRight, 0)
-                textSize = (prefs.textSizeScale * 17).toFloat()
+                val density = resources.displayMetrics.density
+                val startPadding = (28 * density).toInt() // 20dp icon + 8dp gap
+                val verticalPadding = (8 * density).toInt()
+
+                setPadding(startPadding, verticalPadding, paddingRight, verticalPadding)
+                textSize = (prefs.textSizeScale * 16).toFloat()
                 gravity = prefs.appLabelAlignment or android.view.Gravity.CENTER_VERTICAL
             }
         } catch (e: Exception) {
@@ -126,8 +129,10 @@ class AppDrawerFragment : Fragment() {
                 .findViewById<android.widget.AutoCompleteTextView>(
                     androidx.appcompat.R.id.search_src_text
                 ) ?: return
-            
-            val initialPadding = (28 * resources.displayMetrics.density).toInt()
+
+            val density = resources.displayMetrics.density
+            val initialStartPadding = (28 * density).toInt()
+            val verticalPadding = (8 * density).toInt()
             
             searchAutoComplete.setOnFocusChangeListener { _, hasFocus ->
                 // If losing focus but text is not empty, keep it translated
@@ -150,10 +155,10 @@ class AppDrawerFragment : Fragment() {
 
                     // Remove padding when focused so text can use the space
                     searchAutoComplete.setPadding(
-                        if (hasFocus) 0 else initialPadding,
-                        0,
+                        if (hasFocus) 0 else initialStartPadding,
+                        verticalPadding,
                         searchAutoComplete.paddingRight,
-                        0
+                        verticalPadding
                     )
                 }
             }
