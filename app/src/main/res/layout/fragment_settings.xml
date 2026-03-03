@@ -442,7 +442,7 @@
                     android:paddingHorizontal="16dp"
                     android:text="@string/close"
                     android:textAllCaps="true"
-                    android:textColor="?attr/primaryColorTrans80"
+                    android:textColor="?attr/primaryColor"
                     android:textSize="13sp" />
 
                 <TextView
@@ -486,7 +486,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:animateLayoutChanges="true"
-                android:background="@drawable/md3_dialog_card"
+                android:background="@drawable/popup_card"
                 android:orientation="horizontal"
                 android:visibility="gone">
 
@@ -518,7 +518,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:animateLayoutChanges="true"
-                android:background="@drawable/md3_dialog_card"
+                android:background="@drawable/popup_card"
                 android:gravity="end"
                 android:orientation="horizontal"
                 android:visibility="gone">
@@ -533,7 +533,7 @@
                 android:id="@+id/alignmentSelectLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/md3_dialog_card"
+                android:background="@drawable/popup_card"
                 android:fadingEdgeLength="8dp"
                 android:requiresFadingEdge="horizontal"
                 android:visibility="gone">
@@ -553,7 +553,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:animateLayoutChanges="true"
-                android:background="@drawable/md3_dialog_card"
+                android:background="@drawable/popup_card"
                 android:gravity="center"
                 android:orientation="horizontal"
                 android:visibility="gone">
@@ -569,7 +569,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:animateLayoutChanges="true"
-                android:background="@drawable/md3_dialog_card"
+                android:background="@drawable/popup_card"
                 android:gravity="end"
                 android:orientation="horizontal"
                 android:visibility="gone">
