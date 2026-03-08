@@ -124,6 +124,10 @@
             </intent-filter>
         </service>
 
+        <receiver
+            android:name=".helper.NoteReminderReceiver"
+            android:exported="false" />
+
     </application>
 
 </manifest>

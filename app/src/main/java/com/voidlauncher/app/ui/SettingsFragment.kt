@@ -202,6 +202,19 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
 
             R.id.systemSettings -> startActivity(Intent(android.provider.Settings.ACTION_SETTINGS))
 
+            R.id.flSwipeLeftToggle -> {
+                prefs.swipeLeftEnabled = !prefs.swipeLeftEnabled
+                populateSwipeApps()
+            }
+            R.id.flSwipeRightToggle -> {
+                prefs.swipeRightEnabled = !prefs.swipeRightEnabled
+                populateSwipeApps()
+            }
+            R.id.flSwipeUpToggle -> {
+                prefs.swipeUpEnabled = !prefs.swipeUpEnabled
+                populateSwipeApps()
+            }
+
             // Footer and social links removed — no-op
             R.id.share,
             R.id.rate,
@@ -281,6 +294,10 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
         binding.homeTextSizePlus.setOnClickListener(this)
         binding.appDrawerTextSizeMinus.setOnClickListener(this)
         binding.appDrawerTextSizePlus.setOnClickListener(this)
+
+        binding.flSwipeLeftToggle.setOnClickListener(this)
+        binding.flSwipeRightToggle.setOnClickListener(this)
+        binding.flSwipeUpToggle.setOnClickListener(this)
 
         binding.dailyWallpaper.setOnLongClickListener(this)
         binding.alignment.setOnLongClickListener(this)
@@ -647,7 +664,9 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
     }
 
     private fun populateSwipeApps() {
-        // Both swipe left (Notifications) and swipe right (Notes) are now hardcoded
+        binding.tvSwipeLeftStatus.text = if (prefs.swipeLeftEnabled) "On" else "Off"
+        binding.tvSwipeRightStatus.text = if (prefs.swipeRightEnabled) "On" else "Off"
+        binding.tvSwipeUpStatus.text = if (prefs.swipeUpEnabled) "On" else "Off"
     }
 
 //    private fun populateDigitalWellbeing() {

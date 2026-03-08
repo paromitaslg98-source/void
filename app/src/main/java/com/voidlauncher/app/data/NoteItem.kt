@@ -5,5 +5,6 @@ data class NoteItem(
     val text: String,
     val isCompleted: Boolean = false,
     val priority: Int = 0,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val reminderTime: Long? = null
 )

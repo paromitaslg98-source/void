@@ -30,7 +30,7 @@
     <string name="white">White</string>
     <string name="change_default_launcher">Change default launcher</string>
     <string name="privacy">Privacy</string>
-    <string name="swipe_up_for_apps">1. Swipe up for all apps\n2. Long press anywhere for settings</string>
+    <string name="swipe_up_for_apps">1. Swipe up for all apps\n2. Long press empty space for settings</string>
     <string name="apps_on_home_screen">Apps on home screen</string>
     <string name="daily_wallpaper_update">Daily new wallpaper</string>
     <string name="left">Left</string>
@@ -54,7 +54,7 @@
     <string name="dark">Dark</string>
     <string name="light">Light</string>
     <string name="welcome_to_void_settings">Welcome to the VOID Launcher settings!
-        \n\nRemember, if you have any questions, our About page has the answer.</string>
+        \n\nCustomize your minimalist experience and enjoy a distraction-free environment.</string>
     <string name="keyboard_message">Hi, keyboard is the fastest way to find and launch apps in VOID Launcher. Can we request you to keep this On for a few more days and then decide?
         \n\nThe choice is always yours.</string>
     <string name="digital_wellbeing_message">If you want to set time limits for certain apps, Digital Wellbeing feature of Android can help you do it.           Please search for Digital Wellbeing in your phone settings and enable it.</string>

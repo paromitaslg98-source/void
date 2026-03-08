@@ -28,7 +28,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="sans-serif"
+            android:fontFamily="@font/google_sans_regular"
             android:letterSpacing="0.005"
             android:text="Private Space"
             android:textColor="?attr/primaryColor"
@@ -42,7 +42,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="end|center_vertical"
         android:background="@drawable/md3_outlined_card"
-        android:fontFamily="sans-serif-medium"
+        android:fontFamily="@font/google_sans_medium"
         android:letterSpacing="0.08"
         android:paddingVertical="4dp"
         android:paddingHorizontal="10dp"

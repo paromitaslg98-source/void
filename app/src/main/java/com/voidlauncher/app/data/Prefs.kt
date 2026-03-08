@@ -27,6 +27,7 @@ class Prefs(context: Context) {
     private val DATE_TIME_VISIBILITY = "DATE_TIME_VISIBILITY"
     private val SWIPE_LEFT_ENABLED = "SWIPE_LEFT_ENABLED"
     private val SWIPE_RIGHT_ENABLED = "SWIPE_RIGHT_ENABLED"
+    private val SWIPE_UP_ENABLED = "SWIPE_UP_ENABLED"
     private val HIDDEN_APPS = "HIDDEN_APPS"
     private val HIDDEN_APPS_UPDATED = "HIDDEN_APPS_UPDATED"
     private val SHOW_HINT_COUNTER = "SHOW_HINT_COUNTER"
@@ -178,7 +179,7 @@ class Prefs(context: Context) {
         set(value) = prefs.edit { putInt(HOME_ALIGNMENT, value).apply() }
 
     var homeBottomAlignment: Boolean
-        get() = prefs.getBoolean(HOME_BOTTOM_ALIGNMENT, false)
+        get() = prefs.getBoolean(HOME_BOTTOM_ALIGNMENT, true)
         set(value) = prefs.edit { putBoolean(HOME_BOTTOM_ALIGNMENT, value).apply() }
 
     var appLabelAlignment: Int
@@ -200,6 +201,10 @@ class Prefs(context: Context) {
     var swipeRightEnabled: Boolean
         get() = prefs.getBoolean(SWIPE_RIGHT_ENABLED, true)
         set(value) = prefs.edit { putBoolean(SWIPE_RIGHT_ENABLED, value).apply() }
+
+    var swipeUpEnabled: Boolean
+        get() = prefs.getBoolean(SWIPE_UP_ENABLED, true)
+        set(value) = prefs.edit { putBoolean(SWIPE_UP_ENABLED, value).apply() }
 
     var appTheme: Int
         get() = prefs.getInt(APP_THEME, AppCompatDelegate.MODE_NIGHT_YES)

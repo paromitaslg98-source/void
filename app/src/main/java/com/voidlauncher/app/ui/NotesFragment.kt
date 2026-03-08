@@ -1,7 +1,9 @@
 package com.voidlauncher.app.ui
 
 import android.app.AlarmManager
+import android.app.DatePickerDialog
 import android.app.PendingIntent
+import android.app.TimePickerDialog
 import android.content.Context
 import android.content.Intent
 import android.graphics.Paint
@@ -12,9 +14,11 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
-import android.widget.PopupMenu
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.widget.PopupMenu
 import androidx.fragment.app.Fragment
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -23,6 +27,9 @@ import com.voidlauncher.app.data.NoteItem
 import com.voidlauncher.app.data.NoteRepository
 import com.voidlauncher.app.databinding.FragmentNotesBinding
 import com.voidlauncher.app.databinding.RowNoteItemBinding
+import com.voidlauncher.app.helper.NoteReminderReceiver
+import com.voidlauncher.app.listener.OnSwipeTouchListener
+import java.util.Calendar
 
 class NotesFragment : Fragment() {
 
@@ -36,6 +43,7 @@ class NotesFragment : Fragment() {
         return binding.root
     }
 
+    @Suppress("ClickableViewAccessibility")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         repo = NoteRepository(requireContext())
@@ -44,7 +52,7 @@ class NotesFragment : Fragment() {
         binding.rvNotes.layoutManager = LinearLayoutManager(requireContext())
         binding.rvNotes.adapter = adapter
 
-        // Swipe to delete
+        // Swipe to delete notes
         val swipeHandler = object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT) {
             override fun onMove(rv: RecyclerView, vh: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder) = false
             override fun onSwiped(vh: RecyclerView.ViewHolder, direction: Int) {
@@ -71,6 +79,13 @@ class NotesFragment : Fragment() {
             } else false
         }
 
+        // Reverse swipe: swipe right (finger left-to-right) → go back to home
+        view.setOnTouchListener(object : OnSwipeTouchListener(requireContext()) {
+            override fun onSwipeRight() {
+                findNavController().popBackStack()
+            }
+        })
+
         refreshList()
     }
 
@@ -83,21 +98,19 @@ class NotesFragment : Fragment() {
     }
 
     private fun showNoteMenu(anchor: View, note: NoteItem) {
-        val popup = PopupMenu(requireContext(), anchor)
-        popup.menu.add(0, 1, 0, R.string.edit)
-        popup.menu.add(0, 2, 1, R.string.remind)
-        popup.menu.add(0, 3, 2, R.string.delete_note)
+        val popup = PopupMenu(requireContext(), anchor, android.view.Gravity.END)
+        popup.menuInflater.inflate(R.menu.menu_note_options, popup.menu)
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
-                1 -> {
+                R.id.action_edit -> {
                     showEditDialog(note)
                     true
                 }
-                2 -> {
-                    setReminder(note)
+                R.id.action_remind -> {
+                    showDateTimePicker(note)
                     true
                 }
-                3 -> {
+                R.id.action_delete -> {
                     repo.deleteNote(note.id)
                     refreshList()
                     true
@@ -128,22 +141,58 @@ class NotesFragment : Fragment() {
             .show()
     }
 
-    private fun setReminder(note: NoteItem) {
-        // Schedule a simple 30-minute reminder notification
+    private fun showDateTimePicker(note: NoteItem) {
+        val now = Calendar.getInstance()
+        DatePickerDialog(
+            requireContext(),
+            { _, year, month, day ->
+                TimePickerDialog(
+                    requireContext(),
+                    { _, hour, minute ->
+                        val cal = Calendar.getInstance().apply {
+                            set(Calendar.YEAR, year)
+                            set(Calendar.MONTH, month)
+                            set(Calendar.DAY_OF_MONTH, day)
+                            set(Calendar.HOUR_OF_DAY, hour)
+                            set(Calendar.MINUTE, minute)
+                            set(Calendar.SECOND, 0)
+                        }
+                        scheduleReminder(note, cal.timeInMillis)
+                    },
+                    now.get(Calendar.HOUR_OF_DAY),
+                    now.get(Calendar.MINUTE),
+                    true
+                ).show()
+            },
+            now.get(Calendar.YEAR),
+            now.get(Calendar.MONTH),
+            now.get(Calendar.DAY_OF_MONTH)
+        ).show()
+    }
+
+    private fun scheduleReminder(note: NoteItem, triggerTime: Long) {
         val alarmManager = requireContext().getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val intent = Intent(requireContext(), android.content.BroadcastReceiver::class.java)
-        intent.putExtra("note_text", note.text)
+        val intent = Intent(requireContext(), NoteReminderReceiver::class.java).apply {
+            putExtra(NoteReminderReceiver.EXTRA_NOTE_TEXT, note.text)
+        }
         val pendingIntent = PendingIntent.getBroadcast(
             requireContext(),
             note.id.toInt(),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val triggerTime = System.currentTimeMillis() + 30 * 60 * 1000 // 30 minutes
         alarmManager.set(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
-        requireContext().let {
-            android.widget.Toast.makeText(it, R.string.reminder_set, android.widget.Toast.LENGTH_SHORT).show()
+        
+        repo.updateNoteReminder(note.id, triggerTime)
+        refreshList()
+
+        val remainingMillis = triggerTime - System.currentTimeMillis()
+        val remainingText = if (remainingMillis > 0) {
+            android.text.format.DateUtils.getRelativeTimeSpanString(triggerTime, System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS)
+        } else {
+            "Now"
         }
+        com.google.android.material.snackbar.Snackbar.make(binding.root, "Reminder set for $remainingText", com.google.android.material.snackbar.Snackbar.LENGTH_LONG).show()
     }
 
     override fun onDestroyView() {
@@ -183,6 +232,14 @@ class NotesFragment : Fragment() {
                 } else {
                     binding.tvNoteText.paintFlags = binding.tvNoteText.paintFlags and Paint.STRIKE_THRU_TEXT_FLAG.inv()
                     binding.tvNoteText.alpha = 1.0f
+                }
+
+                if (note.reminderTime != null) {
+                    binding.tvReminderTime.visibility = View.VISIBLE
+                    val timeFormat = java.text.SimpleDateFormat("MMM dd, hh:mm a", java.util.Locale.getDefault())
+                    binding.tvReminderTime.text = "Remind at ${timeFormat.format(java.util.Date(note.reminderTime))}"
+                } else {
+                    binding.tvReminderTime.visibility = View.GONE
                 }
 
                 binding.cbNote.setOnClickListener {

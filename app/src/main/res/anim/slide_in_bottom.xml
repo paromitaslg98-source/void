@@ -1,15 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Slide in from bottom — used for app drawer open and swipe-up app launches -->
 <set xmlns:android="http://schemas.android.com/apk/res/android"
     android:shareInterpolator="false">
     <translate
         android:fromYDelta="100%p"
         android:toYDelta="0"
-        android:duration="320"
-        android:interpolator="@android:anim/decelerate_interpolator" />
+        android:duration="280"
+        android:interpolator="@android:interpolator/fast_out_slow_in" />
     <alpha
-        android:fromAlpha="0.7"
+        android:fromAlpha="0.85"
         android:toAlpha="1.0"
-        android:duration="240"
-        android:interpolator="@android:anim/decelerate_interpolator" />
+        android:duration="280"
+        android:interpolator="@android:interpolator/fast_out_slow_in" />
 </set>

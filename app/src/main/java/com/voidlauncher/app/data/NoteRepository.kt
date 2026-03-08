@@ -59,6 +59,15 @@ class NoteRepository(context: Context) {
         }
     }
 
+    fun updateNoteReminder(id: Long, triggerTime: Long?) {
+        val notes = getAllNotesRaw().toMutableList()
+        val index = notes.indexOfFirst { it.id == id }
+        if (index != -1) {
+            notes[index] = notes[index].copy(reminderTime = triggerTime)
+            saveNotes(notes)
+        }
+    }
+
     private fun getAllNotesRaw(): List<NoteItem> {
         val json = prefs.getString(KEY_NOTES, "[]") ?: "[]"
         return parseNotes(json)
@@ -73,6 +82,9 @@ class NoteRepository(context: Context) {
             obj.put("isCompleted", note.isCompleted)
             obj.put("priority", note.priority)
             obj.put("createdAt", note.createdAt)
+            if (note.reminderTime != null) {
+                obj.put("reminderTime", note.reminderTime)
+            }
             arr.put(obj)
         }
         prefs.edit().putString(KEY_NOTES, arr.toString()).apply()
@@ -90,7 +102,8 @@ class NoteRepository(context: Context) {
                         text = obj.getString("text"),
                         isCompleted = obj.getBoolean("isCompleted"),
                         priority = obj.getInt("priority"),
-                        createdAt = obj.getLong("createdAt")
+                        createdAt = obj.getLong("createdAt"),
+                        reminderTime = if (obj.has("reminderTime")) obj.getLong("reminderTime") else null
                     )
                 )
             }

@@ -16,7 +16,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@drawable/md3_outlined_card"
-        android:fontFamily="sans-serif"
+        android:fontFamily="@font/google_sans_regular"
         android:hint="@string/add_note_hint"
         android:imeOptions="actionDone"
         android:inputType="textCapSentences"

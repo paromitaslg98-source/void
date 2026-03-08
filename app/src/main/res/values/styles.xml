@@ -20,6 +20,7 @@
         <item name="android:windowShowWallpaper">false</item>
         <item name="android:windowBackground">@color/black</item>
         <item name="android:windowFullscreen">false</item>
+        <item name="android:fontFamily">@font/google_sans_regular</item>
         <!-- Dark bars — icons are white -->
         <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
         <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
@@ -68,26 +69,26 @@
     <style name="TextDefault" parent="TextAppearance.Material3.BodyLarge">
         <item name="android:textColor">@drawable/text_colors_default</item>
         <item name="android:textColorHint">?attr/primaryColorTrans80</item>
-        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:fontFamily">@font/google_sans_regular</item>
     </style>
 
     <!-- Display: Clock / large headings — Google Sans Display fallback → sans-serif-light -->
     <style name="TextDisplay" parent="TextAppearance.Material3.DisplaySmall">
         <item name="android:textColor">?attr/primaryColor</item>
-        <item name="android:fontFamily">sans-serif-light</item>
+        <item name="android:fontFamily">@font/google_sans_regular</item>
         <item name="android:letterSpacing">-0.02</item>
     </style>
 
     <!-- Title / section headers — Google Sans Medium fallback → sans-serif-medium -->
     <style name="TextTitle" parent="TextAppearance.Material3.TitleLarge">
         <item name="android:textColor">?attr/primaryColor</item>
-        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:fontFamily">@font/google_sans_medium</item>
         <item name="android:letterSpacing">0.01</item>
     </style>
 
     <!-- Large: home screen app labels -->
     <style name="TextLarge" parent="TextDefault">
-        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:fontFamily">@font/google_sans_medium</item>
         <item name="android:textSize">22sp</item>
         <item name="android:letterSpacing">0.005</item>
     </style>
@@ -95,20 +96,20 @@
     <!-- Medium: secondary labels -->
     <style name="TextMedium" parent="TextDefault">
         <item name="android:textSize">18sp</item>
-        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:fontFamily">@font/google_sans_regular</item>
     </style>
 
     <!-- Small: body / hints -->
     <style name="TextSmall" parent="TextAppearance.Material3.BodyMedium">
         <item name="android:textColor">@drawable/text_colors_default</item>
         <item name="android:textColorHint">?attr/primaryColorTrans80</item>
-        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:fontFamily">@font/google_sans_regular</item>
         <item name="android:textSize">15sp</item>
     </style>
 
     <!-- Small Bold: setting values, badges -->
     <style name="TextSmallBold" parent="TextSmall">
-        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:fontFamily">@font/google_sans_medium</item>
     </style>
 
     <!-- Deprecated — kept for backward compat -->
@@ -123,7 +124,7 @@
         <item name="android:textColor">?attr/primaryColor</item>
         <item name="android:editTextColor">?attr/primaryColor</item>
         <item name="android:textColorHint">?attr/primaryColorTrans80</item>
-        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:fontFamily">@font/google_sans_regular</item>
         <item name="android:includeFontPadding">false</item>
         <item name="android:inputType">textCapSentences|textNoSuggestions</item>
         <item name="android:cursorVisible">false</item>

@@ -27,11 +27,12 @@
 
 ## Core Features
 
-- **Text-Only Home Screen:** Up to 10 of your most important apps are pinned to the home screen as clean, customizable text labels inside a single unified card (`#363636`) with subtle dividers between entries.
-- **Notification Grouping:** Swipe left to access a purpose-built notification screen that groups system notifications by app with smart summaries, timestamps, and inline expansion — styled in the launcher's monochrome theme.
-- **Quick Notes:** Swipe right to instantly capture thoughts in a monochrome, text-based checklist — native to the launcher with priority ordering, tick-to-complete, swipe-to-delete, and a per-note options menu (edit, remind, delete).
-- **Hold to Edit & Reorder:** Long-press a home screen app to reveal inline pen (reassign) and reorder (drag) icons — tap pen to swap the app, drag the reorder icon to rearrange.
-- **Directional Animations:** Every gesture transition slides in from the direction you swiped toward: left swipe slides in from left, right from right, up from bottom, down from top.
+- **Text-Only Home Screen:** Up to 10 of your most important apps are pinned to the home screen as clean, customizable text labels. They sit beautifully upon minimalist, un-filled, white-underlined cards elegantly padding the bottom of the screen.
+- **Notification Grouping:** Swipe left to access a purpose-built notification screen that groups system notifications by app with smart summaries, timestamps, app-badge counts, and inline expansion — styled in the launcher's monochrome theme. Click any preview to jump directly into the conversation.
+- **Quick Notes:** Swipe right to instantly capture thoughts in a monochrome, text-based checklist — native to the launcher with priority ordering, tick-to-complete, swipe-to-delete, and a per-note options menu with inline reminder countdowns.
+- **Reverse Navigation Gestures:** Once inside the Notes or Notifications screen, executing a reverse swipe intuitively pulls you right back to your Home screen, mirroring the natural entry swipe.
+- **Hold to Edit & Reorder:** Long-press a home screen app card to trigger Inline Edit Mode. The app label dynamically shrinks to reveal an inline pen (reassign) and reorder (drag) icon instantly without jumping to a new screen.
+- **Directional Animations:** Every gesture transition slides in gracefully from the opposite direction to the swipe: e.g., swiping left pulls the Notifications screen in from the right.
 - **Robust App Launcher:** Advanced component resolution ensures that even when applications update their internal packages or icon labels, VOID will dynamically re-resolve their launch intents.
 - **Deep Private Space Integration:** Built for Android 15+. Access your hidden, secure, or work-profile apps directly from the main drawer with biometric unlock.
 - **Digital Wellbeing Built-in:** See your actual screen time and unlock count overlaid on the home screen immediately.

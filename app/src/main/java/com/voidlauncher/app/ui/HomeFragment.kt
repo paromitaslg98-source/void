@@ -276,13 +276,10 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
                     prefs.dailyWallpaper = false
                     viewModel.cancelWallpaperWorker()
                 }
-                prefs.homeBottomAlignment = false
                 setHomeAlignment()
             }
             if (binding.firstRunTips.visibility == View.VISIBLE) return@Observer
             binding.setDefaultLauncher.isVisible = it.not() && prefs.hideSetDefaultLauncher.not()
-//            if (it) binding.setDefaultLauncher.visibility = View.GONE
-//            else binding.setDefaultLauncher.visibility = View.VISIBLE
         })
         viewModel.homeAppAlignment.observe(viewLifecycleOwner) {
             setHomeAlignment(it)
@@ -396,17 +393,20 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
         binding.clock.isVisible = Constants.DateTime.isTimeVisible(prefs.dateTimeVisibility)
         binding.date.isVisible = Constants.DateTime.isDateVisible(prefs.dateTimeVisibility)
 
-//        var dateText = SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(Date())
         val dateFormat = SimpleDateFormat("EEE, d MMM", Locale.getDefault())
-        var dateText = dateFormat.format(Date())
-
-        if (!prefs.showStatusBar) {
-            val battery = (requireContext().getSystemService(Context.BATTERY_SERVICE) as BatteryManager)
-                .getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-            if (battery > 0)
-                dateText = getString(R.string.day_battery, dateText, battery)
-        }
+        val dateText = dateFormat.format(Date())
         binding.date.text = dateText.replace(".,", ",")
+
+        // Handle battery separately
+        val battery = (requireContext().getSystemService(Context.BATTERY_SERVICE) as BatteryManager)
+            .getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+        
+        if (battery > 0 && !prefs.showStatusBar) {
+            binding.tvBattery.text = "$battery%"
+            binding.tvBattery.visibility = View.VISIBLE
+        } else {
+            binding.tvBattery.visibility = View.GONE
+        }
     }
 
     @RequiresApi(Build.VERSION_CODES.Q)
@@ -425,79 +425,76 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
             populateScreenTime()
 
         val homeAppsNum = prefs.homeAppsNum
-        if (homeAppsNum == 0) { updateCardAndDividers(); return }
+        if (homeAppsNum == 0) return
 
         binding.homeApp1.visibility = View.VISIBLE
         if (!setHomeAppText(binding.homeApp1, prefs.appName1, prefs.appPackage1, prefs.appUser1, prefs.isShortcut1, prefs.shortcutId1)) {
             prefs.appName1 = ""
             prefs.appPackage1 = ""
         }
-        if (homeAppsNum == 1) { updateCardAndDividers(); return }
+        if (homeAppsNum == 1) return
 
         binding.homeApp2.visibility = View.VISIBLE
         if (!setHomeAppText(binding.homeApp2, prefs.appName2, prefs.appPackage2, prefs.appUser2, prefs.isShortcut2, prefs.shortcutId2)) {
             prefs.appName2 = ""
             prefs.appPackage2 = ""
         }
-        if (homeAppsNum == 2) { updateCardAndDividers(); return }
+        if (homeAppsNum == 2) return
 
         binding.homeApp3.visibility = View.VISIBLE
         if (!setHomeAppText(binding.homeApp3, prefs.appName3, prefs.appPackage3, prefs.appUser3, prefs.isShortcut3, prefs.shortcutId3)) {
             prefs.appName3 = ""
             prefs.appPackage3 = ""
         }
-        if (homeAppsNum == 3) { updateCardAndDividers(); return }
+        if (homeAppsNum == 3) return
 
         binding.homeApp4.visibility = View.VISIBLE
         if (!setHomeAppText(binding.homeApp4, prefs.appName4, prefs.appPackage4, prefs.appUser4, prefs.isShortcut4, prefs.shortcutId4)) {
             prefs.appName4 = ""
             prefs.appPackage4 = ""
         }
-        if (homeAppsNum == 4) { updateCardAndDividers(); return }
+        if (homeAppsNum == 4) return
 
         binding.homeApp5.visibility = View.VISIBLE
         if (!setHomeAppText(binding.homeApp5, prefs.appName5, prefs.appPackage5, prefs.appUser5, prefs.isShortcut5, prefs.shortcutId5)) {
             prefs.appName5 = ""
             prefs.appPackage5 = ""
         }
-        if (homeAppsNum == 5) { updateCardAndDividers(); return }
+        if (homeAppsNum == 5) return
 
         binding.homeApp6.visibility = View.VISIBLE
         if (!setHomeAppText(binding.homeApp6, prefs.appName6, prefs.appPackage6, prefs.appUser6, prefs.isShortcut6, prefs.shortcutId6)) {
             prefs.appName6 = ""
             prefs.appPackage6 = ""
         }
-        if (homeAppsNum == 6) { updateCardAndDividers(); return }
+        if (homeAppsNum == 6) return
 
         binding.homeApp7.visibility = View.VISIBLE
         if (!setHomeAppText(binding.homeApp7, prefs.appName7, prefs.appPackage7, prefs.appUser7, prefs.isShortcut7, prefs.shortcutId7)) {
             prefs.appName7 = ""
             prefs.appPackage7 = ""
         }
-        if (homeAppsNum == 7) { updateCardAndDividers(); return }
+        if (homeAppsNum == 7) return
 
         binding.homeApp8.visibility = View.VISIBLE
         if (!setHomeAppText(binding.homeApp8, prefs.appName8, prefs.appPackage8, prefs.appUser8, prefs.isShortcut8, prefs.shortcutId8)) {
             prefs.appName8 = ""
             prefs.appPackage8 = ""
         }
-        if (homeAppsNum == 8) { updateCardAndDividers(); return }
+        if (homeAppsNum == 8) return
 
         binding.homeApp9.visibility = View.VISIBLE
         if (!setHomeAppText(binding.homeApp9, prefs.appName9, prefs.appPackage9, prefs.appUser9, prefs.isShortcut9, prefs.shortcutId9)) {
             prefs.appName9 = ""
             prefs.appPackage9 = ""
         }
-        if (homeAppsNum == 9) { updateCardAndDividers(); return }
+        if (homeAppsNum == 9) return
 
         binding.homeApp10.visibility = View.VISIBLE
         if (!setHomeAppText(binding.homeApp10, prefs.appName10, prefs.appPackage10, prefs.appUser10, prefs.isShortcut10, prefs.shortcutId10)) {
             prefs.appName10 = ""
             prefs.appPackage10 = ""
         }
-
-        // Show the combined card and update dividers
-        updateCardAndDividers()
     }
 
     private fun setHomeAppText(textView: TextView, appName: String, packageName: String, userString: String, isShortcut: Boolean, shortcutId: String?): Boolean {
@@ -553,48 +550,8 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
         binding.homeApp8.visibility = View.GONE
         binding.homeApp9.visibility = View.GONE
         binding.homeApp10.visibility = View.GONE
-        binding.divider1.visibility = View.GONE
-        binding.divider2.visibility = View.GONE
-        binding.divider3.visibility = View.GONE
-        binding.divider4.visibility = View.GONE
-        binding.divider5.visibility = View.GONE
-        binding.divider6.visibility = View.GONE
-        binding.divider7.visibility = View.GONE
-        binding.divider8.visibility = View.GONE
-        binding.divider9.visibility = View.GONE
-        binding.homeAppsCard.visibility = View.GONE
     }
 
-    private fun updateCardAndDividers() {
-        val apps = listOf(
-            binding.homeApp1, binding.homeApp2, binding.homeApp3, binding.homeApp4,
-            binding.homeApp5, binding.homeApp6, binding.homeApp7, binding.homeApp8,
-            binding.homeApp9, binding.homeApp10
-        )
-        val dividers = listOf(
-            binding.divider1, binding.divider2, binding.divider3, binding.divider4,
-            binding.divider5, binding.divider6, binding.divider7, binding.divider8,
-            binding.divider9
-        )
-        // Hide all dividers first
-        dividers.forEach { it.visibility = View.GONE }
-
-        val visibleApps = apps.filter { it.visibility == View.VISIBLE }
-        if (visibleApps.isEmpty()) {
-            binding.homeAppsCard.visibility = View.GONE
-            return
-        }
-
-        binding.homeAppsCard.visibility = View.VISIBLE
-        // Show dividers between consecutive visible apps
-        for (i in 0 until apps.size - 1) {
-            if (apps[i].visibility == View.VISIBLE && i < dividers.size) {
-                // Show divider if the next visible app exists after this one
-                val hasNextVisible = (i + 1 until apps.size).any { apps[it].visibility == View.VISIBLE }
-                dividers[i].visibility = if (hasNextVisible) View.VISIBLE else View.GONE
-            }
-        }
-    }
 
     private fun launchAppOrShortcut(
         appName: String,
@@ -785,17 +742,17 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
         return object : OnSwipeTouchListener(context) {
             override fun onSwipeLeft() {
                 super.onSwipeLeft()
-                openSwipeLeftApp()
+                if (prefs.swipeLeftEnabled) openSwipeLeftApp()
             }
 
             override fun onSwipeRight() {
                 super.onSwipeRight()
-                openSwipeRightApp()
+                if (prefs.swipeRightEnabled) openSwipeRightApp()
             }
 
             override fun onSwipeUp() {
                 super.onSwipeUp()
-                showAppList(Constants.FLAG_LAUNCH_APP)
+                if (prefs.swipeUpEnabled) showAppList(Constants.FLAG_LAUNCH_APP)
             }
 
             override fun onSwipeDown() {
@@ -832,17 +789,17 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
         return object : ViewSwipeTouchListener(context, view) {
             override fun onSwipeLeft() {
                 super.onSwipeLeft()
-                openSwipeLeftApp()
+                if (prefs.swipeLeftEnabled) openSwipeLeftApp()
             }
 
             override fun onSwipeRight() {
                 super.onSwipeRight()
-                openSwipeRightApp()
+                if (prefs.swipeRightEnabled) openSwipeRightApp()
             }
 
             override fun onSwipeUp() {
                 super.onSwipeUp()
-                showAppList(Constants.FLAG_LAUNCH_APP)
+                if (prefs.swipeUpEnabled) showAppList(Constants.FLAG_LAUNCH_APP)
             }
 
             override fun onSwipeDown() {
@@ -852,14 +809,7 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
 
             override fun onLongClick(view: View) {
                 super.onLongClick(view)
-                
-                // For Home Apps, if it's not empty, start dragging, otherwise open app list
-                val appLocation = view.tag.toString().toIntOrNull()
-                if (appLocation != null && prefs.getAppName(appLocation).isNotEmpty()) {
-                    startDrag(view)
-                } else {
-                    textOnLongClick(view)
-                }
+                textOnLongClick(view)
             }
 
             override fun onClick(view: View) {

@@ -33,40 +33,42 @@ class NotificationService : NotificationListenerService() {
     private fun updateNotifications() {
         try {
             val activeNotifications = activeNotifications ?: return
-            
-            // Group notifications
+
+            // Group by packageName so all notifications from the same app are merged
             val groupedMap = mutableMapOf<String, MutableList<StatusBarNotification>>()
-            
+
             for (sbn in activeNotifications) {
-                // Ignore ongoing/foreground service notifications to minimize clutter
-                if (sbn.isOngoing || sbn.notification.flags and Notification.FLAG_FOREGROUND_SERVICE != 0) {
+                // Ignore ongoing/foreground service notifications
+                if (sbn.isOngoing || 
+                    (sbn.notification.flags and Notification.FLAG_FOREGROUND_SERVICE != 0) ||
+                    (sbn.notification.flags and Notification.FLAG_GROUP_SUMMARY != 0)) {
                     continue
                 }
-                
-                val key = sbn.notification.group ?: sbn.packageName
-                groupedMap.getOrPut(key) { mutableListOf() }.add(sbn)
+                groupedMap.getOrPut(sbn.packageName) { mutableListOf() }.add(sbn)
             }
-            
-            val resultList = groupedMap.map { (key, list) ->
+
+            val resultList = groupedMap.map { (pkg, list) ->
                 // Sort within group by timestamp descending
                 list.sortByDescending { it.postTime }
-                
+
                 val latestSbn = list.first()
-                val pkg = latestSbn.packageName
                 @Suppress("DEPRECATION")
-                val highestImportance = list.maxOfOrNull { 
-                    it.notification.priority 
+                val highestImportance = list.maxOfOrNull {
+                    it.notification.priority
                 } ?: 0
 
                 NotificationGroup(
-                    groupKey = key,
+                    groupKey = pkg,
                     packageName = pkg,
                     latestTimestamp = latestSbn.postTime,
                     childCount = list.size,
                     highestImportance = highestImportance,
                     notifications = list
                 )
-            }.sortedByDescending { it.latestTimestamp }
+            }
+            // Sort: notification count descending (primary), latest timestamp descending (secondary)
+            .sortedWith(compareByDescending<NotificationGroup> { it.childCount }
+                .thenByDescending { it.latestTimestamp })
 
             notificationsLiveData.postValue(resultList)
         } catch (e: Exception) {

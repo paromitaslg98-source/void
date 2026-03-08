@@ -1,15 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Slide out to top — current window exits upward when app drawer opens -->
 <set xmlns:android="http://schemas.android.com/apk/res/android"
     android:shareInterpolator="false">
     <translate
         android:fromYDelta="0"
         android:toYDelta="-40%p"
-        android:duration="300"
-        android:interpolator="@android:anim/accelerate_interpolator" />
+        android:duration="280"
+        android:interpolator="@android:interpolator/fast_out_slow_in" />
     <alpha
         android:fromAlpha="1.0"
         android:toAlpha="0.0"
-        android:duration="260"
-        android:interpolator="@android:anim/accelerate_interpolator" />
+        android:duration="280"
+        android:interpolator="@android:interpolator/fast_out_slow_in" />
 </set>
