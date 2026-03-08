@@ -589,7 +589,7 @@
                     android:layout_height="1dp"
                     android:background="@drawable/md3_divider" />
 
-                <!-- Text size — KEY FIX: selector appears BELOW the row, not overlapping it -->
+                <!-- Home Text size -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -606,12 +606,12 @@
                             android:layout_height="wrap_content"
                             android:fontFamily="sans-serif"
                             android:paddingVertical="14dp"
-                            android:text="@string/text_size"
+                            android:text="@string/home_text_size"
                             android:textColor="?attr/primaryColor"
                             android:textSize="15sp" />
 
                         <TextView
-                            android:id="@+id/textSizeValue"
+                            android:id="@+id/homeTextSizeValue"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_gravity="end|center_vertical"
@@ -622,9 +622,9 @@
                             tools:text="1.0" />
                     </FrameLayout>
 
-                    <!-- Inline text size +/- -->
+                    <!-- Inline home text size +/- -->
                     <LinearLayout
-                        android:id="@+id/textSizesLayout"
+                        android:id="@+id/homeTextSizesLayout"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
@@ -635,7 +635,7 @@
                         android:visibility="gone">
 
                         <TextView
-                            android:id="@+id/textSizeMinus"
+                            android:id="@+id/homeTextSizeMinus"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
@@ -653,7 +653,7 @@
                             android:background="@drawable/md3_divider" />
 
                         <TextView
-                            android:id="@+id/textSizeCurrent"
+                            android:id="@+id/homeTextSizeCurrent"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
@@ -671,7 +671,107 @@
                             android:background="@drawable/md3_divider" />
 
                         <TextView
-                            android:id="@+id/textSizePlus"
+                            android:id="@+id/homeTextSizePlus"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="sans-serif-medium"
+                            android:gravity="center"
+                            android:paddingVertical="14dp"
+                            android:text="+"
+                            android:textColor="?attr/primaryColor"
+                            android:textSize="20sp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@drawable/md3_divider" />
+
+                <!-- App Drawer Text size -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:animateLayoutChanges="true"
+                    android:clipChildren="false"
+                    android:orientation="vertical">
+
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif"
+                            android:paddingVertical="14dp"
+                            android:text="@string/app_drawer_text_size"
+                            android:textColor="?attr/primaryColor"
+                            android:textSize="15sp" />
+
+                        <TextView
+                            android:id="@+id/appDrawerTextSizeValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="end|center_vertical"
+                            android:fontFamily="sans-serif-medium"
+                            android:paddingVertical="14dp"
+                            android:textColor="?attr/primaryColor"
+                            android:textSize="15sp"
+                            tools:text="1.0" />
+                    </FrameLayout>
+
+                    <!-- Inline app drawer text size +/- -->
+                    <LinearLayout
+                        android:id="@+id/appDrawerTextSizesLayout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:layout_marginBottom="8dp"
+                        android:background="@drawable/md3_outlined_card"
+                        android:gravity="center"
+                        android:orientation="horizontal"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/appDrawerTextSizeMinus"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="sans-serif-medium"
+                            android:gravity="center"
+                            android:paddingVertical="14dp"
+                            android:text="&#x2212;"
+                            android:textColor="?attr/primaryColor"
+                            android:textSize="20sp" />
+
+                        <View
+                            android:layout_width="1dp"
+                            android:layout_height="18dp"
+                            android:layout_gravity="center_vertical"
+                            android:background="@drawable/md3_divider" />
+
+                        <TextView
+                            android:id="@+id/appDrawerTextSizeCurrent"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="sans-serif-medium"
+                            android:gravity="center"
+                            android:paddingVertical="14dp"
+                            android:textColor="?attr/primaryColor"
+                            android:textSize="15sp"
+                            tools:text="1.0" />
+
+                        <View
+                            android:layout_width="1dp"
+                            android:layout_height="18dp"
+                            android:layout_gravity="center_vertical"
+                            android:background="@drawable/md3_divider" />
+
+                        <TextView
+                            android:id="@+id/appDrawerTextSizePlus"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
@@ -760,67 +860,8 @@
                     android:layout_marginBottom="4dp"
                     android:background="@drawable/md3_divider" />
 
-                <!-- Swipe Left -->
-                <FrameLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="sans-serif"
-                        android:paddingVertical="14dp"
-                        android:text="@string/swipe_left_app"
-                        android:textColor="?attr/primaryColor"
-                        android:textSize="15sp" />
-
-                    <TextView
-                        android:id="@+id/swipeLeftApp"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="end|center_vertical"
-                        android:fontFamily="sans-serif-medium"
-                        android:maxLines="1"
-                        android:paddingVertical="14dp"
-                        android:textColor="?attr/primaryColor"
-                        android:textSize="15sp" />
-                </FrameLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="@drawable/md3_divider" />
-
-                <!-- Swipe Right -->
-                <FrameLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="sans-serif"
-                        android:paddingVertical="14dp"
-                        android:text="@string/swipe_right_app"
-                        android:textColor="?attr/primaryColor"
-                        android:textSize="15sp" />
-
-                    <TextView
-                        android:id="@+id/swipeRightApp"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="end|center_vertical"
-                        android:fontFamily="sans-serif-medium"
-                        android:maxLines="1"
-                        android:paddingVertical="14dp"
-                        android:textColor="?attr/primaryColor"
-                        android:textSize="15sp" />
-                </FrameLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="@drawable/md3_divider" />
+                <!-- Left Swipe is hardcoded to Notifications Grouping -->
+                <!-- Right Swipe is hardcoded to Notes -->
 
                 <!-- Swipe Down -->
                 <LinearLayout

@@ -36,7 +36,9 @@ class Prefs(context: Context) {
     private val WALLPAPER_MSG_SHOWN = "WALLPAPER_MSG_SHOWN"
     private val SHARE_SHOWN_TIME = "SHARE_SHOWN_TIME"
     private val SWIPE_DOWN_ACTION = "SWIPE_DOWN_ACTION"
-    private val TEXT_SIZE_SCALE = "TEXT_SIZE_SCALE"
+    private val TEXT_SIZE_SCALE = "TEXT_SIZE_SCALE" // Legacy
+    private val HOME_TEXT_SIZE_SCALE = "HOME_TEXT_SIZE_SCALE"
+    private val APP_DRAWER_TEXT_SIZE_SCALE = "APP_DRAWER_TEXT_SIZE_SCALE"
     private val PRO_MESSAGE_SHOWN = "PRO_MESSAGE_SHOWN"
     private val HIDE_SET_DEFAULT_LAUNCHER = "HIDE_SET_DEFAULT_LAUNCHER"
     private val SCREEN_TIME_LAST_UPDATED = "SCREEN_TIME_LAST_UPDATED"
@@ -203,9 +205,17 @@ class Prefs(context: Context) {
         get() = prefs.getInt(APP_THEME, AppCompatDelegate.MODE_NIGHT_YES)
         set(value) = prefs.edit { putInt(APP_THEME, value).apply() }
 
-    var textSizeScale: Float
+    var textSizeScale: Float // Legacy, kept for migration
         get() = prefs.getFloat(TEXT_SIZE_SCALE, 1.0f)
         set(value) = prefs.edit { putFloat(TEXT_SIZE_SCALE, value).apply() }
+
+    var homeTextSizeScale: Float
+        get() = prefs.getFloat(HOME_TEXT_SIZE_SCALE, textSizeScale) // Migration fallback
+        set(value) = prefs.edit { putFloat(HOME_TEXT_SIZE_SCALE, value).apply() }
+        
+    var appDrawerTextSizeScale: Float
+        get() = prefs.getFloat(APP_DRAWER_TEXT_SIZE_SCALE, textSizeScale) // Migration fallback
+        set(value) = prefs.edit { putFloat(APP_DRAWER_TEXT_SIZE_SCALE, value).apply() }
 
     var proMessageShown: Boolean
         get() = prefs.getBoolean(PRO_MESSAGE_SHOWN, false)
@@ -652,4 +662,118 @@ class Prefs(context: Context) {
     fun getAppRenameLabel(appPackage: String): String = prefs.getString(appPackage, "").toString()
 
     fun setAppRenameLabel(appPackage: String, renameLabel: String) = prefs.edit().putString(appPackage, renameLabel).apply()
+
+    fun swapAppLocations(loc1: Int, loc2: Int) {
+        if (loc1 == loc2) return
+
+        val appName1 = getAppName(loc1)
+        val appPackage1 = getAppPackage(loc1)
+        val appClassName1 = getAppActivityClassName(loc1)
+        val appUser1 = getAppUser(loc1)
+        val isShortcut1 = getIsShortcut(loc1)
+        val shortcutId1 = getShortcutId(loc1)
+
+        val appName2 = getAppName(loc2)
+        val appPackage2 = getAppPackage(loc2)
+        val appClassName2 = getAppActivityClassName(loc2)
+        val appUser2 = getAppUser(loc2)
+        val isShortcut2 = getIsShortcut(loc2)
+        val shortcutId2 = getShortcutId(loc2)
+
+        setAppAtLocation(loc1, appName2, appPackage2, appClassName2, appUser2, isShortcut2, shortcutId2)
+        setAppAtLocation(loc2, appName1, appPackage1, appClassName1, appUser1, isShortcut1, shortcutId1)
+    }
+
+    private fun setAppAtLocation(
+        location: Int,
+        appName: String,
+        appPackage: String,
+        appClassName: String?,
+        appUser: String,
+        isShortcut: Boolean,
+        shortcutId: String
+    ) {
+        when (location) {
+            1 -> {
+                this.appName1 = appName
+                this.appPackage1 = appPackage
+                this.appActivityClassName1 = appClassName
+                this.appUser1 = appUser
+                this.isShortcut1 = isShortcut
+                this.shortcutId1 = shortcutId
+            }
+            2 -> {
+                this.appName2 = appName
+                this.appPackage2 = appPackage
+                this.appActivityClassName2 = appClassName
+                this.appUser2 = appUser
+                this.isShortcut2 = isShortcut
+                this.shortcutId2 = shortcutId
+            }
+            3 -> {
+                this.appName3 = appName
+                this.appPackage3 = appPackage
+                this.appActivityClassName3 = appClassName
+                this.appUser3 = appUser
+                this.isShortcut3 = isShortcut
+                this.shortcutId3 = shortcutId
+            }
+            4 -> {
+                this.appName4 = appName
+                this.appPackage4 = appPackage
+                this.appActivityClassName4 = appClassName
+                this.appUser4 = appUser
+                this.isShortcut4 = isShortcut
+                this.shortcutId4 = shortcutId
+            }
+            5 -> {
+                this.appName5 = appName
+                this.appPackage5 = appPackage
+                this.appActivityClassName5 = appClassName
+                this.appUser5 = appUser
+                this.isShortcut5 = isShortcut
+                this.shortcutId5 = shortcutId
+            }
+            6 -> {
+                this.appName6 = appName
+                this.appPackage6 = appPackage
+                this.appActivityClassName6 = appClassName
+                this.appUser6 = appUser
+                this.isShortcut6 = isShortcut
+                this.shortcutId6 = shortcutId
+            }
+            7 -> {
+                this.appName7 = appName
+                this.appPackage7 = appPackage
+                this.appActivityClassName7 = appClassName
+                this.appUser7 = appUser
+                this.isShortcut7 = isShortcut
+                this.shortcutId7 = shortcutId
+            }
+            8 -> {
+                this.appName8 = appName
+                this.appPackage8 = appPackage
+                this.appActivityClassName8 = appClassName
+                this.appUser8 = appUser
+                this.isShortcut8 = isShortcut
+                this.shortcutId8 = shortcutId
+            }
+            9 -> {
+                this.appName9 = appName
+                this.appPackage9 = appPackage
+                this.appActivityClassName9 = appClassName
+                this.appUser9 = appUser
+                this.isShortcut9 = isShortcut
+                this.shortcutId9 = shortcutId
+            }
+            10 -> {
+                this.appName10 = appName
+                this.appPackage10 = appPackage
+                this.appActivityClassName10 = appClassName
+                this.appUser10 = appUser
+                this.isShortcut10 = isShortcut
+                this.shortcutId10 = shortcutId
+            }
+        }
+    }
 }

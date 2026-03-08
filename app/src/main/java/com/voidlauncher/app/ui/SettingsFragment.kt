@@ -88,16 +88,26 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
     override fun onClick(view: View) {
 
         // Apply pending text-size unless the tap is within the text-size controls
-        val isTextSizeClick = view.id == R.id.textSizeMinus || view.id == R.id.textSizePlus || view.id == R.id.textSizeCurrent || view.id == R.id.textSizesLayout
-        if (!isTextSizeClick) {
-            if (binding.textSizesLayout.visibility == View.VISIBLE) {
-                applyTextSizeScale()
+        val isHomeTextSizeClick = view.id == R.id.homeTextSizeMinus || view.id == R.id.homeTextSizePlus || view.id == R.id.homeTextSizeCurrent || view.id == R.id.homeTextSizesLayout
+        val isAppDrawerTextSizeClick = view.id == R.id.appDrawerTextSizeMinus || view.id == R.id.appDrawerTextSizePlus || view.id == R.id.appDrawerTextSizeCurrent || view.id == R.id.appDrawerTextSizesLayout
+        
+        if (!isHomeTextSizeClick) {
+            if (binding.homeTextSizesLayout.visibility == View.VISIBLE) {
+                applyHomeTextSizeScale()
+            }
+        }
+        if (!isAppDrawerTextSizeClick) {
+            if (binding.appDrawerTextSizesLayout.visibility == View.VISIBLE) {
+                applyAppDrawerTextSizeScale()
             }
         }
 
         // Close all inline sub-layouts unless the tap is on their trigger
-        if (view.id != R.id.textSizeValue && view.id != R.id.textSizeMinus && view.id != R.id.textSizePlus) {
-            binding.textSizesLayout.visibility = View.GONE
+        if (view.id != R.id.homeTextSizeValue && view.id != R.id.homeTextSizeMinus && view.id != R.id.homeTextSizePlus) {
+            binding.homeTextSizesLayout.visibility = View.GONE
+        }
+        if (view.id != R.id.appDrawerTextSizeValue && view.id != R.id.appDrawerTextSizeMinus && view.id != R.id.appDrawerTextSizePlus) {
+            binding.appDrawerTextSizesLayout.visibility = View.GONE
         }
 
         if (view.id != R.id.alignment && view.id != R.id.alignmentBottom && view.id != R.id.alignmentLeft && view.id != R.id.alignmentCenter && view.id != R.id.alignmentRight) {
@@ -163,9 +173,13 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
             R.id.themeLight -> updateTheme(AppCompatDelegate.MODE_NIGHT_NO)
             R.id.themeDark -> updateTheme(AppCompatDelegate.MODE_NIGHT_YES)
             R.id.themeSystem -> updateTheme(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
-            R.id.textSizeValue -> {
-                val isVisible = binding.textSizesLayout.visibility == View.VISIBLE
-                binding.textSizesLayout.visibility = if (isVisible) View.GONE else View.VISIBLE
+            R.id.homeTextSizeValue -> {
+                val isVisible = binding.homeTextSizesLayout.visibility == View.VISIBLE
+                binding.homeTextSizesLayout.visibility = if (isVisible) View.GONE else View.VISIBLE
+            }
+            R.id.appDrawerTextSizeValue -> {
+                val isVisible = binding.appDrawerTextSizesLayout.visibility == View.VISIBLE
+                binding.appDrawerTextSizesLayout.visibility = if (isVisible) View.GONE else View.VISIBLE
             }
             R.id.actionAccessibility -> openAccessibilityService()
             R.id.closeAccessibility,
@@ -174,11 +188,11 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
 
             R.id.tvGestures -> binding.flSwipeDown.visibility = View.VISIBLE
 
-            R.id.textSizeMinus -> adjustTextSizePreview(-0.1f)
-            R.id.textSizePlus -> adjustTextSizePreview(0.1f)
+            R.id.homeTextSizeMinus -> adjustHomeTextSizePreview(-0.1f)
+            R.id.homeTextSizePlus -> adjustHomeTextSizePreview(0.1f)
+            R.id.appDrawerTextSizeMinus -> adjustAppDrawerTextSizePreview(-0.1f)
+            R.id.appDrawerTextSizePlus -> adjustAppDrawerTextSizePreview(0.1f)
 
-            R.id.swipeLeftApp -> showAppListIfEnabled(Constants.FLAG_SET_SWIPE_LEFT_APP)
-            R.id.swipeRightApp -> showAppListIfEnabled(Constants.FLAG_SET_SWIPE_RIGHT_APP)
             R.id.swipeDownAction -> {
                 val isVisible = binding.swipeDownSelectLayout.visibility == View.VISIBLE
                 binding.swipeDownSelectLayout.visibility = if (isVisible) View.GONE else View.VISIBLE
@@ -212,8 +226,6 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
                 binding.themeSystem.visibility = View.VISIBLE
             }
 
-            R.id.swipeLeftApp -> toggleSwipeLeft()
-            R.id.swipeRightApp -> toggleSwipeRight()
             R.id.toggleLock -> startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
         return true
@@ -244,8 +256,6 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
         binding.dateTimeOn.setOnClickListener(this)
         binding.dateTimeOff.setOnClickListener(this)
         binding.dateOnly.setOnClickListener(this)
-        binding.swipeLeftApp.setOnClickListener(this)
-        binding.swipeRightApp.setOnClickListener(this)
         binding.swipeDownAction.setOnClickListener(this)
         binding.search.setOnClickListener(this)
         binding.notifications.setOnClickListener(this)
@@ -253,7 +263,8 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
         binding.themeLight.setOnClickListener(this)
         binding.themeDark.setOnClickListener(this)
         binding.themeSystem.setOnClickListener(this)
-        binding.textSizeValue.setOnClickListener(this)
+        binding.homeTextSizeValue.setOnClickListener(this)
+        binding.appDrawerTextSizeValue.setOnClickListener(this)
         binding.actionAccessibility.setOnClickListener(this)
         binding.closeAccessibility.setOnClickListener(this)
         binding.accessibilityLayout.setOnClickListener(this)
@@ -266,14 +277,14 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
         binding.privacy.setOnClickListener(this)
         binding.footer.setOnClickListener(this)
 
-        binding.textSizeMinus.setOnClickListener(this)
-        binding.textSizePlus.setOnClickListener(this)
+        binding.homeTextSizeMinus.setOnClickListener(this)
+        binding.homeTextSizePlus.setOnClickListener(this)
+        binding.appDrawerTextSizeMinus.setOnClickListener(this)
+        binding.appDrawerTextSizePlus.setOnClickListener(this)
 
         binding.dailyWallpaper.setOnLongClickListener(this)
         binding.alignment.setOnLongClickListener(this)
         binding.appThemeText.setOnLongClickListener(this)
-        binding.swipeLeftApp.setOnLongClickListener(this)
-        binding.swipeRightApp.setOnLongClickListener(this)
         binding.toggleLock.setOnLongClickListener(this)
     }
 
@@ -293,28 +304,6 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
         }
         viewModel.updateSwipeApps.observe(viewLifecycleOwner) {
             populateSwipeApps()
-        }
-    }
-
-    private fun toggleSwipeLeft() {
-        prefs.swipeLeftEnabled = !prefs.swipeLeftEnabled
-        if (prefs.swipeLeftEnabled) {
-            binding.swipeLeftApp.setTextColor(requireContext().getColorFromAttr(R.attr.primaryColor))
-            requireContext().showToast(getString(R.string.swipe_left_app_enabled))
-        } else {
-            binding.swipeLeftApp.setTextColor(requireContext().getColorFromAttr(R.attr.primaryColorTrans50))
-            requireContext().showToast(getString(R.string.swipe_left_app_disabled))
-        }
-    }
-
-    private fun toggleSwipeRight() {
-        prefs.swipeRightEnabled = !prefs.swipeRightEnabled
-        if (prefs.swipeRightEnabled) {
-            binding.swipeRightApp.setTextColor(requireContext().getColorFromAttr(R.attr.primaryColor))
-            requireContext().showToast(getString(R.string.swipe_right_app_enabled))
-        } else {
-            binding.swipeRightApp.setTextColor(requireContext().getColorFromAttr(R.attr.primaryColorTrans50))
-            requireContext().showToast(getString(R.string.swipe_right_app_disabled))
         }
     }
 
@@ -398,7 +387,8 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
             binding.appsNumSelectLayout.visibility = View.GONE
             binding.dateTimeSelectLayout.visibility = View.GONE
             binding.alignmentSelectLayout.visibility = View.GONE
-            binding.textSizesLayout.visibility = View.GONE
+            binding.homeTextSizesLayout.visibility = View.GONE
+            binding.appDrawerTextSizesLayout.visibility = View.GONE
             binding.swipeDownSelectLayout.visibility = View.GONE
             binding.accessibilityLayout.bringToFront()
         }
@@ -488,27 +478,50 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
         viewModel.refreshHome(true)
     }
 
-    private var pendingTextSizeScale: Float = -1f
+    private var pendingHomeTextSizeScale: Float = -1f
+    private var pendingAppDrawerTextSizeScale: Float = -1f
 
-    private fun adjustTextSizePreview(delta: Float) {
+    private fun adjustHomeTextSizePreview(delta: Float) {
         val maxScale = if (isTablet(requireContext())) 2.0f else 1.5f
-        val current = if (pendingTextSizeScale > 0) pendingTextSizeScale else prefs.textSizeScale
+        val current = if (pendingHomeTextSizeScale > 0) pendingHomeTextSizeScale else prefs.homeTextSizeScale
         val newScale = Math.round((current + delta) * 10f) / 10f
         val clamped = newScale.coerceIn(0.5f, maxScale)
         if (clamped == current) return
-        pendingTextSizeScale = clamped
+        pendingHomeTextSizeScale = clamped
         val formatted = String.format("%.1f", clamped)
-        binding.textSizeValue.text = formatted
-        binding.textSizeCurrent.text = formatted
+        binding.homeTextSizeValue.text = formatted
+        binding.homeTextSizeCurrent.text = formatted
     }
 
-    private fun applyTextSizeScale() {
-        if (pendingTextSizeScale < 0 || prefs.textSizeScale == pendingTextSizeScale) {
-            pendingTextSizeScale = -1f
+    private fun adjustAppDrawerTextSizePreview(delta: Float) {
+        val maxScale = if (isTablet(requireContext())) 2.0f else 1.5f
+        val current = if (pendingAppDrawerTextSizeScale > 0) pendingAppDrawerTextSizeScale else prefs.appDrawerTextSizeScale
+        val newScale = Math.round((current + delta) * 10f) / 10f
+        val clamped = newScale.coerceIn(0.5f, maxScale)
+        if (clamped == current) return
+        pendingAppDrawerTextSizeScale = clamped
+        val formatted = String.format("%.1f", clamped)
+        binding.appDrawerTextSizeValue.text = formatted
+        binding.appDrawerTextSizeCurrent.text = formatted
+    }
+
+    private fun applyHomeTextSizeScale() {
+        if (pendingHomeTextSizeScale < 0 || prefs.homeTextSizeScale == pendingHomeTextSizeScale) {
+            pendingHomeTextSizeScale = -1f
             return
         }
-        prefs.textSizeScale = pendingTextSizeScale
-        pendingTextSizeScale = -1f
+        prefs.homeTextSizeScale = pendingHomeTextSizeScale
+        pendingHomeTextSizeScale = -1f
+        requireActivity().recreate()
+    }
+    
+    private fun applyAppDrawerTextSizeScale() {
+        if (pendingAppDrawerTextSizeScale < 0 || prefs.appDrawerTextSizeScale == pendingAppDrawerTextSizeScale) {
+            pendingAppDrawerTextSizeScale = -1f
+            return
+        }
+        prefs.appDrawerTextSizeScale = pendingAppDrawerTextSizeScale
+        pendingAppDrawerTextSizeScale = -1f
         requireActivity().recreate()
     }
 
@@ -559,9 +572,13 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
     }
 
     private fun populateTextSize() {
-        val formatted = String.format("%.1f", prefs.textSizeScale)
-        binding.textSizeValue.text = formatted
-        binding.textSizeCurrent.text = formatted
+        val formattedHome = String.format("%.1f", prefs.homeTextSizeScale)
+        binding.homeTextSizeValue.text = formattedHome
+        binding.homeTextSizeCurrent.text = formattedHome
+        
+        val formattedAppDrawer = String.format("%.1f", prefs.appDrawerTextSizeScale)
+        binding.appDrawerTextSizeValue.text = formattedAppDrawer
+        binding.appDrawerTextSizeCurrent.text = formattedAppDrawer
     }
 
     private fun populateScreenTimeOnOff() {
@@ -630,12 +647,7 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
     }
 
     private fun populateSwipeApps() {
-        binding.swipeLeftApp.text = prefs.appNameSwipeLeft
-        binding.swipeRightApp.text = prefs.appNameSwipeRight
-        if (!prefs.swipeLeftEnabled)
-            binding.swipeLeftApp.setTextColor(requireContext().getColorFromAttr(R.attr.primaryColorTrans50))
-        if (!prefs.swipeRightEnabled)
-            binding.swipeRightApp.setTextColor(requireContext().getColorFromAttr(R.attr.primaryColorTrans50))
+        // Both swipe left (Notifications) and swipe right (Notes) are now hardcoded
     }
 
 //    private fun populateDigitalWellbeing() {
@@ -645,14 +657,6 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
 //    }
 
     private fun showAppListIfEnabled(flag: Int) {
-        if ((flag == Constants.FLAG_SET_SWIPE_LEFT_APP) and !prefs.swipeLeftEnabled) {
-            requireContext().showToast(getString(R.string.long_press_to_enable))
-            return
-        }
-        if ((flag == Constants.FLAG_SET_SWIPE_RIGHT_APP) and !prefs.swipeRightEnabled) {
-            requireContext().showToast(getString(R.string.long_press_to_enable))
-            return
-        }
         viewModel.getAppList(true)
         findNavController().navigate(
             R.id.action_settingsFragment_to_appListFragment,

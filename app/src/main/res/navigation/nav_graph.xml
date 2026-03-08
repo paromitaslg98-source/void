@@ -28,6 +28,24 @@
             app:exitAnim="@anim/fade_exit"
             app:popEnterAnim="@anim/fade_enter"
             app:popExitAnim="@anim/fade_exit" />
+
+        <!-- Notifications: left swipe → slides in from left -->
+        <action
+            android:id="@+id/action_mainFragment_to_notificationsFragment"
+            app:destination="@id/notificationsFragment"
+            app:enterAnim="@anim/slide_in_left"
+            app:exitAnim="@anim/slide_out_right"
+            app:popEnterAnim="@anim/slide_in_right"
+            app:popExitAnim="@anim/slide_out_left" />
+
+        <!-- Notes: right swipe → slides in from right -->
+        <action
+            android:id="@+id/action_mainFragment_to_notesFragment"
+            app:destination="@id/notesFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
     </fragment>
 
     <fragment
@@ -59,6 +77,20 @@
             app:exitAnim="@anim/slide_out_top"
             app:popEnterAnim="@anim/slide_in_bottom"
             app:popExitAnim="@anim/slide_down_exit" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/notificationsFragment"
+        android:name="com.voidlauncher.app.ui.NotificationsFragment"
+        android:label="notifications_fragment"
+        tools:layout="@layout/fragment_notifications">
+    </fragment>
+
+    <fragment
+        android:id="@+id/notesFragment"
+        android:name="com.voidlauncher.app.ui.NotesFragment"
+        android:label="notes_fragment"
+        tools:layout="@layout/fragment_notes">
     </fragment>
 
 </navigation>

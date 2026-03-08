@@ -108,7 +108,7 @@ class AppDrawerFragment : Fragment() {
                 val verticalPadding = (8 * density).toInt()
 
                 setPadding(startPadding, verticalPadding, paddingRight, verticalPadding)
-                textSize = (prefs.textSizeScale * 24).toFloat()
+                textSize = (prefs.appDrawerTextSizeScale * 24).toFloat()
                 gravity = prefs.appLabelAlignment or android.view.Gravity.CENTER_VERTICAL
             }
         } catch (e: Exception) {

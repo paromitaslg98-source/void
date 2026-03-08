@@ -1,6 +1,7 @@
 package com.voidlauncher.app.ui
 
 import android.app.admin.DevicePolicyManager
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.pm.LauncherApps
@@ -8,6 +9,7 @@ import android.content.res.Configuration
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Bundle
+import android.view.DragEvent
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -57,6 +59,9 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
 
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
+
+    /** Tracks the currently long-pressed home app in edit mode (showing pen + reorder icons). */
+    private var editModeView: TextView? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
@@ -131,16 +136,11 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
 
     override fun onLongClick(view: View): Boolean {
         when (view.id) {
-            R.id.homeApp1 -> showAppList(Constants.FLAG_SET_HOME_APP_1, prefs.appName1.isNotEmpty(), true)
-            R.id.homeApp2 -> showAppList(Constants.FLAG_SET_HOME_APP_2, prefs.appName2.isNotEmpty(), true)
-            R.id.homeApp3 -> showAppList(Constants.FLAG_SET_HOME_APP_3, prefs.appName3.isNotEmpty(), true)
-            R.id.homeApp4 -> showAppList(Constants.FLAG_SET_HOME_APP_4, prefs.appName4.isNotEmpty(), true)
-            R.id.homeApp5 -> showAppList(Constants.FLAG_SET_HOME_APP_5, prefs.appName5.isNotEmpty(), true)
-            R.id.homeApp6 -> showAppList(Constants.FLAG_SET_HOME_APP_6, prefs.appName6.isNotEmpty(), true)
-            R.id.homeApp7 -> showAppList(Constants.FLAG_SET_HOME_APP_7, prefs.appName7.isNotEmpty(), true)
-            R.id.homeApp8 -> showAppList(Constants.FLAG_SET_HOME_APP_8, prefs.appName8.isNotEmpty(), true)
-            R.id.homeApp9 -> showAppList(Constants.FLAG_SET_HOME_APP_9, prefs.appName9.isNotEmpty(), true)
-            R.id.homeApp10 -> showAppList(Constants.FLAG_SET_HOME_APP_10, prefs.appName10.isNotEmpty(), true)
+            R.id.homeApp1, R.id.homeApp2, R.id.homeApp3, R.id.homeApp4,
+            R.id.homeApp5, R.id.homeApp6, R.id.homeApp7, R.id.homeApp8,
+            R.id.homeApp9, R.id.homeApp10 -> {
+                toggleEditMode(view as TextView)
+            }
             R.id.clock -> {
                 showAppList(Constants.FLAG_SET_CLOCK_APP)
                 prefs.clockAppPackage = ""
@@ -165,6 +165,100 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
             }
         }
         return true
+    }
+
+    private fun toggleEditMode(view: TextView) {
+        // If tapping the same view again, exit edit mode
+        if (editModeView == view) {
+            exitEditMode()
+            return
+        }
+        // Exit previous edit mode if any
+        exitEditMode()
+
+        editModeView = view
+        val editIcon = androidx.core.content.ContextCompat.getDrawable(requireContext(), R.drawable.ic_edit)?.mutate()
+        val reorderIcon = androidx.core.content.ContextCompat.getDrawable(requireContext(), R.drawable.ic_reorder)?.mutate()
+
+        val iconSize = (20 * resources.displayMetrics.density).toInt()
+        val gap = (16 * resources.displayMetrics.density).toInt()
+        editIcon?.setBounds(0, 0, iconSize, iconSize)
+        reorderIcon?.setBounds(0, 0, iconSize, iconSize)
+
+        // Combine pen + reorder into one LayerDrawable (pen left, reorder right)
+        val totalWidth = iconSize + gap + iconSize
+        val combined = android.graphics.drawable.LayerDrawable(arrayOf(editIcon, reorderIcon))
+        combined.setLayerInset(0, 0, 0, iconSize + gap, 0) // pen on left side
+        combined.setLayerInset(1, iconSize + gap, 0, 0, 0) // reorder on right side
+        combined.setBounds(0, 0, totalWidth, iconSize)
+
+        view.compoundDrawablePadding = (12 * resources.displayMetrics.density).toInt()
+        view.setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, combined, null)
+
+        setupEditModeTouchListener(view, iconSize, gap)
+    }
+
+    private fun exitEditMode() {
+        editModeView?.let {
+            it.setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, null, null)
+            it.setOnTouchListener(getViewSwipeTouchListener(requireContext(), it))
+        }
+        editModeView = null
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupEditModeTouchListener(view: TextView, iconSize: Int, gap: Int) {
+        view.setOnTouchListener { v, event ->
+            if (event.action == android.view.MotionEvent.ACTION_UP) {
+                val tv = v as TextView
+                val drawableEnd = tv.compoundDrawablesRelative[2]
+                if (drawableEnd != null) {
+                    val totalIconWidth = iconSize + gap + iconSize
+                    val iconRegionStart = tv.width - totalIconWidth - tv.paddingEnd
+                    val reorderRegionStart = iconRegionStart + iconSize + gap
+
+                    when {
+                        // Tapped on reorder icon (rightmost)
+                        event.x >= reorderRegionStart -> {
+                            exitEditMode()
+                            startDrag(v)
+                            return@setOnTouchListener true
+                        }
+                        // Tapped on pen/edit icon (second to last)
+                        event.x >= iconRegionStart -> {
+                            val location = getLocationFromView(v)
+                            if (location != null) {
+                                exitEditMode()
+                                showAppList(location, true, true)
+                            }
+                            return@setOnTouchListener true
+                        }
+                        // Tapped on text area — just exit edit mode
+                        else -> {
+                            exitEditMode()
+                            return@setOnTouchListener true
+                        }
+                    }
+                }
+            }
+            false
+        }
+    }
+
+    private fun getLocationFromView(view: View): Int? {
+        return when (view.id) {
+            R.id.homeApp1 -> Constants.FLAG_SET_HOME_APP_1
+            R.id.homeApp2 -> Constants.FLAG_SET_HOME_APP_2
+            R.id.homeApp3 -> Constants.FLAG_SET_HOME_APP_3
+            R.id.homeApp4 -> Constants.FLAG_SET_HOME_APP_4
+            R.id.homeApp5 -> Constants.FLAG_SET_HOME_APP_5
+            R.id.homeApp6 -> Constants.FLAG_SET_HOME_APP_6
+            R.id.homeApp7 -> Constants.FLAG_SET_HOME_APP_7
+            R.id.homeApp8 -> Constants.FLAG_SET_HOME_APP_8
+            R.id.homeApp9 -> Constants.FLAG_SET_HOME_APP_9
+            R.id.homeApp10 -> Constants.FLAG_SET_HOME_APP_10
+            else -> null
+        }
     }
 
     private fun initObservers() {
@@ -214,6 +308,60 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
         binding.homeApp8.setOnTouchListener(getViewSwipeTouchListener(context, binding.homeApp8))
         binding.homeApp9.setOnTouchListener(getViewSwipeTouchListener(context, binding.homeApp9))
         binding.homeApp10.setOnTouchListener(getViewSwipeTouchListener(context, binding.homeApp10))
+        
+        // Setup DragListeners for Home Apps reordering
+        val dragListener = View.OnDragListener { v, event ->
+            when (event.action) {
+                DragEvent.ACTION_DRAG_STARTED -> true
+                DragEvent.ACTION_DRAG_ENTERED -> {
+                    v.alpha = 0.5f
+                    true
+                }
+                DragEvent.ACTION_DRAG_EXITED -> {
+                    v.alpha = 1.0f
+                    true
+                }
+                DragEvent.ACTION_DROP -> {
+                    v.alpha = 1.0f
+                    val fromLocation = event.clipData.getItemAt(0).text.toString().toIntOrNull()
+                    val toLocation = v.tag.toString().toIntOrNull()
+                    
+                    if (fromLocation != null && toLocation != null && fromLocation != toLocation) {
+                        prefs.swapAppLocations(fromLocation, toLocation)
+                        populateHomeScreen(false)
+                        viewModel.refreshHome(false)
+                    }
+                    true
+                }
+                DragEvent.ACTION_DRAG_ENDED -> {
+                    v.alpha = 1.0f
+                    true
+                }
+                else -> false
+            }
+        }
+        
+        binding.homeApp1.setOnDragListener(dragListener)
+        binding.homeApp2.setOnDragListener(dragListener)
+        binding.homeApp3.setOnDragListener(dragListener)
+        binding.homeApp4.setOnDragListener(dragListener)
+        binding.homeApp5.setOnDragListener(dragListener)
+        binding.homeApp6.setOnDragListener(dragListener)
+        binding.homeApp7.setOnDragListener(dragListener)
+        binding.homeApp8.setOnDragListener(dragListener)
+        binding.homeApp9.setOnDragListener(dragListener)
+        binding.homeApp10.setOnDragListener(dragListener)
+    }
+
+    private fun startDrag(view: View) {
+        val data = android.content.ClipData.newPlainText("location", view.tag.toString())
+        val shadowBuilder = View.DragShadowBuilder(view)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            view.startDragAndDrop(data, shadowBuilder, view, 0)
+        } else {
+            @Suppress("DEPRECATION")
+            view.startDrag(data, shadowBuilder, view, 0)
+        }
     }
 
     private fun initClickListeners() {
@@ -277,79 +425,85 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
             populateScreenTime()
 
         val homeAppsNum = prefs.homeAppsNum
-        if (homeAppsNum == 0) return
+        if (homeAppsNum == 0) { updateCardAndDividers(); return }
 
         binding.homeApp1.visibility = View.VISIBLE
         if (!setHomeAppText(binding.homeApp1, prefs.appName1, prefs.appPackage1, prefs.appUser1, prefs.isShortcut1, prefs.shortcutId1)) {
             prefs.appName1 = ""
             prefs.appPackage1 = ""
         }
-        if (homeAppsNum == 1) return
+        if (homeAppsNum == 1) { updateCardAndDividers(); return }
 
         binding.homeApp2.visibility = View.VISIBLE
         if (!setHomeAppText(binding.homeApp2, prefs.appName2, prefs.appPackage2, prefs.appUser2, prefs.isShortcut2, prefs.shortcutId2)) {
             prefs.appName2 = ""
             prefs.appPackage2 = ""
         }
-        if (homeAppsNum == 2) return
+        if (homeAppsNum == 2) { updateCardAndDividers(); return }
 
         binding.homeApp3.visibility = View.VISIBLE
         if (!setHomeAppText(binding.homeApp3, prefs.appName3, prefs.appPackage3, prefs.appUser3, prefs.isShortcut3, prefs.shortcutId3)) {
             prefs.appName3 = ""
             prefs.appPackage3 = ""
         }
-        if (homeAppsNum == 3) return
+        if (homeAppsNum == 3) { updateCardAndDividers(); return }
 
         binding.homeApp4.visibility = View.VISIBLE
         if (!setHomeAppText(binding.homeApp4, prefs.appName4, prefs.appPackage4, prefs.appUser4, prefs.isShortcut4, prefs.shortcutId4)) {
             prefs.appName4 = ""
             prefs.appPackage4 = ""
         }
-        if (homeAppsNum == 4) return
+        if (homeAppsNum == 4) { updateCardAndDividers(); return }
 
         binding.homeApp5.visibility = View.VISIBLE
         if (!setHomeAppText(binding.homeApp5, prefs.appName5, prefs.appPackage5, prefs.appUser5, prefs.isShortcut5, prefs.shortcutId5)) {
             prefs.appName5 = ""
             prefs.appPackage5 = ""
         }
-        if (homeAppsNum == 5) return
+        if (homeAppsNum == 5) { updateCardAndDividers(); return }
 
         binding.homeApp6.visibility = View.VISIBLE
         if (!setHomeAppText(binding.homeApp6, prefs.appName6, prefs.appPackage6, prefs.appUser6, prefs.isShortcut6, prefs.shortcutId6)) {
             prefs.appName6 = ""
             prefs.appPackage6 = ""
         }
-        if (homeAppsNum == 6) return
+        if (homeAppsNum == 6) { updateCardAndDividers(); return }
 
         binding.homeApp7.visibility = View.VISIBLE
         if (!setHomeAppText(binding.homeApp7, prefs.appName7, prefs.appPackage7, prefs.appUser7, prefs.isShortcut7, prefs.shortcutId7)) {
             prefs.appName7 = ""
             prefs.appPackage7 = ""
         }
-        if (homeAppsNum == 7) return
+        if (homeAppsNum == 7) { updateCardAndDividers(); return }
 
         binding.homeApp8.visibility = View.VISIBLE
         if (!setHomeAppText(binding.homeApp8, prefs.appName8, prefs.appPackage8, prefs.appUser8, prefs.isShortcut8, prefs.shortcutId8)) {
             prefs.appName8 = ""
             prefs.appPackage8 = ""
         }
-        if (homeAppsNum == 8) return
+        if (homeAppsNum == 8) { updateCardAndDividers(); return }
 
         binding.homeApp9.visibility = View.VISIBLE
         if (!setHomeAppText(binding.homeApp9, prefs.appName9, prefs.appPackage9, prefs.appUser9, prefs.isShortcut9, prefs.shortcutId9)) {
             prefs.appName9 = ""
             prefs.appPackage9 = ""
         }
-        if (homeAppsNum == 9) return
+        if (homeAppsNum == 9) { updateCardAndDividers(); return }
 
         binding.homeApp10.visibility = View.VISIBLE
         if (!setHomeAppText(binding.homeApp10, prefs.appName10, prefs.appPackage10, prefs.appUser10, prefs.isShortcut10, prefs.shortcutId10)) {
             prefs.appName10 = ""
             prefs.appPackage10 = ""
         }
+
+        // Show the combined card and update dividers
+        updateCardAndDividers()
     }
 
     private fun setHomeAppText(textView: TextView, appName: String, packageName: String, userString: String, isShortcut: Boolean, shortcutId: String?): Boolean {
+        // Explicitly set home text size
+        textView.textSize = 15f * prefs.homeTextSizeScale
+
         // Get user handle for the app/shortcut
         val userHandle = getUserHandleFromString(requireContext(), userString)
         
@@ -399,6 +553,47 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
         binding.homeApp8.visibility = View.GONE
         binding.homeApp9.visibility = View.GONE
         binding.homeApp10.visibility = View.GONE
+        binding.divider1.visibility = View.GONE
+        binding.divider2.visibility = View.GONE
+        binding.divider3.visibility = View.GONE
+        binding.divider4.visibility = View.GONE
+        binding.divider5.visibility = View.GONE
+        binding.divider6.visibility = View.GONE
+        binding.divider7.visibility = View.GONE
+        binding.divider8.visibility = View.GONE
+        binding.divider9.visibility = View.GONE
+        binding.homeAppsCard.visibility = View.GONE
+    }
+
+    private fun updateCardAndDividers() {
+        val apps = listOf(
+            binding.homeApp1, binding.homeApp2, binding.homeApp3, binding.homeApp4,
+            binding.homeApp5, binding.homeApp6, binding.homeApp7, binding.homeApp8,
+            binding.homeApp9, binding.homeApp10
+        )
+        val dividers = listOf(
+            binding.divider1, binding.divider2, binding.divider3, binding.divider4,
+            binding.divider5, binding.divider6, binding.divider7, binding.divider8,
+            binding.divider9
+        )
+        // Hide all dividers first
+        dividers.forEach { it.visibility = View.GONE }
+
+        val visibleApps = apps.filter { it.visibility == View.VISIBLE }
+        if (visibleApps.isEmpty()) {
+            binding.homeAppsCard.visibility = View.GONE
+            return
+        }
+
+        binding.homeAppsCard.visibility = View.VISIBLE
+        // Show dividers between consecutive visible apps
+        for (i in 0 until apps.size - 1) {
+            if (apps[i].visibility == View.VISIBLE && i < dividers.size) {
+                // Show divider if the next visible app exists after this one
+                val hasNextVisible = (i + 1 until apps.size).any { apps[it].visibility == View.VISIBLE }
+                dividers[i].visibility = if (hasNextVisible) View.VISIBLE else View.GONE
+            }
+        }
     }
 
     private fun launchAppOrShortcut(
@@ -476,31 +671,11 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
     }
 
     private fun openSwipeRightApp() {
-        if (!prefs.swipeRightEnabled) return
-        launchAppOrShortcut(
-            appName = prefs.appNameSwipeRight,
-            packageName = prefs.appPackageSwipeRight,
-            activityClassName = prefs.appActivityClassNameRight,
-            shortcutId = prefs.shortcutIdSwipeRight,
-            isShortcut = prefs.isShortcutSwipeRight,
-            userString = prefs.appUserSwipeRight,
-            fallback = { openDialerApp(requireContext()) },
-            swipeDirection = "right"
-        )
+        findNavController().navigate(R.id.action_mainFragment_to_notesFragment)
     }
 
     private fun openSwipeLeftApp() {
-        if (!prefs.swipeLeftEnabled) return
-        launchAppOrShortcut(
-            appName = prefs.appNameSwipeLeft,
-            packageName = prefs.appPackageSwipeLeft,
-            activityClassName = prefs.appActivityClassNameSwipeLeft,
-            shortcutId = prefs.shortcutIdSwipeLeft,
-            isShortcut = prefs.isShortcutSwipeLeft,
-            userString = prefs.appUserSwipeLeft,
-            fallback = { openCameraApp(requireContext()) },
-            swipeDirection = "left"
-        )
+        findNavController().navigate(R.id.action_mainFragment_to_notificationsFragment)
     }
 
     private fun showAppList(flag: Int, rename: Boolean = false, includeHiddenApps: Boolean = false) {
@@ -677,7 +852,14 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
 
             override fun onLongClick(view: View) {
                 super.onLongClick(view)
-                textOnLongClick(view)
+                
+                // For Home Apps, if it's not empty, start dragging, otherwise open app list
+                val appLocation = view.tag.toString().toIntOrNull()
+                if (appLocation != null && prefs.getAppName(appLocation).isNotEmpty()) {
+                    startDrag(view)
+                } else {
+                    textOnLongClick(view)
+                }
             }
 
             override fun onClick(view: View) {
