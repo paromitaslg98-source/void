@@ -46,6 +46,9 @@
     <string name="hide">Hide</string>
     <string name="status_bar">Status bar on top</string>
     <string name="rename">Rename</string>
+    <string name="change_or_add_app">Change or add app</string>
+    <string name="reorder_apps">Reorder apps</string>
+    <string name="remove">Remove</string>
     <string name="show_date_time">Show date time</string>
     <string name="appearance">Appearance</string>
     <string name="gestures">Gestures</string>
