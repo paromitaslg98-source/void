@@ -4,6 +4,10 @@ import android.annotation.SuppressLint
 import android.app.Notification
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Typeface
 import android.os.Bundle
 import android.provider.Settings
 import android.text.format.DateUtils
@@ -15,6 +19,7 @@ import android.widget.TextView
 import androidx.core.app.NotificationManagerCompat
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.voidlauncher.app.R
@@ -41,13 +46,12 @@ class NotificationsFragment : Fragment() {
         val adapter = NotificationAdapter()
         binding.rvNotifications.layoutManager = LinearLayoutManager(requireContext())
         binding.rvNotifications.adapter = adapter
+        ItemTouchHelper(createSwipeCallback(adapter)).attachToRecyclerView(binding.rvNotifications)
+        updateNotificationsVisibility(adapter.itemCount)
 
         NotificationService.notificationsLiveData.observe(viewLifecycleOwner) { groups ->
-            val hasNotifications = groups.isNotEmpty()
-            binding.rvNotifications.visibility = if (hasNotifications) View.VISIBLE else View.GONE
-            binding.tvNoNotifications.visibility = if (hasNotifications) View.GONE else View.VISIBLE
-            binding.tvClearAll.visibility = if (hasNotifications) View.VISIBLE else View.GONE
             adapter.submitList(groups)
+            updateNotificationsVisibility(groups.size)
         }
 
         binding.tvClearAll.setOnClickListener {
@@ -90,15 +94,105 @@ class NotificationsFragment : Fragment() {
         _binding = null
     }
 
+    private fun createSwipeCallback(adapter: NotificationAdapter): ItemTouchHelper.SimpleCallback {
+        return object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT) {
+            private val backgroundPaint = Paint().apply {
+                color = Color.BLACK
+                style = Paint.Style.FILL
+            }
+            private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.WHITE
+                textSize = 12f * resources.displayMetrics.scaledDensity
+                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                textAlign = Paint.Align.CENTER
+            }
+
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ) = false
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                val position = viewHolder.bindingAdapterPosition
+                if (position == RecyclerView.NO_POSITION) return
+
+                val dismissedGroup = adapter.getGroupAt(position)
+                dismissGroupNotifications(dismissedGroup)
+                adapter.removeAt(position)
+                updateNotificationsVisibility(adapter.itemCount)
+            }
+
+            override fun onChildDraw(
+                c: Canvas,
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                dX: Float,
+                dY: Float,
+                actionState: Int,
+                isCurrentlyActive: Boolean
+            ) {
+                val itemView = viewHolder.itemView
+                if (actionState == ItemTouchHelper.ACTION_STATE_SWIPE && dX != 0f) {
+                    if (dX > 0) {
+                        c.drawRect(itemView.left.toFloat(), itemView.top.toFloat(), itemView.left + dX, itemView.bottom.toFloat(), backgroundPaint)
+                    } else {
+                        c.drawRect(itemView.right + dX, itemView.top.toFloat(), itemView.right.toFloat(), itemView.bottom.toFloat(), backgroundPaint)
+                    }
+
+                    val label = if (dX > 0) "DISMISS" else "CLEAR"
+                    val centerY = itemView.top + itemView.height / 2f - (textPaint.descent() + textPaint.ascent()) / 2
+                    val centerX = if (dX > 0) {
+                        itemView.left + (dX / 2)
+                    } else {
+                        itemView.right + (dX / 2)
+                    }
+                    c.drawText(label, centerX, centerY, textPaint)
+                }
+
+                super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
+            }
+        }
+    }
+
+
+    private fun updateNotificationsVisibility(count: Int) {
+        val hasNotifications = count > 0
+        binding.rvNotifications.visibility = if (hasNotifications) View.VISIBLE else View.GONE
+        binding.tvNoNotifications.visibility = if (hasNotifications) View.GONE else View.VISIBLE
+        binding.tvClearAll.visibility = if (hasNotifications) View.VISIBLE else View.GONE
+    }
+
+    private fun dismissGroupNotifications(group: NotificationGroup) {
+        val manager = NotificationManagerCompat.from(requireContext())
+        group.notifications.forEach { sbn ->
+            manager.cancel(sbn.tag, sbn.id)
+        }
+    }
+
     inner class NotificationAdapter : RecyclerView.Adapter<NotificationAdapter.ViewHolder>() {
 
-        private var items = listOf<NotificationGroup>()
+        private var items = mutableListOf<NotificationGroup>()
         private val pm: PackageManager = requireContext().packageManager
         private val expandedGroups = mutableSetOf<String>()
 
         fun submitList(newItems: List<NotificationGroup>) {
-            items = newItems
+            items = newItems.toMutableList()
+            expandedGroups.retainAll(items.map { it.groupKey }.toSet())
             notifyDataSetChanged()
+        }
+
+        fun getGroupAt(position: Int): NotificationGroup = items[position]
+
+        fun removeAt(position: Int) {
+            if (position !in items.indices) return
+            val removed = items.removeAt(position)
+            expandedGroups.remove(removed.groupKey)
+            notifyItemRemoved(position)
+
+            if (items.isEmpty()) {
+                notifyDataSetChanged()
+            }
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
