@@ -10,12 +10,14 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.View
+import android.view.WindowInsets
 import android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.findNavController
 import com.voidlauncher.app.data.Constants
@@ -48,6 +50,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var prefs: Prefs
     private lateinit var navController: NavController
     private lateinit var viewModel: MainViewModel
+    private lateinit var appSettingsViewModel: AppSettingsViewModel
     private lateinit var binding: ActivityMainBinding
     private var timerJob: Job? = null
 
@@ -73,6 +76,7 @@ class MainActivity : AppCompatActivity() {
 
         navController = this.findNavController(R.id.nav_host_fragment)
         viewModel = ViewModelProvider(this)[MainViewModel::class.java]
+        appSettingsViewModel = ViewModelProvider(this)[AppSettingsViewModel::class.java]
 
         val onBackPressedCallback = object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -102,6 +106,7 @@ class MainActivity : AppCompatActivity() {
         initObservers(viewModel)
         viewModel.getAppList()
         setupOrientation()
+        observeStatusBarVisibility()
 
         window.addFlags(FLAG_LAYOUT_NO_LIMITS)
     }
@@ -260,6 +265,38 @@ class MainActivity : AppCompatActivity() {
                 || (prefs.appTheme == AppCompatDelegate.MODE_NIGHT_NO && getColorFromAttr(R.attr.primaryColor) != getColor(R.color.black))
             )
                 restartLauncherOrCheckTheme(true)
+        }
+    }
+
+
+    private fun observeStatusBarVisibility() {
+        lifecycleScope.launch {
+            repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+                appSettingsViewModel.isStatusBarVisible.collect { isVisible ->
+                    if (isVisible) showStatusBar() else hideStatusBar()
+                }
+            }
+        }
+    }
+
+    private fun showStatusBar() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+            window.insetsController?.show(WindowInsets.Type.statusBars())
+        else
+            @Suppress("DEPRECATION", "InlinedApi")
+            window.decorView.apply {
+                systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+            }
+    }
+
+    private fun hideStatusBar() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+            window.insetsController?.hide(WindowInsets.Type.statusBars())
+        else {
+            @Suppress("DEPRECATION")
+            window.decorView.apply {
+                systemUiVisibility = View.SYSTEM_UI_FLAG_IMMERSIVE or View.SYSTEM_UI_FLAG_FULLSCREEN
+            }
         }
     }
 
