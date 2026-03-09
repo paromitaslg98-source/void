@@ -47,6 +47,9 @@ import com.voidlauncher.app.helper.setPlainWallpaperByTheme
 import com.voidlauncher.app.helper.showToast
 import com.voidlauncher.app.listener.OnSwipeTouchListener
 import com.voidlauncher.app.listener.ViewSwipeTouchListener
+import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.TransitionLanguage
+import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.applyDestinationTransitions
+import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.applyExitFor
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -62,6 +65,11 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
 
     /** Tracks the currently long-pressed home app in edit mode (showing pen + reorder icons). */
     private var editModeView: TextView? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        applyDestinationTransitions(TransitionLanguage.PEER)
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
@@ -160,6 +168,7 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
                 binding.setDefaultLauncher.visibility = View.GONE
                 if (viewModel.isVoidDefault.value != true) {
                     requireContext().showToast(R.string.set_as_default_launcher)
+                    applyExitFor(TransitionLanguage.HIERARCHICAL)
                     findNavController().navigate(R.id.action_mainFragment_to_settingsFragment)
                 }
             }
@@ -628,15 +637,18 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
     }
 
     private fun openSwipeRightApp() {
+        applyExitFor(TransitionLanguage.PEER)
         findNavController().navigate(R.id.action_mainFragment_to_notesFragment)
     }
 
     private fun openSwipeLeftApp() {
+        applyExitFor(TransitionLanguage.PEER)
         findNavController().navigate(R.id.action_mainFragment_to_notificationsFragment)
     }
 
     private fun showAppList(flag: Int, rename: Boolean = false, includeHiddenApps: Boolean = false) {
         viewModel.getAppList(includeHiddenApps)
+        applyExitFor(TransitionLanguage.HIERARCHICAL)
         try {
             findNavController().navigate(
                 R.id.action_mainFragment_to_appListFragment,
@@ -670,6 +682,7 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
                 deviceManager.lockNow()
             } catch (e: SecurityException) {
                 requireContext().showToast(getString(R.string.please_turn_on_double_tap_to_unlock), Toast.LENGTH_LONG)
+                applyExitFor(TransitionLanguage.HIERARCHICAL)
                 findNavController().navigate(R.id.action_mainFragment_to_settingsFragment)
             } catch (e: Exception) {
                 requireContext().showToast(getString(R.string.launcher_failed_to_lock_device), Toast.LENGTH_LONG)
@@ -763,6 +776,7 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
             override fun onLongClick() {
                 super.onLongClick()
                 try {
+                    applyExitFor(TransitionLanguage.HIERARCHICAL)
                     findNavController().navigate(R.id.action_mainFragment_to_settingsFragment)
                     viewModel.firstOpen(false)
                 } catch (e: Exception) {

@@ -23,11 +23,18 @@ import com.voidlauncher.app.databinding.FragmentNotificationsBinding
 import com.voidlauncher.app.databinding.RowNotificationGroupBinding
 import com.voidlauncher.app.helper.NotificationService
 import com.voidlauncher.app.listener.OnSwipeTouchListener
+import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.TransitionLanguage
+import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.applyDestinationTransitions
 
 class NotificationsFragment : Fragment() {
 
     private var _binding: FragmentNotificationsBinding? = null
     private val binding get() = _binding!!
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        applyDestinationTransitions(TransitionLanguage.PEER)
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentNotificationsBinding.inflate(inflater, container, false)

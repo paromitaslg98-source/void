@@ -11,6 +11,8 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.View
 import android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+import android.window.OnBackInvokedCallback
+import android.window.OnBackInvokedDispatcher
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
@@ -50,6 +52,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var viewModel: MainViewModel
     private lateinit var binding: ActivityMainBinding
     private var timerJob: Job? = null
+    private var predictiveBackCallback: OnBackInvokedCallback? = null
 
 //    override fun onBackPressed() {
 //        if (navController.currentDestination?.id != R.id.mainFragment)
@@ -75,20 +78,10 @@ class MainActivity : AppCompatActivity() {
         viewModel = ViewModelProvider(this)[MainViewModel::class.java]
 
         val onBackPressedCallback = object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                if (navController.currentDestination?.id != R.id.mainFragment) {
-                    // then we might want to finish the activity or disable this callback.
-                    if (navController.popBackStack()) {
-                        // Successfully popped back
-                    } else {
-                        // if you want other system/activity level handling
-                    }
-                } else {
-                    binding.messageLayout.visibility = View.GONE
-                }
-            }
+            override fun handleOnBackPressed() = handleNavigationBack()
         }
         onBackPressedDispatcher.addCallback(this, onBackPressedCallback)
+        registerPredictiveBackCallback()
 
         if (prefs.firstOpen) {
             viewModel.firstOpen(true)
@@ -277,5 +270,34 @@ class MainActivity : AppCompatActivity() {
                     resetLauncherViaFakeActivity()
             }
         }
+    }
+
+    override fun onDestroy() {
+        unregisterPredictiveBackCallback()
+        super.onDestroy()
+    }
+
+    private fun handleNavigationBack() {
+        if (navController.currentDestination?.id != R.id.mainFragment) {
+            navController.popBackStack()
+        } else {
+            binding.messageLayout.visibility = View.GONE
+        }
+    }
+
+    private fun registerPredictiveBackCallback() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val callback = OnBackInvokedCallback { handleNavigationBack() }
+        predictiveBackCallback = callback
+        onBackInvokedDispatcher.registerOnBackInvokedCallback(
+            OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+            callback
+        )
+    }
+
+    private fun unregisterPredictiveBackCallback() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        predictiveBackCallback?.let { onBackInvokedDispatcher.unregisterOnBackInvokedCallback(it) }
+        predictiveBackCallback = null
     }
 }
