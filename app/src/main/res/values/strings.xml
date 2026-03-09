@@ -128,4 +128,10 @@
     <string name="learn_more">Learn more</string>
     <string name="notification_bar">Notification bar</string>
     <string name="about_void">About and FAQs</string>
+    <string name="top">Top</string>
+    <string name="middle">Middle</string>
+    <string name="bottom">Bottom</string>
+    <string name="show_clock_widget">Show clock widget</string>
+    <string name="show_calendar_date_widget">Show calendar date widget</string>
+    <string name="reset_homescreen_defaults">Reset homescreen defaults</string>
 </resources>

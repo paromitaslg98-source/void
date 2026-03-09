@@ -5,6 +5,17 @@ import android.content.SharedPreferences
 import android.view.Gravity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.edit
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
+data class HomescreenPreferences(
+    val horizontalAlignment: Int,
+    val verticalAlignment: Int,
+    val showClock: Boolean,
+    val showDate: Boolean,
+    val showScreenTime: Boolean,
+)
 
 class Prefs(context: Context) {
     private val PREFS_FILENAME = "com.voidlauncher.app"
@@ -22,6 +33,7 @@ class Prefs(context: Context) {
     private val DAILY_WALLPAPER_URL = "DAILY_WALLPAPER_URL"
     private val HOME_ALIGNMENT = "HOME_ALIGNMENT"
     private val HOME_BOTTOM_ALIGNMENT = "HOME_BOTTOM_ALIGNMENT"
+    private val HOME_VERTICAL_ALIGNMENT = "HOME_VERTICAL_ALIGNMENT"
     private val APP_LABEL_ALIGNMENT = "APP_LABEL_ALIGNMENT"
     private val STATUS_BAR = "STATUS_BAR"
     private val DATE_TIME_VISIBILITY = "DATE_TIME_VISIBILITY"
@@ -45,6 +57,9 @@ class Prefs(context: Context) {
     private val SCREEN_TIME_LAST_UPDATED = "SCREEN_TIME_LAST_UPDATED"
     private val LAUNCHER_RESTART_TIMESTAMP = "LAUNCHER_RECREATE_TIMESTAMP"
     private val SHOWN_ON_DAY_OF_YEAR = "SHOWN_ON_DAY_OF_YEAR"
+    private val SHOW_CLOCK_WIDGET = "SHOW_CLOCK_WIDGET"
+    private val SHOW_DATE_WIDGET = "SHOW_DATE_WIDGET"
+    private val SHOW_SCREEN_TIME_WIDGET = "SHOW_SCREEN_TIME_WIDGET"
 
     private val APP_NAME_1 = "APP_NAME_1"
     private val APP_NAME_2 = "APP_NAME_2"
@@ -129,6 +144,16 @@ class Prefs(context: Context) {
     private val IS_SHORTCUT_SWIPE_RIGHT = "IS_SHORTCUT_SWIPE_RIGHT"
 
     private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_FILENAME, 0)
+    private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key in homescreenPrefKeys) emitHomescreenPrefs()
+    }
+
+    private val _homescreenPreferences = MutableStateFlow(readHomescreenPreferences())
+    val homescreenPreferences: StateFlow<HomescreenPreferences> = _homescreenPreferences.asStateFlow()
+
+    init {
+        prefs.registerOnSharedPreferenceChangeListener(prefsListener)
+    }
 
     var firstOpen: Boolean
         get() = prefs.getBoolean(FIRST_OPEN, true)
@@ -176,11 +201,49 @@ class Prefs(context: Context) {
 
     var homeAlignment: Int
         get() = prefs.getInt(HOME_ALIGNMENT, Gravity.START)
-        set(value) = prefs.edit { putInt(HOME_ALIGNMENT, value).apply() }
+        set(value) {
+            prefs.edit { putInt(HOME_ALIGNMENT, value).apply() }
+            emitHomescreenPrefs()
+        }
 
     var homeBottomAlignment: Boolean
         get() = prefs.getBoolean(HOME_BOTTOM_ALIGNMENT, true)
-        set(value) = prefs.edit { putBoolean(HOME_BOTTOM_ALIGNMENT, value).apply() }
+        set(value) {
+            prefs.edit { putBoolean(HOME_BOTTOM_ALIGNMENT, value).apply() }
+            homeVerticalAlignment = if (value) Gravity.BOTTOM else Gravity.CENTER_VERTICAL
+        }
+
+    var homeVerticalAlignment: Int
+        get() = prefs.getInt(
+            HOME_VERTICAL_ALIGNMENT,
+            if (homeBottomAlignment) Gravity.BOTTOM else Gravity.CENTER_VERTICAL
+        )
+        set(value) {
+            prefs.edit { putInt(HOME_VERTICAL_ALIGNMENT, value).apply() }
+            prefs.edit { putBoolean(HOME_BOTTOM_ALIGNMENT, value == Gravity.BOTTOM).apply() }
+            emitHomescreenPrefs()
+        }
+
+    var showClockWidget: Boolean
+        get() = prefs.getBoolean(SHOW_CLOCK_WIDGET, dateTimeVisibility == Constants.DateTime.ON)
+        set(value) {
+            prefs.edit { putBoolean(SHOW_CLOCK_WIDGET, value).apply() }
+            emitHomescreenPrefs()
+        }
+
+    var showDateWidget: Boolean
+        get() = prefs.getBoolean(SHOW_DATE_WIDGET, dateTimeVisibility != Constants.DateTime.OFF)
+        set(value) {
+            prefs.edit { putBoolean(SHOW_DATE_WIDGET, value).apply() }
+            emitHomescreenPrefs()
+        }
+
+    var showScreenTimeWidget: Boolean
+        get() = prefs.getBoolean(SHOW_SCREEN_TIME_WIDGET, true)
+        set(value) {
+            prefs.edit { putBoolean(SHOW_SCREEN_TIME_WIDGET, value).apply() }
+            emitHomescreenPrefs()
+        }
 
     var appLabelAlignment: Int
         get() = prefs.getInt(APP_LABEL_ALIGNMENT, Gravity.START)
@@ -781,4 +844,36 @@ class Prefs(context: Context) {
             }
         }
     }
+
+    private val homescreenPrefKeys = setOf(
+        HOME_ALIGNMENT,
+        HOME_BOTTOM_ALIGNMENT,
+        HOME_VERTICAL_ALIGNMENT,
+        SHOW_CLOCK_WIDGET,
+        SHOW_DATE_WIDGET,
+        SHOW_SCREEN_TIME_WIDGET,
+    )
+
+    private fun readHomescreenPreferences(): HomescreenPreferences {
+        return HomescreenPreferences(
+            horizontalAlignment = homeAlignment,
+            verticalAlignment = homeVerticalAlignment,
+            showClock = showClockWidget,
+            showDate = showDateWidget,
+            showScreenTime = showScreenTimeWidget,
+        )
+    }
+
+    private fun emitHomescreenPrefs() {
+        _homescreenPreferences.value = readHomescreenPreferences()
+    }
+
+    fun resetHomescreenDefaults() {
+        homeAlignment = Gravity.START
+        homeVerticalAlignment = Gravity.BOTTOM
+        showClockWidget = true
+        showDateWidget = true
+        showScreenTimeWidget = true
+    }
+
 }

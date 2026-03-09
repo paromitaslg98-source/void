@@ -25,6 +25,8 @@ import androidx.core.view.setPadding
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.voidlauncher.app.MainViewModel
 import com.voidlauncher.app.R
@@ -47,6 +49,7 @@ import com.voidlauncher.app.helper.setPlainWallpaperByTheme
 import com.voidlauncher.app.helper.showToast
 import com.voidlauncher.app.listener.OnSwipeTouchListener
 import com.voidlauncher.app.listener.ViewSwipeTouchListener
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -78,6 +81,7 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
         deviceManager = context?.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
 
         initObservers()
+        observeHomescreenPreferences()
         setHomeAlignment(prefs.homeAlignment)
         initSwipeTouchListener()
         initClickListeners()
@@ -292,6 +296,22 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
         }
     }
 
+    private fun observeHomescreenPreferences() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+                prefs.homescreenPreferences.collect {
+                    setHomeAlignment(it.horizontalAlignment)
+                    populateDateTime()
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        populateScreenTime()
+                    } else {
+                        binding.tvScreenTime.visibility = View.GONE
+                    }
+                }
+            }
+        }
+    }
+
     private fun initSwipeTouchListener() {
         val context = requireContext()
         binding.mainLayout.setOnTouchListener(getSwipeGestureListener(context))
@@ -373,7 +393,7 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
     }
 
     private fun setHomeAlignment(horizontalGravity: Int = prefs.homeAlignment) {
-        val verticalGravity = if (prefs.homeBottomAlignment) Gravity.BOTTOM else Gravity.CENTER_VERTICAL
+        val verticalGravity = prefs.homeVerticalAlignment
         binding.homeAppsLayout.gravity = horizontalGravity or verticalGravity
         binding.dateTimeLayout.gravity = horizontalGravity
         binding.homeApp1.gravity = horizontalGravity
@@ -389,9 +409,9 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
     }
 
     private fun populateDateTime() {
-        binding.dateTimeLayout.isVisible = prefs.dateTimeVisibility != Constants.DateTime.OFF
-        binding.clock.isVisible = Constants.DateTime.isTimeVisible(prefs.dateTimeVisibility)
-        binding.date.isVisible = Constants.DateTime.isDateVisible(prefs.dateTimeVisibility)
+        binding.clock.isVisible = prefs.showClockWidget
+        binding.date.isVisible = prefs.showDateWidget
+        binding.dateTimeLayout.isVisible = binding.clock.isVisible || binding.date.isVisible || binding.tvScreenTime.isVisible
 
         val dateFormat = SimpleDateFormat("EEE, d MMM", Locale.getDefault())
         val dateText = dateFormat.format(Date())
@@ -411,6 +431,10 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
 
     @RequiresApi(Build.VERSION_CODES.Q)
     private fun populateScreenTime() {
+        if (!prefs.showScreenTimeWidget) {
+            binding.tvScreenTime.visibility = View.GONE
+            return
+        }
         if (requireContext().appUsagePermissionGranted().not()) return
 
         viewModel.getTodaysScreenTime()
