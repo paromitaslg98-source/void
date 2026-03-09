@@ -77,6 +77,8 @@
     <string name="notifications">Notifications</string>
     <string name="no_notifications">No new notifications</string>
     <string name="clear_all">Clear all</string>
+    <string name="notifications_cleared">Notifications cleared</string>
+    <string name="undo">Undo</string>
     <string name="notes_title">Notes</string>
     <string name="add_note_hint">Add a new note…</string>
     <string name="no_notes">No notes yet</string>
