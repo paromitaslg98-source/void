@@ -1,11 +1,10 @@
 package com.voidlauncher.app.ui
 
-import android.app.AlarmManager
 import android.app.DatePickerDialog
-import android.app.PendingIntent
 import android.app.TimePickerDialog
+import android.content.BroadcastReceiver
 import android.content.Context
-import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Paint
 import android.os.Bundle
 import android.view.KeyEvent
@@ -14,22 +13,27 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
-import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.PopupMenu
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.work.Data
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import com.voidlauncher.app.R
 import com.voidlauncher.app.data.NoteItem
 import com.voidlauncher.app.data.NoteRepository
 import com.voidlauncher.app.databinding.FragmentNotesBinding
 import com.voidlauncher.app.databinding.RowNoteItemBinding
 import com.voidlauncher.app.helper.NoteReminderReceiver
+import com.voidlauncher.app.helper.NoteReminderWorker
 import com.voidlauncher.app.listener.OnSwipeTouchListener
 import java.util.Calendar
+import java.util.concurrent.TimeUnit
 
 class NotesFragment : Fragment() {
 
@@ -37,6 +41,16 @@ class NotesFragment : Fragment() {
     private val binding get() = _binding!!
     private lateinit var repo: NoteRepository
     private lateinit var adapter: NoteAdapter
+    private val inAppReminderReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: android.content.Intent?) {
+            val noteId = intent?.getLongExtra(NoteReminderReceiver.EXTRA_NOTE_ID, -1L) ?: -1L
+            val noteText = intent?.getStringExtra(NoteReminderReceiver.EXTRA_NOTE_TEXT).orEmpty()
+            if (noteId <= 0L || noteText.isBlank()) return
+            com.google.android.material.snackbar.Snackbar.make(binding.root, "Reminder: $noteText", com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+                .setAction("Open") { focusNote(noteId) }
+                .show()
+        }
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentNotesBinding.inflate(inflater, container, false)
@@ -87,6 +101,22 @@ class NotesFragment : Fragment() {
         })
 
         refreshList()
+        handleReminderDeepLink()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        ContextCompat.registerReceiver(
+            requireContext(),
+            inAppReminderReceiver,
+            IntentFilter(NoteReminderReceiver.ACTION_IN_APP_REMINDER),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+    }
+
+    override fun onStop() {
+        runCatching { requireContext().unregisterReceiver(inAppReminderReceiver) }
+        super.onStop()
     }
 
     private fun refreshList() {
@@ -171,17 +201,23 @@ class NotesFragment : Fragment() {
     }
 
     private fun scheduleReminder(note: NoteItem, triggerTime: Long) {
-        val alarmManager = requireContext().getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val intent = Intent(requireContext(), NoteReminderReceiver::class.java).apply {
-            putExtra(NoteReminderReceiver.EXTRA_NOTE_TEXT, note.text)
-        }
-        val pendingIntent = PendingIntent.getBroadcast(
-            requireContext(),
-            note.id.toInt(),
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        val initialDelay = (triggerTime - System.currentTimeMillis()).coerceAtLeast(0L)
+        val request = OneTimeWorkRequestBuilder<NoteReminderWorker>()
+            .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
+            .setInputData(
+                Data.Builder()
+                    .putLong(NoteReminderReceiver.EXTRA_NOTE_ID, note.id)
+                    .putString(NoteReminderReceiver.EXTRA_NOTE_TITLE, getString(R.string.note_reminder_title))
+                    .putString(NoteReminderReceiver.EXTRA_NOTE_TEXT, note.text)
+                    .build()
+            )
+            .addTag("note_reminder_${note.id}")
+            .build()
+        WorkManager.getInstance(requireContext()).enqueueUniqueWork(
+            "note_reminder_${note.id}",
+            androidx.work.ExistingWorkPolicy.REPLACE,
+            request
         )
-        alarmManager.set(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
         
         repo.updateNoteReminder(note.id, triggerTime)
         refreshList()
@@ -198,6 +234,22 @@ class NotesFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    private fun handleReminderDeepLink() {
+        val noteId = activity?.intent?.getLongExtra(NoteReminderReceiver.EXTRA_NOTE_ID, -1L) ?: -1L
+        if (noteId > 0L) {
+            focusNote(noteId)
+            activity?.intent?.removeExtra(NoteReminderReceiver.EXTRA_NOTE_ID)
+        }
+    }
+
+    private fun focusNote(noteId: Long) {
+        val index = adapter.items.indexOfFirst { it.id == noteId }
+        if (index >= 0) {
+            binding.rvNotes.scrollToPosition(index)
+            com.google.android.material.snackbar.Snackbar.make(binding.root, "Opened reminder note", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT).show()
+        }
     }
 
     inner class NoteAdapter : RecyclerView.Adapter<NoteAdapter.ViewHolder>() {
