@@ -47,7 +47,7 @@ object NavTransitionPolicy {
         interpolator = MotionUtils.resolveThemeInterpolator(
             context,
             com.google.android.material.R.attr.motionEasingStandard,
-            FastOutSlowInInterpolator() as TimeInterpolator
+            FastOutSlowInInterpolator()
         )
         return this
     }
