@@ -202,7 +202,7 @@ class Prefs(context: Context) {
     var homeAlignment: Int
         get() = prefs.getInt(HOME_ALIGNMENT, Gravity.START)
         set(value) {
-            prefs.edit { putInt(HOME_ALIGNMENT, value).apply() }
+            prefs.edit { putInt(HOME_ALIGNMENT, value) }
             emitHomescreenPrefs()
         }
 
