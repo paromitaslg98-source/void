@@ -89,6 +89,7 @@
     <string name="remind">Remind</string>
     <string name="delete_note">Delete</string>
     <string name="reminder_set">Reminder set for 30 minutes</string>
+    <string name="note_reminder_title">Note Reminder</string>
     <string name="accessibility_disclosure">Please turn on or off VOID Launcher\'s accessibility service in your device\'s settings to enable or disable this feature.
     \n\nPlease note that this service is only used to let you turn off your device\'s screen using the double tap gesture. Our accessibility service does not collect or share any data.</string>
     <string name="accept">Accept</string>
