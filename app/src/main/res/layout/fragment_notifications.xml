@@ -39,7 +39,7 @@
         android:layout_below="@id/topBar"
         android:clipToPadding="false"
         android:overScrollMode="never"
-        android:paddingTop="12dp"
+        android:paddingTop="16dp"
         android:paddingBottom="88dp" />
 
     <!-- Empty state -->
