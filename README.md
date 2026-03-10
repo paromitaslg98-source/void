@@ -1,55 +1,45 @@
-<p align="center">
-  <img src="fastlane/metadata/android/en-US/images/icon.png" alt="VOID Launcher" width="100" height="100" style="border-radius: 50%;">
-</p>
+# VOID Launcher (Compose Edition)
 
-<h1 align="center">VOID Launcher</h1>
+VOID Launcher is a minimalist launcher refactored to a Compose-first architecture.
 
-<p align="center">
-  <em>A minimalist Android launcher, now refactored to a Compose-first architecture.</em>
-</p>
+## Migration Review (Final)
 
----
+As part of the final Compose migration review, the project was audited for:
+- **Security** risks in manifest/configuration
+- **Performance** and unnecessary legacy UI artifacts
+- **UI/UX** consistency with Material 3 patterns
+- **Project hygiene** after XML/Fragment → Compose migration
 
-## Project Status
+## What was cleaned up
 
-The UI stack has been fully refactored away from XML layouts, Fragments, and ViewBinding to a **Jetpack Compose-first** setup.
+### 1) Package rename (requested)
+- Application package/namespace changed to:
+  - `com.launcher.void`
+- Updated across Gradle and Kotlin sources.
 
-### What changed in this refactor
+### 2) Compose navigation + transition polish
+- Compose `NavHost` remains the main UI entry.
+- Added direction-aware transitions for Notes/Notifications flows to preserve gesture mental model with Material motion.
 
-- `MainActivity` now uses `ComponentActivity` + `setContent {}`.
-- Navigation is now provided by `navigation-compose` with type-safe `@Serializable` route objects.
-- The app theme is defined in Kotlin (`ui/theme/Theme.kt`) via `MaterialTheme` and `ColorScheme`.
-- All screen entry points are Composable functions under `ui/screen/`.
-- Legacy XML screen layouts and XML navigation graph were removed.
-- Legacy Fragment-based UI classes and RecyclerView adapters were removed from the primary UI path.
+### 3) Security hardening
+- Removed privileged/inapplicable permission:
+  - `android.permission.EXPAND_STATUS_BAR`
+- Added cleartext network hardening:
+  - `android:usesCleartextTraffic="false"`
 
----
+### 4) Legacy cleanup
+- Removed stale menu resource not used after Compose migration:
+  - `res/menu/menu_note_options.xml`
 
-## Compose Architecture (Current)
-
-### UI
-
-- **Jetpack Compose** (Material 3)
-- **Compose Navigation** (`NavHost`)
-- **StateFlow-first UI state collection** (`collectAsStateWithLifecycle`)
-
-### Key files
-
-- `app/src/main/java/com/voidlauncher/app/MainActivity.kt`
-- `app/src/main/java/com/voidlauncher/app/AppRoutes.kt`
-- `app/src/main/java/com/voidlauncher/app/MainUiViewModel.kt`
-- `app/src/main/java/com/voidlauncher/app/ui/theme/Theme.kt`
-- `app/src/main/java/com/voidlauncher/app/ui/screen/*`
-
-### Package structure
+## Current architecture
 
 ```text
-app/src/main/java/com/voidlauncher/app
-├── MainActivity.kt                # Compose app shell + NavHost
+app/src/main/java/com/launcher/void
+├── MainActivity.kt                # Compose app shell + animated NavHost
 ├── AppRoutes.kt                   # @Serializable route objects
 ├── MainUiViewModel.kt             # StateFlow-based UI state
 ├── ui/
-│   ├── theme/Theme.kt             # MaterialTheme configuration
+│   ├── theme/Theme.kt             # Material3 theme
 │   ├── screen/
 │   │   ├── HomeScreen.kt
 │   │   ├── AppDrawerScreen.kt
@@ -57,55 +47,28 @@ app/src/main/java/com/voidlauncher/app
 │   │   ├── NotificationsScreen.kt
 │   │   └── NotesScreen.kt
 │   └── FakeHomeScreen.kt
-├── data/                          # persistence/domain models
-├── helper/                        # services/workers/system integration
-└── listener/                      # admin/gesture listeners
+├── data/
+├── helper/
+└── listener/
 ```
 
----
+## Build and validation
 
-## Build & Test
+### Requirements
+- Android SDK 35
+- JDK 21 (project toolchain requirement)
 
-### Prerequisites
-
-- Android Studio Koala+ (or equivalent Gradle/SDK setup)
-- Android SDK API 35
-- **JDK 21** (required by `gradle-daemon-jvm.properties`)
-
-### Build
-
+### Commands
 ```bash
 ./gradlew clean :app:assembleDebug
-```
-
-### E2E (instrumentation) test flow
-
-Run on a connected device or emulator:
-
-```bash
-# 1) Build + install debug APK
-./gradlew :app:installDebug
-
-# 2) Run instrumentation tests (when androidTest cases exist)
+./gradlew :app:testDebugUnitTest
 ./gradlew :app:connectedDebugAndroidTest
 ```
 
-If no emulator/device is attached, start one first from Android Studio Device Manager.
+## Known environment limitation
 
----
-
-## Refactor Validation Checklist
-
-- [x] No `res/layout/` directory
-- [x] No `res/navigation/` XML graph
-- [x] No Fragment/ViewBinding-based main UI entrypoint
-- [x] Compose BOM and Material3 configured in Gradle
-- [x] Compose `NavHost` wired from `MainActivity`
-
----
+In restricted CI/container environments where JDK 21 cannot be installed, Gradle tasks will fail before compilation. In that case, run the commands locally with JDK 21 for full validation.
 
 ## License
 
-This project is licensed under the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.en.html).
-
-VOID is a fork/rework inspired by [Olauncher](https://github.com/knownassurajit/olauncher).
+GPL-3.0

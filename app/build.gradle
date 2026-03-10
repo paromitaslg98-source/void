@@ -15,7 +15,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.voidlauncher.app"
+        applicationId "com.launcher.void"
         minSdkVersion 26
         targetSdkVersion 35
         versionCode 97
@@ -46,7 +46,7 @@ android {
     composeOptions {
         kotlinCompilerExtensionVersion '2.0.21'
     }
-    namespace 'com.voidlauncher.app'
+    namespace 'com.launcher.void'
 }
 
 dependencies {
