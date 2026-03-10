@@ -17,9 +17,6 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
-import android.view.ViewConfiguration
-import android.view.HapticFeedbackConstants
-import android.view.WindowInsets
 import android.widget.FrameLayout
 import android.widget.PopupMenu
 import android.widget.TextView
@@ -108,8 +105,6 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
         super.onResume()
         populateHomeScreen(false)
         viewModel.isVoidDefault()
-        if (prefs.showStatusBar) showStatusBar()
-        else hideStatusBar()
     }
 
     override fun onClick(view: View) {
@@ -666,27 +661,6 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
             } catch (e: Exception) {
                 requireContext().showToast(getString(R.string.launcher_failed_to_lock_device), Toast.LENGTH_LONG)
                 prefs.lockModeOn = false
-            }
-        }
-    }
-
-    private fun showStatusBar() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-            requireActivity().window.insetsController?.show(WindowInsets.Type.statusBars())
-        else
-            @Suppress("DEPRECATION", "InlinedApi")
-            requireActivity().window.decorView.apply {
-                systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-            }
-    }
-
-    private fun hideStatusBar() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-            requireActivity().window.insetsController?.hide(WindowInsets.Type.statusBars())
-        else {
-            @Suppress("DEPRECATION")
-            requireActivity().window.decorView.apply {
-                systemUiVisibility = View.SYSTEM_UI_FLAG_IMMERSIVE or View.SYSTEM_UI_FLAG_FULLSCREEN
             }
         }
     }

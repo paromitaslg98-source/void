@@ -155,6 +155,14 @@ class Prefs(context: Context) {
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
     }
 
+    fun registerPreferenceChangeListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+    }
+
+    fun unregisterPreferenceChangeListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
+        prefs.unregisterOnSharedPreferenceChangeListener(listener)
+    }
+
     var firstOpen: Boolean
         get() = prefs.getBoolean(FIRST_OPEN, true)
         set(value) = prefs.edit { putBoolean(FIRST_OPEN, value).apply() }
@@ -844,36 +852,4 @@ class Prefs(context: Context) {
             }
         }
     }
-
-    private val homescreenPrefKeys = setOf(
-        HOME_ALIGNMENT,
-        HOME_BOTTOM_ALIGNMENT,
-        HOME_VERTICAL_ALIGNMENT,
-        SHOW_CLOCK_WIDGET,
-        SHOW_DATE_WIDGET,
-        SHOW_SCREEN_TIME_WIDGET,
-    )
-
-    private fun readHomescreenPreferences(): HomescreenPreferences {
-        return HomescreenPreferences(
-            horizontalAlignment = homeAlignment,
-            verticalAlignment = homeVerticalAlignment,
-            showClock = showClockWidget,
-            showDate = showDateWidget,
-            showScreenTime = showScreenTimeWidget,
-        )
-    }
-
-    private fun emitHomescreenPrefs() {
-        _homescreenPreferences.value = readHomescreenPreferences()
-    }
-
-    fun resetHomescreenDefaults() {
-        homeAlignment = Gravity.START
-        homeVerticalAlignment = Gravity.BOTTOM
-        showClockWidget = true
-        showDateWidget = true
-        showScreenTimeWidget = true
-    }
-
 }

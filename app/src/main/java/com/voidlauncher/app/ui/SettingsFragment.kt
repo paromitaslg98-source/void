@@ -12,7 +12,6 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.WindowInsets
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.bundleOf
@@ -21,6 +20,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import com.voidlauncher.app.BuildConfig
+import com.voidlauncher.app.AppSettingsViewModel
 import com.voidlauncher.app.MainViewModel
 import com.voidlauncher.app.R
 import com.voidlauncher.app.data.Constants
@@ -48,6 +48,7 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
 
     private lateinit var prefs: Prefs
     private lateinit var viewModel: MainViewModel
+    private lateinit var appSettingsViewModel: AppSettingsViewModel
     private lateinit var deviceManager: DevicePolicyManager
     private lateinit var componentName: ComponentName
 
@@ -69,6 +70,9 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
         prefs = Prefs(requireContext())
         viewModel = activity?.run {
             ViewModelProvider(this)[MainViewModel::class.java]
+        } ?: throw Exception("Invalid Activity")
+        appSettingsViewModel = activity?.run {
+            ViewModelProvider(this)[AppSettingsViewModel::class.java]
         } ?: throw Exception("Invalid Activity")
         viewModel.isVoidDefault()
 
@@ -329,18 +333,12 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
     }
 
     private fun toggleStatusBar() {
-        prefs.showStatusBar = !prefs.showStatusBar
+        appSettingsViewModel.toggleStatusBarVisibility()
         populateStatusBar()
     }
 
     private fun populateStatusBar() {
-        if (prefs.showStatusBar) {
-            showStatusBar()
-            binding.statusBar.text = getString(R.string.on)
-        } else {
-            hideStatusBar()
-            binding.statusBar.text = getString(R.string.off)
-        }
+        binding.statusBar.text = if (prefs.showStatusBar) getString(R.string.on) else getString(R.string.off)
     }
 
     private fun toggleClockWidget() {
@@ -362,27 +360,6 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
         binding.clockWidgetToggle.text = if (prefs.showClockWidget) getString(R.string.on) else getString(R.string.off)
         binding.dateWidgetToggle.text = if (prefs.showDateWidget) getString(R.string.on) else getString(R.string.off)
         binding.screenTimeOnOff.text = if (prefs.showScreenTimeWidget) getString(R.string.on) else getString(R.string.off)
-    }
-
-    private fun showStatusBar() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-            requireActivity().window.insetsController?.show(WindowInsets.Type.statusBars())
-        else
-            @Suppress("DEPRECATION", "InlinedApi")
-            requireActivity().window.decorView.apply {
-                systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-            }
-    }
-
-    private fun hideStatusBar() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-            requireActivity().window.insetsController?.hide(WindowInsets.Type.statusBars())
-        else {
-            @Suppress("DEPRECATION")
-            requireActivity().window.decorView.apply {
-                systemUiVisibility = View.SYSTEM_UI_FLAG_IMMERSIVE or View.SYSTEM_UI_FLAG_FULLSCREEN
-            }
-        }
     }
 
     private fun showHiddenApps() {
