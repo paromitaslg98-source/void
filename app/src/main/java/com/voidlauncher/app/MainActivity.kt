@@ -234,7 +234,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun navigateToReminderIfNeeded(incomingIntent: Intent?) {
-        val noteId = incomingIntent?.getLongExtra(com.voidlauncher.app.helper.NoteReminderReceiver.EXTRA_NOTE_ID, -1L) ?: -1L
+        val noteId = incomingIntent?.getLongExtra(NoteReminderReceiver.EXTRA_NOTE_ID, -1L) ?: -1L
         if (noteId <= 0L) return
         if (navController.currentDestination?.id != R.id.notesFragment) {
             navController.navigate(R.id.action_mainFragment_to_notesFragment)
