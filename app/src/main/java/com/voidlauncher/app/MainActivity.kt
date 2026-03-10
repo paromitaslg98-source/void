@@ -25,6 +25,7 @@ import androidx.navigation.findNavController
 import com.voidlauncher.app.data.Constants
 import com.voidlauncher.app.data.Prefs
 import com.voidlauncher.app.databinding.ActivityMainBinding
+import com.voidlauncher.app.helper.NoteReminderReceiver
 import com.voidlauncher.app.helper.getColorFromAttr
 import com.voidlauncher.app.helper.hasBeenDays
 import com.voidlauncher.app.helper.hasBeenHours

@@ -9,7 +9,7 @@ import com.voidlauncher.app.helper.AppLifecycleState
 class VoidApplication : Application(), DefaultLifecycleObserver {
 
     override fun onCreate() {
-        super.onCreate()
+        super<Application>.onCreate()
         ProcessLifecycleOwner.get().lifecycle.addObserver(this)
     }
 

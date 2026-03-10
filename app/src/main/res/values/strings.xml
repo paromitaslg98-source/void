@@ -140,4 +140,6 @@
     <string name="show_clock_widget">Show clock widget</string>
     <string name="show_calendar_date_widget">Show calendar date widget</string>
     <string name="reset_homescreen_defaults">Reset homescreen defaults</string>
+    <string name="dismiss">Dismiss</string>
+    <string name="clear">Clear</string>
 </resources>

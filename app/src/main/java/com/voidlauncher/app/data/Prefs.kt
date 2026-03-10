@@ -144,6 +144,16 @@ class Prefs(context: Context) {
     private val IS_SHORTCUT_SWIPE_RIGHT = "IS_SHORTCUT_SWIPE_RIGHT"
 
     private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_FILENAME, 0)
+
+    private val homescreenPrefKeys = setOf(
+        HOME_ALIGNMENT,
+        HOME_VERTICAL_ALIGNMENT,
+        HOME_BOTTOM_ALIGNMENT,
+        SHOW_CLOCK_WIDGET,
+        SHOW_DATE_WIDGET,
+        SHOW_SCREEN_TIME_WIDGET
+    )
+
     private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key in homescreenPrefKeys) emitHomescreenPrefs()
     }
@@ -153,6 +163,32 @@ class Prefs(context: Context) {
 
     init {
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
+    }
+
+    private fun emitHomescreenPrefs() {
+        _homescreenPreferences.value = readHomescreenPreferences()
+    }
+
+    private fun readHomescreenPreferences(): HomescreenPreferences {
+        return HomescreenPreferences(
+            horizontalAlignment = prefs.getInt(HOME_ALIGNMENT, Gravity.START),
+            verticalAlignment = prefs.getInt(
+                HOME_VERTICAL_ALIGNMENT,
+                if (prefs.getBoolean(HOME_BOTTOM_ALIGNMENT, true)) Gravity.BOTTOM else Gravity.CENTER_VERTICAL
+            ),
+            showClock = prefs.getBoolean(SHOW_CLOCK_WIDGET, prefs.getInt(DATE_TIME_VISIBILITY, Constants.DateTime.ON) == Constants.DateTime.ON),
+            showDate = prefs.getBoolean(SHOW_DATE_WIDGET, prefs.getInt(DATE_TIME_VISIBILITY, Constants.DateTime.ON) != Constants.DateTime.OFF),
+            showScreenTime = prefs.getBoolean(SHOW_SCREEN_TIME_WIDGET, true)
+        )
+    }
+
+    fun resetHomescreenDefaults() {
+        homeAlignment = Gravity.START
+        homeVerticalAlignment = Gravity.BOTTOM
+        showClockWidget = true
+        showDateWidget = true
+        showScreenTimeWidget = true
+        emitHomescreenPrefs()
     }
 
     fun registerPreferenceChangeListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {

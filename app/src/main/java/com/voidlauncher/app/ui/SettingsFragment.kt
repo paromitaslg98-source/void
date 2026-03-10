@@ -40,7 +40,7 @@ import com.voidlauncher.app.helper.setPlainWallpaper
 import com.voidlauncher.app.helper.shareApp
 import com.voidlauncher.app.helper.showToast
 import com.voidlauncher.app.listener.DeviceAdmin
-import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.TransitionLanguage
+import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.Direction
 import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.applyDestinationTransitions
 import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.applyExitFor
 
@@ -57,7 +57,7 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        applyDestinationTransitions(TransitionLanguage.HIERARCHICAL)
+        applyDestinationTransitions(Direction.FADE)
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -237,7 +237,7 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
         when (view.id) {
             R.id.alignment -> {
                 prefs.appLabelAlignment = prefs.homeAlignment
-                applyExitFor(TransitionLanguage.HIERARCHICAL)
+                applyExitFor(Direction.FADE)
                 findNavController().navigate(R.id.action_settingsFragment_to_appListFragment)
                 requireContext().showToast(getString(R.string.alignment_changed))
             }
@@ -667,7 +667,7 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
 
     private fun showAppListIfEnabled(flag: Int) {
         viewModel.getAppList(true)
-        applyExitFor(TransitionLanguage.HIERARCHICAL)
+        applyExitFor(Direction.FADE)
         findNavController().navigate(
             R.id.action_settingsFragment_to_appListFragment,
             bundleOf(Constants.Key.FLAG to flag)

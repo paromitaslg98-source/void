@@ -22,6 +22,7 @@ import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.work.Data
+import com.google.android.material.snackbar.Snackbar
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.voidlauncher.app.R
@@ -32,7 +33,7 @@ import com.voidlauncher.app.databinding.RowNoteItemBinding
 import com.voidlauncher.app.helper.NoteReminderReceiver
 import com.voidlauncher.app.helper.NoteReminderWorker
 import com.voidlauncher.app.listener.OnSwipeTouchListener
-import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.TransitionLanguage
+import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.Direction
 import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.applyDestinationTransitions
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
@@ -56,7 +57,7 @@ class NotesFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        applyDestinationTransitions(TransitionLanguage.PEER)
+        applyDestinationTransitions(Direction.RIGHT)
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
