@@ -4,12 +4,14 @@ import android.annotation.SuppressLint
 import android.app.Notification
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.animation.LayoutTransition
 import android.os.Bundle
 import android.provider.Settings
 import android.text.format.DateUtils
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.app.NotificationManagerCompat
@@ -46,6 +48,13 @@ class NotificationsFragment : Fragment() {
 
         val adapter = NotificationAdapter()
         binding.rvNotifications.layoutManager = LinearLayoutManager(requireContext())
+        binding.rvNotifications.itemAnimator = DefaultItemAnimator().apply {
+            addDuration = 300
+            removeDuration = 300
+            changeDuration = 300
+            moveDuration = 250
+            supportsChangeAnimations = false
+        }
         binding.rvNotifications.adapter = adapter
 
         NotificationService.notificationsLiveData.observe(viewLifecycleOwner) { groups ->
@@ -174,7 +183,8 @@ class NotificationsFragment : Fragment() {
         }
 
         inner class ViewHolder(private val binding: RowNotificationGroupBinding) : RecyclerView.ViewHolder(binding.root) {
-            fun bind(group: NotificationGroup) {
+            fun bind(item: NotificationGroupItem) {
+                val group = item.group
                 // App info
                 try {
                     val appInfo = pm.getApplicationInfo(group.packageName, 0)
@@ -195,7 +205,7 @@ class NotificationsFragment : Fragment() {
                 binding.tvTime.text = timeString
 
                 // Count badge and expand arrow
-                val isExpanded = expandedGroups.contains(group.groupKey)
+                val isExpanded = item.isExpanded
                 
                 binding.tvCount.visibility = View.VISIBLE
                 binding.tvCount.text = "${group.childCount}"
@@ -221,12 +231,12 @@ class NotificationsFragment : Fragment() {
                 // Click handler: toggle expand or open notification
                 binding.llGroupHeader.setOnClickListener {
                     if (group.childCount > 1) {
-                        if (isExpanded) {
+                        if (item.isExpanded) {
                             expandedGroups.remove(group.groupKey)
                         } else {
                             expandedGroups.add(group.groupKey)
                         }
-                        notifyItemChanged(bindingAdapterPosition)
+                        submitListInternal()
                     } else {
                         try {
                             latest?.contentIntent?.send()
@@ -234,6 +244,23 @@ class NotificationsFragment : Fragment() {
                             e.printStackTrace()
                         }
                     }
+                }
+
+                binding.ivExpand.animate()
+                    .rotation(if (isExpanded) 180f else 0f)
+                    .setDuration(220)
+                    .setInterpolator(AccelerateDecelerateInterpolator())
+                    .start()
+
+                binding.llChildren.layoutTransition = LayoutTransition().apply {
+                    setAnimateParentHierarchy(false)
+                    setDuration(LayoutTransition.APPEARING, 220)
+                    setDuration(LayoutTransition.DISAPPEARING, 220)
+                    setDuration(LayoutTransition.CHANGE_APPEARING, 220)
+                    setDuration(LayoutTransition.CHANGE_DISAPPEARING, 220)
+                    setDuration(LayoutTransition.CHANGING, 220)
+                    setInterpolator(LayoutTransition.APPEARING, AccelerateDecelerateInterpolator())
+                    setInterpolator(LayoutTransition.DISAPPEARING, AccelerateDecelerateInterpolator())
                 }
                 
                 // Click handler: open notification from preview
