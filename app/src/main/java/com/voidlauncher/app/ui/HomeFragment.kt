@@ -301,12 +301,12 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
             viewLifecycleOwner.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
                 prefs.homescreenPreferences.collect {
                     setHomeAlignment(it.horizontalAlignment)
-                    populateDateTime()
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         populateScreenTime()
                     } else {
                         binding.tvScreenTime.visibility = View.GONE
                     }
+                    populateDateTime()
                 }
             }
         }
