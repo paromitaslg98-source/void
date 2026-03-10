@@ -140,7 +140,7 @@ class NotificationsFragment : Fragment() {
                         c.drawRect(itemView.right + dX, itemView.top.toFloat(), itemView.right.toFloat(), itemView.bottom.toFloat(), backgroundPaint)
                     }
 
-                    val label = if (dX > 0) "DISMISS" else "CLEAR"
+                    val label = if (dX > 0) getString(R.string.dismiss) else getString(R.string.clear)
                     val centerY = itemView.top + itemView.height / 2f - (textPaint.descent() + textPaint.ascent()) / 2
                     val centerX = if (dX > 0) {
                         itemView.left + (dX / 2)
