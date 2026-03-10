@@ -81,8 +81,7 @@ class NotificationsFragment : Fragment() {
                 .addCallback(object : Snackbar.Callback() {
                     override fun onDismissed(transientBottomBar: Snackbar?, event: Int) {
                         if (event != DISMISS_EVENT_ACTION) {
-                            pendingUndoGroups = null
-                            pendingUndoExpandedGroups = emptySet()
+                            clearUndoState()
                             renderNotifications(latestLiveGroups, adapter)
                         }
                     }
