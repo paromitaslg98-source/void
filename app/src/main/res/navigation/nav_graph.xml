@@ -14,38 +14,22 @@
         <!-- App drawer: swipe-up gesture → drawer slides in from bottom, home scales back slightly -->
         <action
             android:id="@+id/action_mainFragment_to_appListFragment"
-            app:destination="@id/appListFragment"
-            app:enterAnim="@anim/slide_up_enter"
-            app:exitAnim="@anim/slide_out_top"
-            app:popEnterAnim="@anim/slide_in_bottom"
-            app:popExitAnim="@anim/slide_down_exit" />
+            app:destination="@id/appListFragment" />
 
         <!-- Settings: long-press → fades in with subtle upward drift; back fades out -->
         <action
             android:id="@+id/action_mainFragment_to_settingsFragment"
-            app:destination="@id/settingsFragment"
-            app:enterAnim="@anim/fade_enter"
-            app:exitAnim="@anim/fade_exit"
-            app:popEnterAnim="@anim/fade_enter"
-            app:popExitAnim="@anim/fade_exit" />
+            app:destination="@id/settingsFragment" />
 
         <!-- Notifications -->
         <action
             android:id="@+id/action_mainFragment_to_notificationsFragment"
-            app:destination="@id/notificationsFragment"
-            app:enterAnim="@anim/slide_in_right"
-            app:exitAnim="@anim/slide_out_left"
-            app:popEnterAnim="@anim/slide_in_left"
-            app:popExitAnim="@anim/slide_out_right" />
+            app:destination="@id/notificationsFragment" />
 
         <!-- Notes -->
         <action
             android:id="@+id/action_mainFragment_to_notesFragment"
-            app:destination="@id/notesFragment"
-            app:enterAnim="@anim/slide_in_left"
-            app:exitAnim="@anim/slide_out_right"
-            app:popEnterAnim="@anim/slide_in_right"
-            app:popExitAnim="@anim/slide_out_left" />
+            app:destination="@id/notesFragment" />
     </fragment>
 
     <fragment
@@ -57,10 +41,6 @@
         <action
             android:id="@+id/action_appListFragment_to_settingsFragment2"
             app:destination="@id/settingsFragment"
-            app:enterAnim="@anim/fade_enter"
-            app:exitAnim="@anim/slide_out_top"
-            app:popEnterAnim="@anim/slide_in_bottom"
-            app:popExitAnim="@anim/fade_exit"
             app:popUpTo="@+id/appListFragment"
             app:popUpToInclusive="true" />
     </fragment>
@@ -72,11 +52,7 @@
         android:layout="@layout/fragment_settings">
         <action
             android:id="@+id/action_settingsFragment_to_appListFragment"
-            app:destination="@id/appListFragment"
-            app:enterAnim="@anim/slide_up_enter"
-            app:exitAnim="@anim/slide_out_top"
-            app:popEnterAnim="@anim/slide_in_bottom"
-            app:popExitAnim="@anim/slide_down_exit" />
+            app:destination="@id/appListFragment" />
     </fragment>
 
     <fragment

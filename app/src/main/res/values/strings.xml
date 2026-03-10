@@ -46,6 +46,9 @@
     <string name="hide">Hide</string>
     <string name="status_bar">Status bar on top</string>
     <string name="rename">Rename</string>
+    <string name="change_or_add_app">Change or add app</string>
+    <string name="reorder_apps">Reorder apps</string>
+    <string name="remove">Remove</string>
     <string name="show_date_time">Show date time</string>
     <string name="appearance">Appearance</string>
     <string name="gestures">Gestures</string>
@@ -77,6 +80,8 @@
     <string name="notifications">Notifications</string>
     <string name="no_notifications">No new notifications</string>
     <string name="clear_all">Clear all</string>
+    <string name="notifications_cleared">Notifications cleared</string>
+    <string name="undo">Undo</string>
     <string name="notes_title">Notes</string>
     <string name="add_note_hint">Add a new note…</string>
     <string name="no_notes">No notes yet</string>
@@ -84,6 +89,7 @@
     <string name="remind">Remind</string>
     <string name="delete_note">Delete</string>
     <string name="reminder_set">Reminder set for 30 minutes</string>
+    <string name="note_reminder_title">Note Reminder</string>
     <string name="accessibility_disclosure">Please turn on or off VOID Launcher\'s accessibility service in your device\'s settings to enable or disable this feature.
     \n\nPlease note that this service is only used to let you turn off your device\'s screen using the double tap gesture. Our accessibility service does not collect or share any data.</string>
     <string name="accept">Accept</string>

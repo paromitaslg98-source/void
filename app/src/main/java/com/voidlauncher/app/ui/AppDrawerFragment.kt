@@ -40,6 +40,9 @@ import com.voidlauncher.app.helper.openUrl
 import com.voidlauncher.app.helper.showKeyboard
 import com.voidlauncher.app.helper.showToast
 import com.voidlauncher.app.helper.uninstall
+import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.TransitionLanguage
+import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.applyDestinationTransitions
+import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.applyExitFor
 
 class AppDrawerFragment : Fragment() {
 
@@ -58,6 +61,11 @@ class AppDrawerFragment : Fragment() {
     private val viewModel: MainViewModel by activityViewModels()
     private var _binding: FragmentAppDrawerBinding? = null
     private val binding get() = _binding!!
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        applyDestinationTransitions(TransitionLanguage.HIERARCHICAL)
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -432,6 +440,7 @@ class AppDrawerFragment : Fragment() {
                     binding.search.hideKeyboard()
                     prefs.firstHide = false
                     viewModel.showDialog.postValue(Constants.Dialog.HIDDEN)
+                    applyExitFor(TransitionLanguage.HIERARCHICAL)
                     findNavController().navigate(R.id.action_appListFragment_to_settingsFragment2)
                 }
                 viewModel.getAppList()

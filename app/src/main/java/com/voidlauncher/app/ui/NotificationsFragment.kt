@@ -4,30 +4,47 @@ import android.annotation.SuppressLint
 import android.app.Notification
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Typeface
 import android.os.Bundle
 import android.provider.Settings
 import android.text.format.DateUtils
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.app.NotificationManagerCompat
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.snackbar.Snackbar
 import com.voidlauncher.app.R
 import com.voidlauncher.app.data.NotificationGroup
 import com.voidlauncher.app.databinding.FragmentNotificationsBinding
 import com.voidlauncher.app.databinding.RowNotificationGroupBinding
 import com.voidlauncher.app.helper.NotificationService
 import com.voidlauncher.app.listener.OnSwipeTouchListener
+import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.TransitionLanguage
+import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.applyDestinationTransitions
 
 class NotificationsFragment : Fragment() {
 
     private var _binding: FragmentNotificationsBinding? = null
     private val binding get() = _binding!!
+    private var latestLiveGroups: List<NotificationGroup> = emptyList()
+    private var pendingUndoGroups: List<NotificationGroup>? = null
+    private var pendingUndoExpandedGroups: Set<String> = emptySet()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        applyDestinationTransitions(TransitionLanguage.PEER)
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentNotificationsBinding.inflate(inflater, container, false)
@@ -40,18 +57,54 @@ class NotificationsFragment : Fragment() {
 
         val adapter = NotificationAdapter()
         binding.rvNotifications.layoutManager = LinearLayoutManager(requireContext())
+        binding.rvNotifications.itemAnimator = DefaultItemAnimator().apply {
+            addDuration = 300
+            removeDuration = 300
+            changeDuration = 300
+            moveDuration = 250
+            supportsChangeAnimations = false
+        }
         binding.rvNotifications.adapter = adapter
+        ItemTouchHelper(createSwipeCallback(adapter)).attachToRecyclerView(binding.rvNotifications)
+        updateNotificationsVisibility(adapter.itemCount)
 
         NotificationService.notificationsLiveData.observe(viewLifecycleOwner) { groups ->
-            val hasNotifications = groups.isNotEmpty()
-            binding.rvNotifications.visibility = if (hasNotifications) View.VISIBLE else View.GONE
-            binding.tvNoNotifications.visibility = if (hasNotifications) View.GONE else View.VISIBLE
-            binding.tvClearAll.visibility = if (hasNotifications) View.VISIBLE else View.GONE
             adapter.submitList(groups)
+            updateNotificationsVisibility(groups.size)
         }
 
         binding.tvClearAll.setOnClickListener {
-            // Clear all notifications
+            val currentGroups = adapter.currentList
+            if (currentGroups.isEmpty()) {
+                return@setOnClickListener
+            }
+
+            pendingUndoGroups = currentGroups.toList()
+            pendingUndoExpandedGroups = adapter.getExpandedGroupKeys()
+
+            renderNotifications(emptyList(), adapter)
+            NotificationManagerCompat.from(requireContext()).cancelAll()
+
+            Snackbar.make(binding.root, R.string.notifications_cleared, 5000)
+                .setAction(R.string.undo) {
+                    val restoredGroups = mergeUndoSnapshotWithLiveState(
+                        snapshot = pendingUndoGroups.orEmpty(),
+                        live = latestLiveGroups
+                    )
+                    pendingUndoGroups = null
+                    adapter.setExpandedGroupKeys(pendingUndoExpandedGroups)
+                    renderNotifications(restoredGroups, adapter)
+                    pendingUndoExpandedGroups = emptySet()
+                }
+                .addCallback(object : Snackbar.Callback() {
+                    override fun onDismissed(transientBottomBar: Snackbar?, event: Int) {
+                        if (event != DISMISS_EVENT_ACTION) {
+                            clearUndoState()
+                            renderNotifications(latestLiveGroups, adapter)
+                        }
+                    }
+                })
+                .show()
         }
 
         binding.tvNoNotifications.setOnClickListener {
@@ -66,6 +119,32 @@ class NotificationsFragment : Fragment() {
                 findNavController().popBackStack()
             }
         })
+    }
+
+    private fun renderNotifications(groups: List<NotificationGroup>, adapter: NotificationAdapter) {
+        val hasNotifications = groups.isNotEmpty()
+        binding.rvNotifications.visibility = if (hasNotifications) View.VISIBLE else View.GONE
+        binding.tvNoNotifications.visibility = if (hasNotifications) View.GONE else View.VISIBLE
+        binding.tvClearAll.visibility = if (hasNotifications) View.VISIBLE else View.GONE
+        adapter.submitList(groups)
+    }
+
+    private fun mergeUndoSnapshotWithLiveState(
+        snapshot: List<NotificationGroup>,
+        live: List<NotificationGroup>
+    ): List<NotificationGroup> {
+        if (snapshot.isEmpty()) {
+            return live
+        }
+
+        val merged = LinkedHashMap<String, NotificationGroup>()
+        snapshot.forEach { merged[it.groupKey] = it }
+        live.forEach { merged[it.groupKey] = it }
+
+        return merged.values.sortedWith(
+            compareByDescending<NotificationGroup> { it.childCount }
+                .thenByDescending { it.latestTimestamp }
+        )
     }
 
     override fun onResume() {
@@ -90,15 +169,105 @@ class NotificationsFragment : Fragment() {
         _binding = null
     }
 
+    private fun createSwipeCallback(adapter: NotificationAdapter): ItemTouchHelper.SimpleCallback {
+        return object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT) {
+            private val backgroundPaint = Paint().apply {
+                color = Color.BLACK
+                style = Paint.Style.FILL
+            }
+            private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.WHITE
+                textSize = 12f * resources.displayMetrics.scaledDensity
+                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                textAlign = Paint.Align.CENTER
+            }
+
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ) = false
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                val position = viewHolder.bindingAdapterPosition
+                if (position == RecyclerView.NO_POSITION) return
+
+                val dismissedGroup = adapter.getGroupAt(position)
+                dismissGroupNotifications(dismissedGroup)
+                adapter.removeAt(position)
+                updateNotificationsVisibility(adapter.itemCount)
+            }
+
+            override fun onChildDraw(
+                c: Canvas,
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                dX: Float,
+                dY: Float,
+                actionState: Int,
+                isCurrentlyActive: Boolean
+            ) {
+                val itemView = viewHolder.itemView
+                if (actionState == ItemTouchHelper.ACTION_STATE_SWIPE && dX != 0f) {
+                    if (dX > 0) {
+                        c.drawRect(itemView.left.toFloat(), itemView.top.toFloat(), itemView.left + dX, itemView.bottom.toFloat(), backgroundPaint)
+                    } else {
+                        c.drawRect(itemView.right + dX, itemView.top.toFloat(), itemView.right.toFloat(), itemView.bottom.toFloat(), backgroundPaint)
+                    }
+
+                    val label = if (dX > 0) getString(R.string.dismiss) else getString(R.string.clear)
+                    val centerY = itemView.top + itemView.height / 2f - (textPaint.descent() + textPaint.ascent()) / 2
+                    val centerX = if (dX > 0) {
+                        itemView.left + (dX / 2)
+                    } else {
+                        itemView.right + (dX / 2)
+                    }
+                    c.drawText(label, centerX, centerY, textPaint)
+                }
+
+                super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
+            }
+        }
+    }
+
+
+    private fun updateNotificationsVisibility(count: Int) {
+        val hasNotifications = count > 0
+        binding.rvNotifications.visibility = if (hasNotifications) View.VISIBLE else View.GONE
+        binding.tvNoNotifications.visibility = if (hasNotifications) View.GONE else View.VISIBLE
+        binding.tvClearAll.visibility = if (hasNotifications) View.VISIBLE else View.GONE
+    }
+
+    private fun dismissGroupNotifications(group: NotificationGroup) {
+        val manager = NotificationManagerCompat.from(requireContext())
+        group.notifications.forEach { sbn ->
+            manager.cancel(sbn.tag, sbn.id)
+        }
+    }
+
     inner class NotificationAdapter : RecyclerView.Adapter<NotificationAdapter.ViewHolder>() {
 
-        private var items = listOf<NotificationGroup>()
+        private var items = mutableListOf<NotificationGroup>()
         private val pm: PackageManager = requireContext().packageManager
         private val expandedGroups = mutableSetOf<String>()
 
         fun submitList(newItems: List<NotificationGroup>) {
-            items = newItems
+            items = newItems.toMutableList()
+            expandedGroups.retainAll(items.map { it.groupKey }.toSet())
             notifyDataSetChanged()
+        }
+
+        fun getGroupAt(position: Int): NotificationGroup = items[position]
+
+        fun removeAt(position: Int) {
+            if (position !in items.indices) return
+            val removed = items.removeAt(position)
+            expandedGroups.remove(removed.groupKey)
+            notifyItemRemoved(position)
+
+            if (items.isEmpty()) {
+                notifyDataSetChanged()
+            }
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -107,13 +276,12 @@ class NotificationsFragment : Fragment() {
         }
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            holder.bind(items[position])
+            holder.bind(getItem(position))
         }
 
-        override fun getItemCount() = items.size
-
         inner class ViewHolder(private val binding: RowNotificationGroupBinding) : RecyclerView.ViewHolder(binding.root) {
-            fun bind(group: NotificationGroup) {
+            fun bind(item: NotificationGroupItem) {
+                val group = item.group
                 // App info
                 try {
                     val appInfo = pm.getApplicationInfo(group.packageName, 0)
@@ -134,7 +302,7 @@ class NotificationsFragment : Fragment() {
                 binding.tvTime.text = timeString
 
                 // Count badge and expand arrow
-                val isExpanded = expandedGroups.contains(group.groupKey)
+                val isExpanded = item.isExpanded
                 
                 binding.tvCount.visibility = View.VISIBLE
                 binding.tvCount.text = "${group.childCount}"
@@ -160,12 +328,12 @@ class NotificationsFragment : Fragment() {
                 // Click handler: toggle expand or open notification
                 binding.llGroupHeader.setOnClickListener {
                     if (group.childCount > 1) {
-                        if (isExpanded) {
+                        if (item.isExpanded) {
                             expandedGroups.remove(group.groupKey)
                         } else {
                             expandedGroups.add(group.groupKey)
                         }
-                        notifyItemChanged(bindingAdapterPosition)
+                        submitListInternal()
                     } else {
                         try {
                             latest?.contentIntent?.send()
@@ -173,6 +341,23 @@ class NotificationsFragment : Fragment() {
                             e.printStackTrace()
                         }
                     }
+                }
+
+                binding.ivExpand.animate()
+                    .rotation(if (isExpanded) 180f else 0f)
+                    .setDuration(220)
+                    .setInterpolator(AccelerateDecelerateInterpolator())
+                    .start()
+
+                binding.llChildren.layoutTransition = LayoutTransition().apply {
+                    setAnimateParentHierarchy(false)
+                    setDuration(LayoutTransition.APPEARING, 220)
+                    setDuration(LayoutTransition.DISAPPEARING, 220)
+                    setDuration(LayoutTransition.CHANGE_APPEARING, 220)
+                    setDuration(LayoutTransition.CHANGE_DISAPPEARING, 220)
+                    setDuration(LayoutTransition.CHANGING, 220)
+                    setInterpolator(LayoutTransition.APPEARING, AccelerateDecelerateInterpolator())
+                    setInterpolator(LayoutTransition.DISAPPEARING, AccelerateDecelerateInterpolator())
                 }
                 
                 // Click handler: open notification from preview
@@ -209,6 +394,18 @@ class NotificationsFragment : Fragment() {
                     }
 
                     container.addView(childView)
+                }
+            }
+        }
+
+        companion object {
+            private val DIFF_CALLBACK = object : DiffUtil.ItemCallback<NotificationGroup>() {
+                override fun areItemsTheSame(oldItem: NotificationGroup, newItem: NotificationGroup): Boolean {
+                    return oldItem.groupKey == newItem.groupKey
+                }
+
+                override fun areContentsTheSame(oldItem: NotificationGroup, newItem: NotificationGroup): Boolean {
+                    return oldItem == newItem
                 }
             }
         }
