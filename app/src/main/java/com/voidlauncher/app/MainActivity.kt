@@ -12,6 +12,8 @@ import android.provider.Settings
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+import android.window.OnBackInvokedCallback
+import android.window.OnBackInvokedDispatcher
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
@@ -53,6 +55,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var appSettingsViewModel: AppSettingsViewModel
     private lateinit var binding: ActivityMainBinding
     private var timerJob: Job? = null
+    private var predictiveBackCallback: OnBackInvokedCallback? = null
 
 //    override fun onBackPressed() {
 //        if (navController.currentDestination?.id != R.id.mainFragment)
@@ -79,20 +82,10 @@ class MainActivity : AppCompatActivity() {
         appSettingsViewModel = ViewModelProvider(this)[AppSettingsViewModel::class.java]
 
         val onBackPressedCallback = object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                if (navController.currentDestination?.id != R.id.mainFragment) {
-                    // then we might want to finish the activity or disable this callback.
-                    if (navController.popBackStack()) {
-                        // Successfully popped back
-                    } else {
-                        // if you want other system/activity level handling
-                    }
-                } else {
-                    binding.messageLayout.visibility = View.GONE
-                }
-            }
+            override fun handleOnBackPressed() = handleNavigationBack()
         }
         onBackPressedDispatcher.addCallback(this, onBackPressedCallback)
+        registerPredictiveBackCallback()
 
         if (prefs.firstOpen) {
             viewModel.firstOpen(true)
@@ -127,7 +120,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onNewIntent(intent: Intent?) {
+        setIntent(intent)
         backToHomeScreen()
+        navigateToReminderIfNeeded(intent)
         super.onNewIntent(intent)
     }
 
@@ -235,6 +230,14 @@ class MainActivity : AppCompatActivity() {
             navController.popBackStack(R.id.mainFragment, false)
     }
 
+    private fun navigateToReminderIfNeeded(incomingIntent: Intent?) {
+        val noteId = incomingIntent?.getLongExtra(NoteReminderReceiver.EXTRA_NOTE_ID, -1L) ?: -1L
+        if (noteId <= 0L) return
+        if (navController.currentDestination?.id != R.id.notesFragment) {
+            navController.navigate(R.id.action_mainFragment_to_notesFragment)
+        }
+    }
+
     private fun setPlainWallpaper() {
         if (this.isDarkThemeOn())
             setPlainWallpaper(this, android.R.color.black)
@@ -314,5 +317,34 @@ class MainActivity : AppCompatActivity() {
                     resetLauncherViaFakeActivity()
             }
         }
+    }
+
+    override fun onDestroy() {
+        unregisterPredictiveBackCallback()
+        super.onDestroy()
+    }
+
+    private fun handleNavigationBack() {
+        if (navController.currentDestination?.id != R.id.mainFragment) {
+            navController.popBackStack()
+        } else {
+            binding.messageLayout.visibility = View.GONE
+        }
+    }
+
+    private fun registerPredictiveBackCallback() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val callback = OnBackInvokedCallback { handleNavigationBack() }
+        predictiveBackCallback = callback
+        onBackInvokedDispatcher.registerOnBackInvokedCallback(
+            OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+            callback
+        )
+    }
+
+    private fun unregisterPredictiveBackCallback() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        predictiveBackCallback?.let { onBackInvokedDispatcher.unregisterOnBackInvokedCallback(it) }
+        predictiveBackCallback = null
     }
 }

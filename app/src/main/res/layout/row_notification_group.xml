@@ -4,11 +4,11 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginHorizontal="16dp"
-    android:layout_marginBottom="12dp"
+    android:layout_marginBottom="16dp"
     android:background="@drawable/md3_filled_card"
     android:orientation="vertical"
-    android:paddingHorizontal="20dp"
-    android:paddingVertical="16dp">
+    android:paddingHorizontal="16dp"
+    android:paddingVertical="12dp">
 
     <!-- Header: icon + app name + count badge + time + expand arrow -->
     <LinearLayout
@@ -82,7 +82,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingVertical="4dp"
+        android:paddingVertical="8dp"
         android:background="?attr/selectableItemBackground">
 
         <TextView
@@ -90,7 +90,7 @@
             style="@style/TextDefault"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="36dp"
+            android:layout_marginStart="32dp"
             android:ellipsize="end"
             android:maxLines="1"
             android:textStyle="bold"
@@ -101,7 +101,7 @@
             style="@style/TextDefault"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="36dp"
+            android:layout_marginStart="32dp"
             android:ellipsize="end"
             android:maxLines="2"
             android:alpha="0.8"

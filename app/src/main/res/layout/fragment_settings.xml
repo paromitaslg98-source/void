@@ -255,12 +255,12 @@
                             android:layout_height="wrap_content"
                             android:fontFamily="@font/google_sans_regular"
                             android:paddingVertical="14dp"
-                            android:text="@string/show_date_time"
+                            android:text="@string/show_clock_widget"
                             android:textColor="?attr/primaryColor"
                             android:textSize="15sp" />
 
                         <TextView
-                            android:id="@+id/dateTime"
+                            android:id="@+id/clockWidgetToggle"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_gravity="end|center_vertical"
@@ -271,66 +271,31 @@
                             android:textSize="15sp" />
                     </FrameLayout>
 
-                    <!-- Inline date/time selector -->
-                    <LinearLayout
-                        android:id="@+id/dateTimeSelectLayout"
+                    <!-- Date widget -->
+                    <FrameLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:layout_marginBottom="8dp"
-                        android:background="@drawable/md3_outlined_card"
-                        android:gravity="center"
-                        android:orientation="horizontal"
-                        android:visibility="gone">
+                        android:layout_height="wrap_content">
 
                         <TextView
-                            android:id="@+id/dateTimeOn"
-                            android:layout_width="0dp"
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
+                            android:fontFamily="@font/google_sans_regular"
+                            android:paddingVertical="14dp"
+                            android:text="@string/show_calendar_date_widget"
+                            android:textColor="?attr/primaryColor"
+                            android:textSize="15sp" />
+
+                        <TextView
+                            android:id="@+id/dateWidgetToggle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="end|center_vertical"
                             android:fontFamily="@font/google_sans_medium"
-                            android:gravity="center"
                             android:paddingVertical="14dp"
                             android:text="@string/on"
                             android:textColor="?attr/primaryColor"
-                            android:textSize="14sp" />
-
-                        <View
-                            android:layout_width="1dp"
-                            android:layout_height="18dp"
-                            android:layout_gravity="center_vertical"
-                            android:background="@drawable/md3_divider" />
-
-                        <TextView
-                            android:id="@+id/dateTimeOff"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:fontFamily="@font/google_sans_medium"
-                            android:gravity="center"
-                            android:paddingVertical="14dp"
-                            android:text="@string/off"
-                            android:textColor="?attr/primaryColor"
-                            android:textSize="14sp" />
-
-                        <View
-                            android:layout_width="1dp"
-                            android:layout_height="18dp"
-                            android:layout_gravity="center_vertical"
-                            android:background="@drawable/md3_divider" />
-
-                        <TextView
-                            android:id="@+id/dateOnly"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:fontFamily="@font/google_sans_medium"
-                            android:gravity="center"
-                            android:paddingVertical="14dp"
-                            android:text="@string/date_only"
-                            android:textColor="?attr/primaryColor"
-                            android:textSize="14sp" />
-                    </LinearLayout>
+                            android:textSize="15sp" />
+                    </FrameLayout>
                 </LinearLayout>
 
                 <View
@@ -491,6 +456,21 @@
                         android:textColor="?attr/primaryColor"
                         android:textSize="15sp" />
                 </FrameLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@drawable/md3_divider" />
+
+                <TextView
+                    android:id="@+id/resetHomescreenPrefs"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/google_sans_medium"
+                    android:paddingVertical="14dp"
+                    android:text="@string/reset_homescreen_defaults"
+                    android:textColor="?attr/primaryColor"
+                    android:textSize="15sp" />
 
             </LinearLayout>
 

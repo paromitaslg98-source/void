@@ -40,6 +40,9 @@ import com.voidlauncher.app.helper.setPlainWallpaper
 import com.voidlauncher.app.helper.shareApp
 import com.voidlauncher.app.helper.showToast
 import com.voidlauncher.app.listener.DeviceAdmin
+import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.TransitionLanguage
+import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.applyDestinationTransitions
+import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.applyExitFor
 
 class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListener {
 
@@ -51,6 +54,11 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
 
     private var _binding: FragmentSettingsBinding? = null
     private val binding get() = _binding!!
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        applyDestinationTransitions(TransitionLanguage.HIERARCHICAL)
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentSettingsBinding.inflate(inflater, container, false)
@@ -81,7 +89,7 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
         populateTextSize()
         populateAlignment()
         populateStatusBar()
-        populateDateTime()
+        populateHomescreenWidgets()
         populateSwipeApps()
         populateSwipeDownAction()
         populateActionHints()
@@ -122,17 +130,13 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
             binding.appsNumSelectLayout.visibility = View.GONE
         }
 
-        if (view.id != R.id.dateTime && view.id != R.id.dateTimeOn && view.id != R.id.dateTimeOff && view.id != R.id.dateOnly) {
-            binding.dateTimeSelectLayout.visibility = View.GONE
-        }
-
         if (view.id != R.id.swipeDownAction && view.id != R.id.notifications && view.id != R.id.search) {
             binding.swipeDownSelectLayout.visibility = View.GONE
         }
 
         when (view.id) {
             R.id.voidHiddenApps -> showHiddenApps()
-            R.id.screenTimeOnOff -> viewModel.showDialog.postValue(Constants.Dialog.DIGITAL_WELLBEING)
+            R.id.screenTimeOnOff -> toggleScreenTimeWidget()
             R.id.appInfo -> openAppInfo(requireContext(), Process.myUserHandle(), BuildConfig.APPLICATION_ID)
             R.id.setLauncher -> viewModel.resetLauncherLiveData.call()
             R.id.toggleLock -> toggleLockMode()
@@ -162,15 +166,10 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
             R.id.alignmentLeft -> viewModel.updateHomeAlignment(Gravity.START)
             R.id.alignmentCenter -> viewModel.updateHomeAlignment(Gravity.CENTER)
             R.id.alignmentRight -> viewModel.updateHomeAlignment(Gravity.END)
-            R.id.alignmentBottom -> updateHomeBottomAlignment()
+            R.id.alignmentBottom -> cycleHomeVerticalAlignment()
             R.id.statusBar -> toggleStatusBar()
-            R.id.dateTime -> {
-                val isVisible = binding.dateTimeSelectLayout.visibility == View.VISIBLE
-                binding.dateTimeSelectLayout.visibility = if (isVisible) View.GONE else View.VISIBLE
-            }
-            R.id.dateTimeOn -> toggleDateTime(Constants.DateTime.ON)
-            R.id.dateTimeOff -> toggleDateTime(Constants.DateTime.OFF)
-            R.id.dateOnly -> toggleDateTime(Constants.DateTime.DATE_ONLY)
+            R.id.clockWidgetToggle -> toggleClockWidget()
+            R.id.dateWidgetToggle -> toggleDateWidget()
             R.id.appThemeText -> {
                 binding.appThemeSelectLayout.visibility = View.VISIBLE
             }
@@ -205,6 +204,11 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
             R.id.search -> updateSwipeDownAction(Constants.SwipeDownAction.SEARCH)
 
             R.id.systemSettings -> startActivity(Intent(android.provider.Settings.ACTION_SETTINGS))
+            R.id.resetHomescreenPrefs -> {
+                prefs.resetHomescreenDefaults()
+                populateAlignment()
+                populateHomescreenWidgets()
+            }
 
             R.id.flSwipeLeftToggle -> {
                 prefs.swipeLeftEnabled = !prefs.swipeLeftEnabled
@@ -233,6 +237,7 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
         when (view.id) {
             R.id.alignment -> {
                 prefs.appLabelAlignment = prefs.homeAlignment
+                applyExitFor(TransitionLanguage.HIERARCHICAL)
                 findNavController().navigate(R.id.action_settingsFragment_to_appListFragment)
                 requireContext().showToast(getString(R.string.alignment_changed))
             }
@@ -261,6 +266,7 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
         binding.appsMinus.setOnClickListener(this)
         binding.appsPlus.setOnClickListener(this)
         binding.screenTimeOnOff.setOnClickListener(this)
+        binding.resetHomescreenPrefs.setOnClickListener(this)
         binding.dailyWallpaperUrl.setOnClickListener(this)
         binding.dailyWallpaper.setOnClickListener(this)
         binding.alignment.setOnClickListener(this)
@@ -269,10 +275,8 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
         binding.alignmentRight.setOnClickListener(this)
         binding.alignmentBottom.setOnClickListener(this)
         binding.statusBar.setOnClickListener(this)
-        binding.dateTime.setOnClickListener(this)
-        binding.dateTimeOn.setOnClickListener(this)
-        binding.dateTimeOff.setOnClickListener(this)
-        binding.dateOnly.setOnClickListener(this)
+        binding.clockWidgetToggle.setOnClickListener(this)
+        binding.dateWidgetToggle.setOnClickListener(this)
         binding.swipeDownAction.setOnClickListener(this)
         binding.search.setOnClickListener(this)
         binding.notifications.setOnClickListener(this)
@@ -337,20 +341,25 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
         binding.statusBar.text = if (prefs.showStatusBar) getString(R.string.on) else getString(R.string.off)
     }
 
-    private fun toggleDateTime(selected: Int) {
-        prefs.dateTimeVisibility = selected
-        populateDateTime()
-        viewModel.toggleDateTime()
+    private fun toggleClockWidget() {
+        prefs.showClockWidget = !prefs.showClockWidget
+        populateHomescreenWidgets()
     }
 
-    private fun populateDateTime() {
-        binding.dateTime.text = getString(
-            when (prefs.dateTimeVisibility) {
-                Constants.DateTime.DATE_ONLY -> R.string.date
-                Constants.DateTime.ON -> R.string.on
-                else -> R.string.off
-            }
-        )
+    private fun toggleDateWidget() {
+        prefs.showDateWidget = !prefs.showDateWidget
+        populateHomescreenWidgets()
+    }
+
+    private fun toggleScreenTimeWidget() {
+        prefs.showScreenTimeWidget = !prefs.showScreenTimeWidget
+        populateHomescreenWidgets()
+    }
+
+    private fun populateHomescreenWidgets() {
+        binding.clockWidgetToggle.text = if (prefs.showClockWidget) getString(R.string.on) else getString(R.string.off)
+        binding.dateWidgetToggle.text = if (prefs.showDateWidget) getString(R.string.on) else getString(R.string.off)
+        binding.screenTimeOnOff.text = if (prefs.showScreenTimeWidget) getString(R.string.on) else getString(R.string.off)
     }
 
     private fun showHiddenApps() {
@@ -379,7 +388,6 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
         if (show) {
             binding.popupOverlay.isVisible = false
             binding.appsNumSelectLayout.visibility = View.GONE
-            binding.dateTimeSelectLayout.visibility = View.GONE
             binding.alignmentSelectLayout.visibility = View.GONE
             binding.homeTextSizesLayout.visibility = View.GONE
             binding.appDrawerTextSizesLayout.visibility = View.GONE
@@ -592,14 +600,17 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
         else binding.dailyWallpaper.text = getString(R.string.off)
     }
 
-    private fun updateHomeBottomAlignment() {
+    private fun cycleHomeVerticalAlignment() {
         if (viewModel.isVoidDefault.value != true) {
             requireContext().showToast(getString(R.string.please_set_void_as_default_first), Toast.LENGTH_LONG)
             return
         }
-        prefs.homeBottomAlignment = !prefs.homeBottomAlignment
+        prefs.homeVerticalAlignment = when (prefs.homeVerticalAlignment) {
+            Gravity.TOP -> Gravity.CENTER_VERTICAL
+            Gravity.CENTER_VERTICAL -> Gravity.BOTTOM
+            else -> Gravity.TOP
+        }
         populateAlignment()
-        viewModel.updateHomeAlignment(prefs.homeAlignment)
     }
 
     private fun populateAlignment() {
@@ -608,9 +619,11 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
             Gravity.CENTER -> binding.alignment.text = getString(R.string.center)
             Gravity.END -> binding.alignment.text = getString(R.string.right)
         }
-        binding.alignmentBottom.text = if (prefs.homeBottomAlignment)
-            getString(R.string.bottom_on)
-        else getString(R.string.bottom_off)
+        binding.alignmentBottom.text = when (prefs.homeVerticalAlignment) {
+            Gravity.TOP -> getString(R.string.top)
+            Gravity.CENTER_VERTICAL -> getString(R.string.middle)
+            else -> getString(R.string.bottom)
+        }
     }
 
     private fun populateLockSettings() {
@@ -654,6 +667,7 @@ class SettingsFragment : Fragment(), View.OnClickListener, View.OnLongClickListe
 
     private fun showAppListIfEnabled(flag: Int) {
         viewModel.getAppList(true)
+        applyExitFor(TransitionLanguage.HIERARCHICAL)
         findNavController().navigate(
             R.id.action_settingsFragment_to_appListFragment,
             bundleOf(Constants.Key.FLAG to flag)
