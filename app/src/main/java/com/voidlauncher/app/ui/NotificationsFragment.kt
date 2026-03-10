@@ -74,8 +74,8 @@ class NotificationsFragment : Fragment() {
                         live = latestLiveGroups
                     )
                     pendingUndoGroups = null
-                    renderNotifications(restoredGroups, adapter)
                     adapter.setExpandedGroupKeys(pendingUndoExpandedGroups)
+                    renderNotifications(restoredGroups, adapter)
                     pendingUndoExpandedGroups = emptySet()
                 }
                 .addCallback(object : Snackbar.Callback() {
