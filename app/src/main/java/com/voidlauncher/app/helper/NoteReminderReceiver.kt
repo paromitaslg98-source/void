@@ -68,7 +68,7 @@ class NoteReminderReceiver : BroadcastReceiver() {
                 .setStyle(NotificationCompat.BigTextStyle().bigText(noteText))
                 .setContentIntent(contentPendingIntent)
                 .setAutoCancel(true)
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
                 .setGroup(NOTIFICATION_GROUP)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
 
