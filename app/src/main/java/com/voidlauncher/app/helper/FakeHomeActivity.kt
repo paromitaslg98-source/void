@@ -1,12 +1,15 @@
 package com.voidlauncher.app.helper
 
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
-import com.voidlauncher.app.R
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import com.voidlauncher.app.ui.FakeHomeScreen
 
-class FakeHomeActivity : AppCompatActivity() {
+class FakeHomeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_fake_home)
+        setContent {
+            FakeHomeScreen()
+        }
     }
 }

@@ -5,99 +5,107 @@
 <h1 align="center">VOID Launcher</h1>
 
 <p align="center">
-  <em>A radically minimalist, ad-free Android launcher designed to combat digital addiction.</em>
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/Platform-Android-green?style=flat-square&logo=android" alt="Platform">
-  <img src="https://img.shields.io/badge/Min%20SDK-26%20(Oreo)-blue?style=flat-square" alt="Min SDK">
-  <img src="https://img.shields.io/badge/Target%20SDK-35%20(Android%2015)-blue?style=flat-square" alt="Target SDK">
-  <img src="https://img.shields.io/badge/Language-Kotlin-purple?style=flat-square&logo=kotlin" alt="Language">
-  <img src="https://img.shields.io/badge/License-GPLv3-red?style=flat-square" alt="License">
-  <img src="https://img.shields.io/badge/Size-%3C%202MB-brightgreen?style=flat-square" alt="Size">
+  <em>A minimalist Android launcher, now refactored to a Compose-first architecture.</em>
 </p>
 
 ---
 
-## Philosophy
+## Project Status
 
-**VOID** is not just a launcher; it's a tool for digital minimalism. By stripping away colorful icons, badges, and the traditional grid layout, VOID forces intentionality. We present a hyper-clean, text-based interface where your focus dictates your actions, not the other way around. No ads, no tracking, no distractions.
+The UI stack has been fully refactored away from XML layouts, Fragments, and ViewBinding to a **Jetpack Compose-first** setup.
 
----
+### What changed in this refactor
 
-## Core Features
-
-- **Text-Only Home Screen:** Up to 10 of your most important apps are pinned to the home screen as clean, customizable text labels. They sit beautifully upon minimalist, un-filled, white-underlined cards elegantly padding the bottom of the screen.
-- **Notification Grouping:** Swipe left to access a purpose-built notification screen that groups system notifications by app with smart summaries, timestamps, app-badge counts, and inline expansion — styled in the launcher's monochrome theme. Click any preview to jump directly into the conversation.
-- **Quick Notes:** Swipe right to instantly capture thoughts in a monochrome, text-based checklist — native to the launcher with priority ordering, tick-to-complete, swipe-to-delete, and a per-note options menu with inline reminder countdowns.
-- **Reverse Navigation Gestures:** Once inside the Notes or Notifications screen, executing a reverse swipe intuitively pulls you right back to your Home screen, mirroring the natural entry swipe.
-- **Hold to Edit & Reorder:** Long-press a home screen app card to trigger Inline Edit Mode. The app label dynamically shrinks to reveal an inline pen (reassign) and reorder (drag) icon instantly without jumping to a new screen.
-- **Directional Animations:** Every gesture transition slides in gracefully from the opposite direction to the swipe: e.g., swiping left pulls the Notifications screen in from the right.
-- **Robust App Launcher:** Advanced component resolution ensures that even when applications update their internal packages or icon labels, VOID will dynamically re-resolve their launch intents.
-- **Deep Private Space Integration:** Built for Android 15+. Access your hidden, secure, or work-profile apps directly from the main drawer with biometric unlock.
-- **Digital Wellbeing Built-in:** See your actual screen time and unlock count overlaid on the home screen immediately.
-- **Separate Text Size Controls:** Independent text size scaling for the home screen and app drawer.
-- **Fluid Inline Settings UI:** Configure your launcher entirely within the app with smooth-animated inline cards.
-- **Daily Wallpapers:** Automatically fetch and apply fresh, minimalist wallpapers (opt-in).
+- `MainActivity` now uses `ComponentActivity` + `setContent {}`.
+- Navigation is now provided by `navigation-compose` with type-safe `@Serializable` route objects.
+- The app theme is defined in Kotlin (`ui/theme/Theme.kt`) via `MaterialTheme` and `ColorScheme`.
+- All screen entry points are Composable functions under `ui/screen/`.
+- Legacy XML screen layouts and XML navigation graph were removed.
+- Legacy Fragment-based UI classes and RecyclerView adapters were removed from the primary UI path.
 
 ---
 
-## Interaction & Gestures
+## Compose Architecture (Current)
+
+### UI
+
+- **Jetpack Compose** (Material 3)
+- **Compose Navigation** (`NavHost`)
+- **StateFlow-first UI state collection** (`collectAsStateWithLifecycle`)
+
+### Key files
+
+- `app/src/main/java/com/voidlauncher/app/MainActivity.kt`
+- `app/src/main/java/com/voidlauncher/app/AppRoutes.kt`
+- `app/src/main/java/com/voidlauncher/app/MainUiViewModel.kt`
+- `app/src/main/java/com/voidlauncher/app/ui/theme/Theme.kt`
+- `app/src/main/java/com/voidlauncher/app/ui/screen/*`
+
+### Package structure
 
 ```text
-Home Screen
-├── Swipe Up         → Opens App Drawer (auto-focuses search bar)
-├── Swipe Down       → Expands Notification Panel / Web Search (configurable)
-├── Swipe Left       → Notification Grouping Screen
-├── Swipe Right      → Quick Notes Screen
-├── Long Press       → Advanced Inline Settings Panel
-├── Double Tap       → Sleep/Lock Screen
-└── Hold + Drag      → Reorder home screen apps
-
-App Drawer
-├── Type to search   → Instantly filter apps or query the web
-├── Type "private"   → Unlock biometric Private Space and reveal hidden apps
-└── Long Press App   → Hide App / Open System App Info / Uninstall
+app/src/main/java/com/voidlauncher/app
+├── MainActivity.kt                # Compose app shell + NavHost
+├── AppRoutes.kt                   # @Serializable route objects
+├── MainUiViewModel.kt             # StateFlow-based UI state
+├── ui/
+│   ├── theme/Theme.kt             # MaterialTheme configuration
+│   ├── screen/
+│   │   ├── HomeScreen.kt
+│   │   ├── AppDrawerScreen.kt
+│   │   ├── SettingsScreen.kt
+│   │   ├── NotificationsScreen.kt
+│   │   └── NotesScreen.kt
+│   └── FakeHomeScreen.kt
+├── data/                          # persistence/domain models
+├── helper/                        # services/workers/system integration
+└── listener/                      # admin/gesture listeners
 ```
 
 ---
 
-## Technical Architecture
+## Build & Test
 
-VOID Launcher embraces modern Android development practices, ensuring a tiny memory footprint while remaining highly performant.
+### Prerequisites
 
-- **Stack:** 100% Kotlin
-- **UI:** XML Layouts, Material Design 3 guidelines (M3 typography, outlined cards, clean padding), and Android ViewBinding.
-- **Architecture:** Single-Activity, Fragment-based navigation powered by a shared `MainViewModel` utilizing `LiveData` and Kotlin Coroutines.
-- **Notification System:** A `NotificationListenerService` intercepts system-wide notifications and groups them intelligently by app and conversation.
-- **Notes Storage:** Lightweight `SharedPreferences`-backed JSON persistence — no heavy database dependency for a launcher.
-- **Background Processes:** Reliable `WorkManager` API to execute low-impact background fetches (e.g., daily wallpaper downloads).
-- **Hardware Support:** Fully compatible with specialized hardware like E-Ink arrays.
-
----
-
-## Building from Source
-
-**Prerequisites:**
-- Android Studio Koala (or newer)
+- Android Studio Koala+ (or equivalent Gradle/SDK setup)
 - Android SDK API 35
-- JDK 17+
+- **JDK 21** (required by `gradle-daemon-jvm.properties`)
+
+### Build
 
 ```bash
-# Clone the repository
-git clone https://github.com/knownassurajit/void.git
-cd void
-
-# Build the debug APK
-./gradlew clean assembleDebug
+./gradlew clean :app:assembleDebug
 ```
 
-The output APK will be generated at `app/build/outputs/apk/debug/`.
+### E2E (instrumentation) test flow
+
+Run on a connected device or emulator:
+
+```bash
+# 1) Build + install debug APK
+./gradlew :app:installDebug
+
+# 2) Run instrumentation tests (when androidTest cases exist)
+./gradlew :app:connectedDebugAndroidTest
+```
+
+If no emulator/device is attached, start one first from Android Studio Device Manager.
 
 ---
 
-## Acknowledgments & License
+## Refactor Validation Checklist
+
+- [x] No `res/layout/` directory
+- [x] No `res/navigation/` XML graph
+- [x] No Fragment/ViewBinding-based main UI entrypoint
+- [x] Compose BOM and Material3 configured in Gradle
+- [x] Compose `NavHost` wired from `MainActivity`
+
+---
+
+## License
 
 This project is licensed under the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.en.html).
 
-VOID is a heavily restructured, modernized, and refined fork of the original open-source project [Olauncher](https://github.com/knownassurajit/olauncher). Special thanks and credit to the original contributors for laying the foundational concept of a text-only, minimalist interface.
+VOID is a fork/rework inspired by [Olauncher](https://github.com/knownassurajit/olauncher).
