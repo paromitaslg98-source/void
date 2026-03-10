@@ -30,6 +30,8 @@ import com.voidlauncher.app.databinding.FragmentNotificationsBinding
 import com.voidlauncher.app.databinding.RowNotificationGroupBinding
 import com.voidlauncher.app.helper.NotificationService
 import com.voidlauncher.app.listener.OnSwipeTouchListener
+import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.TransitionLanguage
+import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.applyDestinationTransitions
 
 class NotificationsFragment : Fragment() {
 
@@ -38,6 +40,11 @@ class NotificationsFragment : Fragment() {
     private var latestLiveGroups: List<NotificationGroup> = emptyList()
     private var pendingUndoGroups: List<NotificationGroup>? = null
     private var pendingUndoExpandedGroups: Set<String> = emptySet()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        applyDestinationTransitions(TransitionLanguage.PEER)
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentNotificationsBinding.inflate(inflater, container, false)

@@ -32,6 +32,8 @@ import com.voidlauncher.app.databinding.RowNoteItemBinding
 import com.voidlauncher.app.helper.NoteReminderReceiver
 import com.voidlauncher.app.helper.NoteReminderWorker
 import com.voidlauncher.app.listener.OnSwipeTouchListener
+import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.TransitionLanguage
+import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.applyDestinationTransitions
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
 
@@ -50,6 +52,11 @@ class NotesFragment : Fragment() {
                 .setAction("Open") { focusNote(noteId) }
                 .show()
         }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        applyDestinationTransitions(TransitionLanguage.PEER)
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {

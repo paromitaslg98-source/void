@@ -46,7 +46,8 @@
             android:launchMode="singleTask"
             android:taskAffinity=""
             android:windowSoftInputMode="stateAlwaysHidden"
-            android:screenOrientation="portrait">
+            android:screenOrientation="portrait"
+            android:enableOnBackInvokedCallback="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
