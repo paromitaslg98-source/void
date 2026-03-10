@@ -46,7 +46,7 @@ class NotesFragment : Fragment() {
             val noteId = intent?.getLongExtra(NoteReminderReceiver.EXTRA_NOTE_ID, -1L) ?: -1L
             val noteText = intent?.getStringExtra(NoteReminderReceiver.EXTRA_NOTE_TEXT).orEmpty()
             if (noteId <= 0L || noteText.isBlank()) return
-            com.google.android.material.snackbar.Snackbar.make(binding.root, "Reminder: $noteText", com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+            Snackbar.make(binding.root, "Reminder: $noteText", Snackbar.LENGTH_LONG)
                 .setAction("Open") { focusNote(noteId) }
                 .show()
         }
