@@ -282,9 +282,9 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
     private fun performHomeAppReorder(fromLocation: Int, toLocation: Int) {
         prefs.swapAppLocations(fromLocation, toLocation)
         exitEditMode()
-        populateHomeScreen(false)
         viewModel.refreshHome(false)
     }
+
 
     private fun showHomeAppContextMenu(view: TextView) {
         val location = view.tag.toString().toIntOrNull() ?: return
