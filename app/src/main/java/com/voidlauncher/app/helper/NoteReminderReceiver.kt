@@ -97,7 +97,7 @@ class NoteReminderReceiver : BroadcastReceiver() {
                 description = "Reminder notifications for notes"
                 enableVibration(true)
                 setShowBadge(false)
-                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PRIVATE
             }
             nm.createNotificationChannel(channel)
         }
