@@ -95,6 +95,7 @@ class MainActivity : AppCompatActivity() {
         initObservers(viewModel)
         viewModel.getAppList()
         setupOrientation()
+        navigateToReminderIfNeeded(intent)
 
         window.addFlags(FLAG_LAYOUT_NO_LIMITS)
     }
@@ -115,7 +116,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onNewIntent(intent: Intent?) {
+        setIntent(intent)
         backToHomeScreen()
+        navigateToReminderIfNeeded(intent)
         super.onNewIntent(intent)
     }
 
@@ -221,6 +224,14 @@ class MainActivity : AppCompatActivity() {
         binding.messageLayout.visibility = View.GONE
         if (navController.currentDestination?.id != R.id.mainFragment)
             navController.popBackStack(R.id.mainFragment, false)
+    }
+
+    private fun navigateToReminderIfNeeded(incomingIntent: Intent?) {
+        val noteId = incomingIntent?.getLongExtra(NoteReminderReceiver.EXTRA_NOTE_ID, -1L) ?: -1L
+        if (noteId <= 0L) return
+        if (navController.currentDestination?.id != R.id.notesFragment) {
+            navController.navigate(R.id.action_mainFragment_to_notesFragment)
+        }
     }
 
     private fun setPlainWallpaper() {

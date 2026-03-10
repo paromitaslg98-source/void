@@ -9,13 +9,19 @@ import android.content.res.Configuration
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.DragEvent
 import android.view.Gravity
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewConfiguration
+import android.view.HapticFeedbackConstants
 import android.view.WindowInsets
 import android.widget.FrameLayout
+import android.widget.PopupMenu
 import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
@@ -63,8 +69,14 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
 
-    /** Tracks the currently long-pressed home app in edit mode (showing pen + reorder icons). */
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var longPressRunnable: Runnable? = null
+
+    /** Tracks the currently selected home app in contextual edit mode. */
     private var editModeView: TextView? = null
+    private var longPressTriggered = false
+    private var lastTouchDownX = 0f
+    private var lastTouchDownY = 0f
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -144,11 +156,6 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
 
     override fun onLongClick(view: View): Boolean {
         when (view.id) {
-            R.id.homeApp1, R.id.homeApp2, R.id.homeApp3, R.id.homeApp4,
-            R.id.homeApp5, R.id.homeApp6, R.id.homeApp7, R.id.homeApp8,
-            R.id.homeApp9, R.id.homeApp10 -> {
-                toggleEditMode(view as TextView)
-            }
             R.id.clock -> {
                 showAppList(Constants.FLAG_SET_CLOCK_APP)
                 prefs.clockAppPackage = ""
@@ -176,98 +183,22 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
         return true
     }
 
-    private fun toggleEditMode(view: TextView) {
-        // If tapping the same view again, exit edit mode
-        if (editModeView == view) {
-            exitEditMode()
-            return
-        }
-        // Exit previous edit mode if any
+    private fun enterEditMode(view: TextView) {
         exitEditMode()
-
         editModeView = view
-        val editIcon = androidx.core.content.ContextCompat.getDrawable(requireContext(), R.drawable.ic_edit)?.mutate()
-        val reorderIcon = androidx.core.content.ContextCompat.getDrawable(requireContext(), R.drawable.ic_reorder)?.mutate()
-
-        val iconSize = (20 * resources.displayMetrics.density).toInt()
-        val gap = (16 * resources.displayMetrics.density).toInt()
-        editIcon?.setBounds(0, 0, iconSize, iconSize)
-        reorderIcon?.setBounds(0, 0, iconSize, iconSize)
-
-        // Combine pen + reorder into one LayerDrawable (pen left, reorder right)
-        val totalWidth = iconSize + gap + iconSize
-        val combined = android.graphics.drawable.LayerDrawable(arrayOf(editIcon, reorderIcon))
-        combined.setLayerInset(0, 0, 0, iconSize + gap, 0) // pen on left side
-        combined.setLayerInset(1, iconSize + gap, 0, 0, 0) // reorder on right side
-        combined.setBounds(0, 0, totalWidth, iconSize)
-
-        view.compoundDrawablePadding = (12 * resources.displayMetrics.density).toInt()
-        view.setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, combined, null)
-
-        setupEditModeTouchListener(view, iconSize, gap)
+        view.alpha = 0.75f
+        view.translationX = dpToPx(8, resources.displayMetrics).toFloat()
+        view.paint.isFakeBoldText = true
     }
 
     private fun exitEditMode() {
         editModeView?.let {
-            it.setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, null, null)
-            it.setOnTouchListener(getViewSwipeTouchListener(requireContext(), it))
+            it.alpha = 1f
+            it.translationX = 0f
+            it.paint.isFakeBoldText = false
+            it.invalidate()
         }
         editModeView = null
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    private fun setupEditModeTouchListener(view: TextView, iconSize: Int, gap: Int) {
-        view.setOnTouchListener { v, event ->
-            if (event.action == android.view.MotionEvent.ACTION_UP) {
-                val tv = v as TextView
-                val drawableEnd = tv.compoundDrawablesRelative[2]
-                if (drawableEnd != null) {
-                    val totalIconWidth = iconSize + gap + iconSize
-                    val iconRegionStart = tv.width - totalIconWidth - tv.paddingEnd
-                    val reorderRegionStart = iconRegionStart + iconSize + gap
-
-                    when {
-                        // Tapped on reorder icon (rightmost)
-                        event.x >= reorderRegionStart -> {
-                            exitEditMode()
-                            startDrag(v)
-                            return@setOnTouchListener true
-                        }
-                        // Tapped on pen/edit icon (second to last)
-                        event.x >= iconRegionStart -> {
-                            val location = getLocationFromView(v)
-                            if (location != null) {
-                                exitEditMode()
-                                showAppList(location, true, true)
-                            }
-                            return@setOnTouchListener true
-                        }
-                        // Tapped on text area — just exit edit mode
-                        else -> {
-                            exitEditMode()
-                            return@setOnTouchListener true
-                        }
-                    }
-                }
-            }
-            false
-        }
-    }
-
-    private fun getLocationFromView(view: View): Int? {
-        return when (view.id) {
-            R.id.homeApp1 -> Constants.FLAG_SET_HOME_APP_1
-            R.id.homeApp2 -> Constants.FLAG_SET_HOME_APP_2
-            R.id.homeApp3 -> Constants.FLAG_SET_HOME_APP_3
-            R.id.homeApp4 -> Constants.FLAG_SET_HOME_APP_4
-            R.id.homeApp5 -> Constants.FLAG_SET_HOME_APP_5
-            R.id.homeApp6 -> Constants.FLAG_SET_HOME_APP_6
-            R.id.homeApp7 -> Constants.FLAG_SET_HOME_APP_7
-            R.id.homeApp8 -> Constants.FLAG_SET_HOME_APP_8
-            R.id.homeApp9 -> Constants.FLAG_SET_HOME_APP_9
-            R.id.homeApp10 -> Constants.FLAG_SET_HOME_APP_10
-            else -> null
-        }
     }
 
     private fun initObservers() {
@@ -304,16 +235,16 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
     private fun initSwipeTouchListener() {
         val context = requireContext()
         binding.mainLayout.setOnTouchListener(getSwipeGestureListener(context))
-        binding.homeApp1.setOnTouchListener(getViewSwipeTouchListener(context, binding.homeApp1))
-        binding.homeApp2.setOnTouchListener(getViewSwipeTouchListener(context, binding.homeApp2))
-        binding.homeApp3.setOnTouchListener(getViewSwipeTouchListener(context, binding.homeApp3))
-        binding.homeApp4.setOnTouchListener(getViewSwipeTouchListener(context, binding.homeApp4))
-        binding.homeApp5.setOnTouchListener(getViewSwipeTouchListener(context, binding.homeApp5))
-        binding.homeApp6.setOnTouchListener(getViewSwipeTouchListener(context, binding.homeApp6))
-        binding.homeApp7.setOnTouchListener(getViewSwipeTouchListener(context, binding.homeApp7))
-        binding.homeApp8.setOnTouchListener(getViewSwipeTouchListener(context, binding.homeApp8))
-        binding.homeApp9.setOnTouchListener(getViewSwipeTouchListener(context, binding.homeApp9))
-        binding.homeApp10.setOnTouchListener(getViewSwipeTouchListener(context, binding.homeApp10))
+        binding.homeApp1.setOnTouchListener(getHomeEntryTouchListener(context, binding.homeApp1))
+        binding.homeApp2.setOnTouchListener(getHomeEntryTouchListener(context, binding.homeApp2))
+        binding.homeApp3.setOnTouchListener(getHomeEntryTouchListener(context, binding.homeApp3))
+        binding.homeApp4.setOnTouchListener(getHomeEntryTouchListener(context, binding.homeApp4))
+        binding.homeApp5.setOnTouchListener(getHomeEntryTouchListener(context, binding.homeApp5))
+        binding.homeApp6.setOnTouchListener(getHomeEntryTouchListener(context, binding.homeApp6))
+        binding.homeApp7.setOnTouchListener(getHomeEntryTouchListener(context, binding.homeApp7))
+        binding.homeApp8.setOnTouchListener(getHomeEntryTouchListener(context, binding.homeApp8))
+        binding.homeApp9.setOnTouchListener(getHomeEntryTouchListener(context, binding.homeApp9))
+        binding.homeApp10.setOnTouchListener(getHomeEntryTouchListener(context, binding.homeApp10))
         
         // Setup DragListeners for Home Apps reordering
         val dragListener = View.OnDragListener { v, event ->
@@ -332,15 +263,13 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
                     val fromLocation = event.clipData.getItemAt(0).text.toString().toIntOrNull()
                     val toLocation = v.tag.toString().toIntOrNull()
                     
-                    if (fromLocation != null && toLocation != null && fromLocation != toLocation) {
-                        prefs.swapAppLocations(fromLocation, toLocation)
-                        populateHomeScreen(false)
-                        viewModel.refreshHome(false)
-                    }
+                    if (fromLocation != null && toLocation != null && fromLocation != toLocation)
+                        performHomeAppReorder(fromLocation, toLocation)
                     true
                 }
                 DragEvent.ACTION_DRAG_ENDED -> {
                     v.alpha = 1.0f
+                    exitEditMode()
                     true
                 }
                 else -> false
@@ -357,6 +286,35 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
         binding.homeApp8.setOnDragListener(dragListener)
         binding.homeApp9.setOnDragListener(dragListener)
         binding.homeApp10.setOnDragListener(dragListener)
+    }
+
+    private fun performHomeAppReorder(fromLocation: Int, toLocation: Int) {
+        prefs.swapAppLocations(fromLocation, toLocation)
+        exitEditMode()
+        viewModel.refreshHome(false)
+    }
+
+
+    private fun showHomeAppContextMenu(view: TextView) {
+        val location = view.tag.toString().toIntOrNull() ?: return
+        val popupMenu = PopupMenu(requireContext(), view)
+        popupMenu.menu.add(0, 1, 0, getString(R.string.change_or_add_app))
+        popupMenu.menu.add(0, 2, 1, getString(R.string.reorder_apps))
+
+        popupMenu.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                1 -> {
+                    exitEditMode()
+                    showAppList(location)
+                }
+                2 -> startDrag(view)
+            }
+            true
+        }
+        popupMenu.setOnDismissListener {
+            if (editModeView == view) exitEditMode()
+        }
+        popupMenu.show()
     }
 
     private fun startDrag(view: View) {
@@ -823,7 +781,7 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
 
             override fun onLongClick(view: View) {
                 super.onLongClick(view)
-                textOnLongClick(view)
+                // Long press handling for home entries is explicitly handled via timeout + handler.
             }
 
             override fun onClick(view: View) {
@@ -833,7 +791,52 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
         }
     }
 
+    @SuppressLint("ClickableViewAccessibility")
+    private fun getHomeEntryTouchListener(context: Context, view: TextView): View.OnTouchListener {
+        val swipeTouchListener = getViewSwipeTouchListener(context, view)
+        val longPressTimeoutMs = maxOf(400L, ViewConfiguration.getLongPressTimeout().toLong())
+
+        return View.OnTouchListener { v, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    if (editModeView != null && editModeView != view) exitEditMode()
+                    longPressTriggered = false
+                    lastTouchDownX = event.x
+                    lastTouchDownY = event.y
+                    longPressRunnable?.let(mainHandler::removeCallbacks)
+                    longPressRunnable = Runnable {
+                        longPressTriggered = true
+                        enterEditMode(view)
+                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                        showHomeAppContextMenu(view)
+                    }
+                    mainHandler.postDelayed(longPressRunnable!!, longPressTimeoutMs)
+                }
+
+                MotionEvent.ACTION_MOVE -> {
+                    val slop = ViewConfiguration.get(context).scaledTouchSlop
+                    if (kotlin.math.abs(event.x - lastTouchDownX) > slop || kotlin.math.abs(event.y - lastTouchDownY) > slop) {
+                        longPressRunnable?.let(mainHandler::removeCallbacks)
+                    }
+                }
+
+                MotionEvent.ACTION_UP,
+                MotionEvent.ACTION_CANCEL -> {
+                    longPressRunnable?.let(mainHandler::removeCallbacks)
+                    if (longPressTriggered) return@OnTouchListener true
+                    if (editModeView == view && event.actionMasked == MotionEvent.ACTION_UP) {
+                        startDrag(view)
+                        return@OnTouchListener true
+                    }
+                }
+            }
+            swipeTouchListener.onTouch(v, event)
+        }
+    }
+
     override fun onDestroyView() {
+        longPressRunnable?.let(mainHandler::removeCallbacks)
+        exitEditMode()
         super.onDestroyView()
         _binding = null
     }
