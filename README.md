@@ -14,7 +14,7 @@ As part of the final Compose migration review, the project was audited for:
 
 ### 1) Package rename (requested)
 - Application package/namespace changed to:
-  - `com.launcher.void`
+  - `com.launcher.projectvoid`
 - Updated across Gradle and Kotlin sources.
 
 ### 2) Compose navigation + transition polish
@@ -31,10 +31,30 @@ As part of the final Compose migration review, the project was audited for:
 - Removed stale menu resource not used after Compose migration:
   - `res/menu/menu_note_options.xml`
 
+## Feature Refinements (Interactive UI Update)
+
+### 1) Widget Dimensional Rescaling
+- Integrated adaptive dimensional rescaling on the **Widgets Screen**.
+- Converted primary bounds to a scalable `GridCells.Fixed(4)` matrix.
+- Enabled long-press context interface on pinned widgets rendering (2x1, 2x2, 4x2) span overrides dynamically propagating through SharedPreferences.
+
+### 2) Seamless Private Space Merge
+- Synchronized with native device biometric states listening securely for `ACTION_MANAGED_PROFILE_UNLOCKED`.
+- Deprecated strict segregated visual compartments for explicit private profile isolation.
+- Homogenized Private App instances safely within the primary AppDrawer registry list rendering with inline Lock indicators autonomously upon authorization.
+
+### 3) Core Dimensional Lockdown
+- Removed reactive bounding instructions (`.systemBarsPadding()`) preventing unpredictable resolution stretch or layout fracturing during OS visibility interruptions.
+- Engineered solid rigid bounding metrics natively fixing component scales.
+
+### 4) Notes UI Refinement
+- Obsoleted legacy dropdown interaction hierarchies and `Delete Note` textural placeholders on swipe.
+- Surfaced instant Native Trashcan iconography optimizing interactions seamlessly within layout parameters.
+
 ## Current architecture
 
 ```text
-app/src/main/java/com/launcher/void
+app/src/main/java/com/launcher/projectvoid
 ├── MainActivity.kt                # Compose app shell + animated NavHost
 ├── AppRoutes.kt                   # @Serializable route objects
 ├── MainUiViewModel.kt             # StateFlow-based UI state

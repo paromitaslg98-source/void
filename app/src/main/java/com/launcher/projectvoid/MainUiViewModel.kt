@@ -1,0 +1,195 @@
+package com.launcher.projectvoid
+
+import android.app.Application
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
+import android.view.Gravity
+import android.provider.Settings
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import android.app.usage.UsageStatsManager
+import com.launcher.projectvoid.data.Prefs
+import com.launcher.projectvoid.data.Prefs.SwipeAction
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+data class MainUiState(
+    val currentTime: String = "",
+    val currentDate: String = "",
+    val batteryLevel: Int = 100,
+    val screenTime: String = "",
+    val homeApps: List<HomeApp> = emptyList(),
+    val clockHorizontalAlignment: Int = Gravity.START,
+    val clockVerticalAlignment: Int = Gravity.BOTTOM,
+    val appHorizontalAlignment: Int = Gravity.START,
+    val appVerticalAlignment: Int = Gravity.BOTTOM,
+    val showClock: Boolean = true,
+    val showDate: Boolean = true,
+    val showScreenTime: Boolean = true,
+    val showStatusBar: Boolean = true,
+    val homeAppsCount: Int = 3,
+    val leftSwipeAction: String = SwipeAction.NOTIFICATION_SUMMARY,
+    val rightSwipeAction: String = SwipeAction.WIDGETS,
+)
+
+data class HomeApp(
+    val position: Int,
+    val label: String,
+    val packageName: String,
+    val activityClassName: String?,
+    val userString: String,
+    val isShortcut: Boolean = false,
+    val shortcutId: String = ""
+)
+
+class MainUiViewModel(application: Application) : AndroidViewModel(application) {
+    private val appContext = application.applicationContext
+    private val prefs = Prefs(appContext)
+
+    private val _uiState = MutableStateFlow(MainUiState())
+    val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
+
+    private val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+    private val dateFormat = SimpleDateFormat("EEE, d MMM", Locale.getDefault())
+
+    private val batteryReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val level = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, 100) ?: 100
+            _uiState.update { it.copy(batteryLevel = level) }
+        }
+    }
+
+    init {
+        // Start time ticker
+        viewModelScope.launch {
+            while (isActive) {
+                val now = Date()
+                _uiState.update {
+                    it.copy(
+                        currentTime = timeFormat.format(now),
+                        currentDate = dateFormat.format(now).uppercase(Locale.getDefault())
+                    )
+                }
+                delay(15_000L) // Update every 15 seconds
+            }
+        }
+
+        // Register battery receiver
+        try {
+            appContext.registerReceiver(
+                batteryReceiver,
+                IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+            )
+        } catch (_: Exception) {}
+
+        // Load prefs
+        refreshFromPrefs()
+
+        // Observe pref changes
+        viewModelScope.launch {
+            prefs.homescreenPreferences.collect { hsPrefs ->
+                _uiState.update {
+                    it.copy(
+                        clockHorizontalAlignment = hsPrefs.clockHorizontalAlignment,
+                        clockVerticalAlignment = hsPrefs.clockVerticalAlignment,
+                        appHorizontalAlignment = hsPrefs.appHorizontalAlignment,
+                        appVerticalAlignment = hsPrefs.appVerticalAlignment,
+                        showClock = hsPrefs.showClock,
+                        showDate = hsPrefs.showDate,
+                        showScreenTime = hsPrefs.showScreenTime
+                    )
+                }
+            }
+        }
+    }
+
+    fun refreshFromPrefs() {
+        val apps = mutableListOf<HomeApp>()
+        val count = prefs.homeAppsNum.coerceIn(0, 10)
+        for (i in 1..count) {
+            val name = prefs.getAppName(i)
+            if (name.isNotBlank()) {
+                apps.add(
+                    HomeApp(
+                        position = i,
+                        label = name,
+                        packageName = prefs.getAppPackage(i),
+                        activityClassName = prefs.getAppActivityClassName(i),
+                        userString = prefs.getAppUser(i),
+                        isShortcut = prefs.getIsShortcut(i),
+                        shortcutId = prefs.getShortcutId(i)
+                    )
+                )
+            }
+        }
+        _uiState.update {
+            it.copy(
+                homeApps = apps,
+                homeAppsCount = count,
+                clockHorizontalAlignment = prefs.clockAlignment,
+                clockVerticalAlignment = prefs.clockVerticalAlignment,
+                appHorizontalAlignment = prefs.homeAlignment,
+                appVerticalAlignment = prefs.homeVerticalAlignment,
+                showClock = prefs.showClockWidget,
+                showDate = prefs.showDateWidget,
+                showScreenTime = prefs.showScreenTimeWidget,
+                showStatusBar = prefs.showStatusBar,
+                leftSwipeAction = prefs.leftSwipeAction,
+                rightSwipeAction = prefs.rightSwipeAction
+            )
+        }
+    }
+
+    private fun loadScreenTime() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val usageStatsManager = getApplication<android.app.Application>().getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+                val calendar = java.util.Calendar.getInstance()
+                calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+                calendar.set(java.util.Calendar.MINUTE, 0)
+                calendar.set(java.util.Calendar.SECOND, 0)
+                
+                val stats = usageStatsManager.queryUsageStats(
+                    UsageStatsManager.INTERVAL_DAILY,
+                    calendar.timeInMillis,
+                    System.currentTimeMillis()
+                )
+                
+                val totalMillis = stats.sumOf { it.totalTimeInForeground }
+                if (totalMillis > 0) {
+                    val hours = totalMillis / (1000 * 60 * 60)
+                    val minutes = (totalMillis / (1000 * 60)) % 60
+                    val text = if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
+                    _uiState.update { it.copy(screenTime = "Screen time: $text") }
+                } else {
+                    _uiState.update { it.copy(screenTime = "Screen time: None") }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(screenTime = "") }
+            }
+        }
+    }
+
+    fun updateScreenTime(text: String) {
+        _uiState.update { it.copy(screenTime = text) }
+    }
+
+    override fun onCleared() {
+        try {
+            appContext.unregisterReceiver(batteryReceiver)
+        } catch (_: Exception) {}
+        super.onCleared()
+    }
+}

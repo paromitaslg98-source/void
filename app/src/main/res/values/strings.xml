@@ -142,4 +142,20 @@
     <string name="reset_homescreen_defaults">Reset homescreen defaults</string>
     <string name="dismiss">Dismiss</string>
     <string name="clear">Clear</string>
+
+    <!-- New screens -->
+    <string name="notification_summary">Notification Summary</string>
+    <string name="widgets">Widgets</string>
+    <string name="private_space">Private Space</string>
+    <string name="ai_summary_unavailable">AI summary unavailable on this device</string>
+    <string name="no_widgets">No widgets available</string>
+    <string name="summarizing">Summarizing…</string>
+    <string name="no_summary">No notifications to summarize</string>
+    <string name="swipe_action_notification_summary">Notification Summary</string>
+    <string name="swipe_action_widgets">Widgets</string>
+    <string name="swipe_action_notes">Notes</string>
+    <string name="left_swipe_action">Left swipe action</string>
+    <string name="right_swipe_action">Right swipe action</string>
+    <string name="show_clock">Show clock</string>
+    <string name="clock_alignment">Clock alignment</string>
 </resources>

@@ -1,0 +1,428 @@
+package com.launcher.projectvoid.ui.screen
+
+import android.content.Intent
+import android.provider.AlarmClock
+import android.provider.CalendarContract
+import android.view.Gravity
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Remove
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import com.launcher.projectvoid.HomeApp
+import com.launcher.projectvoid.MainUiState
+import com.launcher.projectvoid.R
+import com.launcher.projectvoid.data.AppModel
+import com.launcher.projectvoid.data.Prefs
+import com.launcher.projectvoid.data.Prefs.SwipeAction
+import com.launcher.projectvoid.helper.getAppsList
+import kotlinx.coroutines.launch
+import kotlin.math.abs
+
+private fun gravityToAlignment(gravity: Int): Alignment.Horizontal = when (gravity) {
+    Gravity.CENTER, Gravity.CENTER_HORIZONTAL -> Alignment.CenterHorizontally
+    Gravity.END, Gravity.RIGHT -> Alignment.End
+    else -> Alignment.Start
+}
+
+fun gravityToVerticalArrangement(gravity: Int): Arrangement.Vertical = when (gravity) {
+    Gravity.TOP -> Arrangement.Top
+    Gravity.BOTTOM -> Arrangement.Bottom
+    else -> Arrangement.Center
+}
+
+private fun gravityToTextAlign(gravity: Int): TextAlign = when (gravity) {
+    Gravity.CENTER, Gravity.CENTER_HORIZONTAL -> TextAlign.Center
+    Gravity.END, Gravity.RIGHT -> TextAlign.End
+    else -> TextAlign.Start
+}
+
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+@Composable
+fun HomeScreen(
+    state: MainUiState,
+    onOpenApps: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onOpenNotifications: () -> Unit,
+    onOpenNotificationSummary: () -> Unit,
+    onOpenWidgets: () -> Unit,
+    onOpenNotes: () -> Unit,
+    onAppClick: (HomeApp) -> Unit,
+    onClockClick: () -> Unit,
+    onDateClick: () -> Unit,
+    onHomeAppsChanged: () -> Unit = {}
+) {
+    val context = LocalContext.current
+    val clockAlign = gravityToAlignment(state.clockHorizontalAlignment)
+    val appAlign = gravityToAlignment(state.appHorizontalAlignment)
+    val clockVertical = gravityToVerticalArrangement(state.clockVerticalAlignment)
+    val appVertical = gravityToVerticalArrangement(state.appVerticalAlignment)
+    
+    val clockTextAlign = gravityToTextAlign(state.clockHorizontalAlignment)
+    val appTextAlign = gravityToTextAlign(state.appHorizontalAlignment)
+
+    var dragOffset by remember { mutableStateOf(Offset.Zero) }
+    val swipeThreshold = 120f
+    var showAppPicker by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = 24.dp, bottom = 24.dp)
+            .pointerInput(state.leftSwipeAction, state.rightSwipeAction) {
+                detectDragGestures(
+                    onDragStart = { dragOffset = Offset.Zero },
+                    onDragEnd = {
+                        val absX = abs(dragOffset.x)
+                        val absY = abs(dragOffset.y)
+                        if (absX > swipeThreshold || absY > swipeThreshold) {
+                            if (absX > absY) {
+                                if (dragOffset.x > 0) {
+                                    dispatchSwipeAction(state.rightSwipeAction,
+                                        onOpenNotificationSummary, onOpenWidgets, onOpenNotes)
+                                } else {
+                                    dispatchSwipeAction(state.leftSwipeAction,
+                                        onOpenNotificationSummary, onOpenWidgets, onOpenNotes)
+                                }
+                            } else {
+                                if (dragOffset.y > 0) onOpenNotifications()
+                                else onOpenApps()
+                            }
+                        }
+                        dragOffset = Offset.Zero
+                    },
+                    onDragCancel = { dragOffset = Offset.Zero },
+                    onDrag = { change, amount ->
+                        change.consume()
+                        dragOffset += amount
+                    }
+                )
+            }
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // ── Clock section: 1/4 of screen ──
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(0.25f)
+                    .padding(horizontal = 28.dp, vertical = 16.dp),
+                horizontalAlignment = clockAlign,
+                verticalArrangement = clockVertical
+            ) {
+                if (state.showClock) {
+                    Text(
+                        text = state.currentTime,
+                        style = MaterialTheme.typography.displayLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        textAlign = clockTextAlign,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                try {
+                                    val intent = Intent(AlarmClock.ACTION_SHOW_ALARMS)
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    onClockClick()
+                                }
+                            }
+                    )
+                }
+                if (state.showDate) {
+                    Text(
+                        text = state.currentDate,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = clockTextAlign,
+                        letterSpacing = MaterialTheme.typography.labelMedium.letterSpacing * 1.5f,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                try {
+                                    val builder = CalendarContract.CONTENT_URI.buildUpon().appendPath("time")
+                                    val intent = Intent(Intent.ACTION_VIEW).setData(builder.build())
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    onDateClick()
+                                }
+                            }
+                    )
+                }
+                if (state.showScreenTime && state.screenTime.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = state.screenTime,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        textAlign = clockTextAlign,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
+            // ── Apps section: 3/4 of screen ──
+            // Long press anywhere in this section → open app picker
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(0.75f)
+                    .combinedClickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {},
+                        onLongClick = { showAppPicker = true }
+                    )
+                    .padding(horizontal = 28.dp),
+                horizontalAlignment = appAlign,
+                verticalArrangement = appVertical
+            ) {
+                state.homeApps.forEach { app ->
+                    Text(
+                        text = app.label,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        textAlign = appTextAlign,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onAppClick(app) }
+                            .padding(vertical = 8.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+                Text(
+                    text = "${state.batteryLevel}%",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    textAlign = appTextAlign,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                )
+            }
+        }
+    }
+
+    // ── App picker bottom sheet ──
+    if (showAppPicker) {
+        HomeAppPickerSheet(
+            currentApps = state.homeApps,
+            maxApps = state.homeAppsCount.coerceIn(1, 15),
+            onDismiss = {
+                showAppPicker = false
+            },
+            onHomeAppsChanged = onHomeAppsChanged
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HomeAppPickerSheet(
+    currentApps: List<HomeApp>,
+    maxApps: Int,
+    onDismiss: () -> Unit,
+    onHomeAppsChanged: () -> Unit
+) {
+    val context = LocalContext.current
+    val prefs = remember { Prefs(context) }
+    val scope = rememberCoroutineScope()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val allApps = remember { mutableStateListOf<AppModel>() }
+    var search by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        scope.launch {
+            allApps.addAll(getAppsList(context, prefs))
+        }
+    }
+
+    val currentPackages = remember(currentApps) {
+        currentApps.map { it.packageName }.toSet()
+    }
+    val filtered = remember(search, allApps.toList()) {
+        if (search.isBlank()) allApps.toList()
+        else allApps.filter { it.appLabel.contains(search, ignoreCase = true) }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            Text(
+                "Home Screen Apps",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            // Current apps with remove option
+            if (currentApps.isNotEmpty()) {
+                Text(
+                    "CURRENT (${currentApps.size}/$maxApps)",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                currentApps.forEach { app ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                // Remove this app from home
+                                prefs.setAppAtLocation(
+                                    app.position, "", "", null, "", false, ""
+                                )
+                                onHomeAppsChanged()
+                            }
+                            .padding(vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = app.label,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Icon(
+                            Icons.Outlined.Remove,
+                            contentDescription = "Remove",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+            }
+
+            // Search
+            OutlinedTextField(
+                value = search,
+                onValueChange = { search = it },
+                placeholder = { Text("Search apps to add…") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.extraLarge,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    focusedBorderColor = MaterialTheme.colorScheme.outline,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                ),
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            )
+
+            // Available apps
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(360.dp)
+                    .padding(top = 8.dp)
+            ) {
+                items(filtered, key = { "${it.appPackage}_${it.user}" }) { app ->
+                    val isOnHome = currentPackages.contains(app.appPackage)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                if (!isOnHome && currentApps.size < maxApps) {
+                                    val nextPos = (1..maxApps).firstOrNull { pos ->
+                                        prefs.getAppName(pos).isBlank()
+                                    } ?: return@clickable
+                                    val a = app as? AppModel.App ?: return@clickable
+                                    prefs.setAppAtLocation(
+                                        nextPos, a.appLabel, a.appPackage,
+                                        a.activityClassName, a.user.toString(),
+                                        false, ""
+                                    )
+                                    onHomeAppsChanged()
+                                }
+                            }
+                            .padding(vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = app.appLabel,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isOnHome) MaterialTheme.colorScheme.onSurfaceVariant
+                            else MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (isOnHome) {
+                            Icon(Icons.Outlined.Check, "On home",
+                                tint = MaterialTheme.colorScheme.primary)
+                        } else if (currentApps.size < maxApps) {
+                            Icon(Icons.Outlined.Add, "Add",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+}
+
+private fun dispatchSwipeAction(
+    action: String,
+    onSummary: () -> Unit,
+    onWidgets: () -> Unit,
+    onNotes: () -> Unit
+) {
+    when (action) {
+        SwipeAction.NOTIFICATION_SUMMARY -> onSummary()
+        SwipeAction.WIDGETS -> onWidgets()
+        SwipeAction.NOTES -> onNotes()
+    }
+}
