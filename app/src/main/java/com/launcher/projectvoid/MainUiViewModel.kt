@@ -39,9 +39,13 @@ data class MainUiState(
     val showDate: Boolean = true,
     val showScreenTime: Boolean = true,
     val showStatusBar: Boolean = true,
-    val homeAppsCount: Int = 3,
+    val homeAppsCount: Int = 4,
     val leftSwipeAction: String = SwipeAction.NOTIFICATION_SUMMARY,
     val rightSwipeAction: String = SwipeAction.WIDGETS,
+    val clockSectionWeight: Float = 0.25f,
+    val homeTextSizeScale: Float = 1.0f,
+    val appDrawerTextSizeScale: Float = 1.0f,
+    val enableGestures: Boolean = true
 )
 
 data class HomeApp(
@@ -82,7 +86,7 @@ class MainUiViewModel(application: Application) : AndroidViewModel(application) 
                         currentDate = dateFormat.format(now).uppercase(Locale.getDefault())
                     )
                 }
-                delay(15_000L) // Update every 15 seconds
+                delay(15_000L)
             }
         }
 
@@ -97,9 +101,19 @@ class MainUiViewModel(application: Application) : AndroidViewModel(application) 
         // Load prefs
         refreshFromPrefs()
 
-        // Observe pref changes
+        // Load screen time and refresh periodically
+        loadScreenTime()
+        viewModelScope.launch {
+            while (isActive) {
+                delay(60_000L)
+                loadScreenTime()
+            }
+        }
+
+        // Observe pref changes — fully reactive propagation
         viewModelScope.launch {
             prefs.homescreenPreferences.collect { hsPrefs ->
+                val apps = loadHomeApps(hsPrefs.maxApps)
                 _uiState.update {
                     it.copy(
                         clockHorizontalAlignment = hsPrefs.clockHorizontalAlignment,
@@ -108,17 +122,26 @@ class MainUiViewModel(application: Application) : AndroidViewModel(application) 
                         appVerticalAlignment = hsPrefs.appVerticalAlignment,
                         showClock = hsPrefs.showClock,
                         showDate = hsPrefs.showDate,
-                        showScreenTime = hsPrefs.showScreenTime
+                        showScreenTime = hsPrefs.showScreenTime,
+                        homeAppsCount = hsPrefs.maxApps,
+                        homeApps = apps,
+                        showStatusBar = hsPrefs.showStatusBar,
+                        leftSwipeAction = hsPrefs.leftSwipeAction,
+                        rightSwipeAction = hsPrefs.rightSwipeAction,
+                        clockSectionWeight = hsPrefs.clockSectionWeight,
+                        homeTextSizeScale = hsPrefs.homeTextSizeScale,
+                        appDrawerTextSizeScale = hsPrefs.appDrawerTextSizeScale,
+                        enableGestures = hsPrefs.enableGestures
                     )
                 }
             }
         }
     }
 
-    fun refreshFromPrefs() {
+    private fun loadHomeApps(count: Int): List<HomeApp> {
         val apps = mutableListOf<HomeApp>()
-        val count = prefs.homeAppsNum.coerceIn(0, 10)
-        for (i in 1..count) {
+        val limit = count.coerceIn(0, 10)
+        for (i in 1..limit) {
             val name = prefs.getAppName(i)
             if (name.isNotBlank()) {
                 apps.add(
@@ -134,6 +157,12 @@ class MainUiViewModel(application: Application) : AndroidViewModel(application) 
                 )
             }
         }
+        return apps
+    }
+
+    fun refreshFromPrefs() {
+        val count = prefs.maxHomeApps.coerceIn(0, 10)
+        val apps = loadHomeApps(count)
         _uiState.update {
             it.copy(
                 homeApps = apps,
@@ -147,7 +176,10 @@ class MainUiViewModel(application: Application) : AndroidViewModel(application) 
                 showScreenTime = prefs.showScreenTimeWidget,
                 showStatusBar = prefs.showStatusBar,
                 leftSwipeAction = prefs.leftSwipeAction,
-                rightSwipeAction = prefs.rightSwipeAction
+                rightSwipeAction = prefs.rightSwipeAction,
+                clockSectionWeight = prefs.clockSectionWeight,
+                homeTextSizeScale = prefs.homeTextSizeScale,
+                appDrawerTextSizeScale = prefs.appDrawerTextSizeScale,
             )
         }
     }
@@ -180,10 +212,6 @@ class MainUiViewModel(application: Application) : AndroidViewModel(application) 
                 _uiState.update { it.copy(screenTime = "") }
             }
         }
-    }
-
-    fun updateScreenTime(text: String) {
-        _uiState.update { it.copy(screenTime = text) }
     }
 
     override fun onCleared() {

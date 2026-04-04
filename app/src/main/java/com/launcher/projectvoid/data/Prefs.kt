@@ -17,10 +17,19 @@ data class HomescreenPreferences(
     val showClock: Boolean,
     val showDate: Boolean,
     val showScreenTime: Boolean,
+    val maxApps: Int,
+    val clockSectionWeight: Float,
+    val homeTextSizeScale: Float,
+    val appDrawerTextSizeScale: Float,
+    val showStatusBar: Boolean,
+    val leftSwipeAction: String,
+    val rightSwipeAction: String,
+    val enableGestures: Boolean
 )
 
 class Prefs(context: Context) {
-    private val PREFS_FILENAME = "com.launcher.projectvoid"
+    private val PREFS_FILENAME = "com.launcher.void"
+    private val OLD_PREFS_FILENAME = "com.launcher.projectvoid"
 
     private val FIRST_OPEN = "FIRST_OPEN"
     private val FIRST_OPEN_TIME = "FIRST_OPEN_TIME"
@@ -68,6 +77,12 @@ class Prefs(context: Context) {
     private val RIGHT_SWIPE_ACTION = "RIGHT_SWIPE_ACTION"
     private val MAX_HOME_APPS = "MAX_HOME_APPS"
     private val SHOW_ALPHABET_CATEGORIES = "SHOW_ALPHABET_CATEGORIES"
+    private val CLOCK_SECTION_WEIGHT = "CLOCK_SECTION_WEIGHT"
+    private val PRIVATE_SPACE_ENABLED = "PRIVATE_SPACE_ENABLED"
+    private val ENABLE_GESTURES = "ENABLE_GESTURES"
+    private val ENABLE_NOTIFICATION_SUMMARY = "ENABLE_NOTIFICATION_SUMMARY"
+    private val ENABLE_WIDGETS = "ENABLE_WIDGETS"
+    private val ENABLE_NOTES = "ENABLE_NOTES"
 
     private val APP_NAME_1 = "APP_NAME_1"
     private val APP_NAME_2 = "APP_NAME_2"
@@ -151,7 +166,7 @@ class Prefs(context: Context) {
     private val SHORTCUT_ID_SWIPE_RIGHT = "SHORTCUT_ID_SWIPE_RIGHT"
     private val IS_SHORTCUT_SWIPE_RIGHT = "IS_SHORTCUT_SWIPE_RIGHT"
 
-    private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_FILENAME, 0)
+    private val prefs: SharedPreferences
 
     private val homescreenPrefKeys = setOf(
         HOME_ALIGNMENT,
@@ -161,17 +176,53 @@ class Prefs(context: Context) {
         SHOW_DATE_WIDGET,
         SHOW_SCREEN_TIME_WIDGET,
         CLOCK_ALIGNMENT,
-        CLOCK_VERTICAL_ALIGNMENT
+        CLOCK_VERTICAL_ALIGNMENT,
+        MAX_HOME_APPS,
+        CLOCK_SECTION_WEIGHT,
+        HOME_TEXT_SIZE_SCALE,
+        APP_DRAWER_TEXT_SIZE_SCALE,
+        STATUS_BAR,
+        LEFT_SWIPE_ACTION,
+        RIGHT_SWIPE_ACTION,
+        ENABLE_GESTURES
     )
 
     private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key in homescreenPrefKeys) emitHomescreenPrefs()
     }
 
-    private val _homescreenPreferences = MutableStateFlow(readHomescreenPreferences())
-    val homescreenPreferences: StateFlow<HomescreenPreferences> = _homescreenPreferences.asStateFlow()
+    private val _homescreenPreferences: MutableStateFlow<HomescreenPreferences>
+    val homescreenPreferences: StateFlow<HomescreenPreferences>
 
     init {
+        // Migrate from old prefs file if needed
+        val newPrefs = context.getSharedPreferences(PREFS_FILENAME, 0)
+        val oldPrefs = context.getSharedPreferences(OLD_PREFS_FILENAME, 0)
+        if (newPrefs.all.isEmpty() && oldPrefs.all.isNotEmpty()) {
+            val editor = newPrefs.edit()
+            oldPrefs.all.forEach { (key, value) ->
+                when (value) {
+                    is Boolean -> editor.putBoolean(key, value)
+                    is Int -> editor.putInt(key, value)
+                    is Long -> editor.putLong(key, value)
+                    is Float -> editor.putFloat(key, value)
+                    is String -> editor.putString(key, value)
+                    is Set<*> -> @Suppress("UNCHECKED_CAST") editor.putStringSet(key, value as Set<String>)
+                }
+            }
+            editor.apply()
+            // Clean up old file
+            oldPrefs.edit().clear().apply()
+        }
+        prefs = newPrefs
+
+        // Migrate homeAppsNum → maxHomeApps if MAX_HOME_APPS was never set
+        if (!prefs.contains(MAX_HOME_APPS) && prefs.contains(HOME_APPS_NUM)) {
+            prefs.edit { putInt(MAX_HOME_APPS, prefs.getInt(HOME_APPS_NUM, 4)) }
+        }
+
+        _homescreenPreferences = MutableStateFlow(readHomescreenPreferences())
+        homescreenPreferences = _homescreenPreferences.asStateFlow()
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
     }
 
@@ -190,7 +241,15 @@ class Prefs(context: Context) {
             clockVerticalAlignment = prefs.getInt(CLOCK_VERTICAL_ALIGNMENT, Gravity.BOTTOM),
             showClock = prefs.getBoolean(SHOW_CLOCK_WIDGET, prefs.getInt(DATE_TIME_VISIBILITY, Constants.DateTime.ON) == Constants.DateTime.ON),
             showDate = prefs.getBoolean(SHOW_DATE_WIDGET, prefs.getInt(DATE_TIME_VISIBILITY, Constants.DateTime.ON) != Constants.DateTime.OFF),
-            showScreenTime = prefs.getBoolean(SHOW_SCREEN_TIME_WIDGET, true)
+            showScreenTime = prefs.getBoolean(SHOW_SCREEN_TIME_WIDGET, true),
+            maxApps = prefs.getInt(MAX_HOME_APPS, prefs.getInt(HOME_APPS_NUM, 4)),
+            clockSectionWeight = prefs.getFloat(CLOCK_SECTION_WEIGHT, 0.25f),
+            homeTextSizeScale = prefs.getFloat(HOME_TEXT_SIZE_SCALE, prefs.getFloat(TEXT_SIZE_SCALE, 1.0f)),
+            appDrawerTextSizeScale = prefs.getFloat(APP_DRAWER_TEXT_SIZE_SCALE, prefs.getFloat(TEXT_SIZE_SCALE, 1.0f)),
+            showStatusBar = prefs.getBoolean(STATUS_BAR, false),
+            leftSwipeAction = prefs.getString(LEFT_SWIPE_ACTION, SwipeAction.NOTIFICATION_SUMMARY) ?: SwipeAction.NOTIFICATION_SUMMARY,
+            rightSwipeAction = prefs.getString(RIGHT_SWIPE_ACTION, SwipeAction.WIDGETS) ?: SwipeAction.WIDGETS,
+            enableGestures = prefs.getBoolean(ENABLE_GESTURES, true)
         )
     }
 
@@ -251,9 +310,13 @@ class Prefs(context: Context) {
         get() = prefs.getString(DAILY_WALLPAPER_URL, "").toString()
         set(value) = prefs.edit { putString(DAILY_WALLPAPER_URL, value).apply() }
 
+    /** @deprecated Use maxHomeApps instead. Reads from MAX_HOME_APPS with fallback. */
     var homeAppsNum: Int
-        get() = prefs.getInt(HOME_APPS_NUM, 4)
-        set(value) = prefs.edit { putInt(HOME_APPS_NUM, value).apply() }
+        get() = prefs.getInt(MAX_HOME_APPS, prefs.getInt(HOME_APPS_NUM, 4))
+        set(value) {
+            prefs.edit { putInt(MAX_HOME_APPS, value) }
+            prefs.edit { putInt(HOME_APPS_NUM, value) }
+        }
 
     var homeAlignment: Int
         get() = prefs.getInt(HOME_ALIGNMENT, Gravity.START)
@@ -906,6 +969,7 @@ class Prefs(context: Context) {
         get() = prefs.getInt(CLOCK_ALIGNMENT, Gravity.START)
         set(value) {
             prefs.edit { putInt(CLOCK_ALIGNMENT, value) }
+            emitHomescreenPrefs()
         }
 
     /** Independent clock section vertical alignment (Gravity.TOP / CENTER_VERTICAL / BOTTOM). */
@@ -913,7 +977,21 @@ class Prefs(context: Context) {
         get() = prefs.getInt(CLOCK_VERTICAL_ALIGNMENT, Gravity.BOTTOM)
         set(value) {
             prefs.edit { putInt(CLOCK_VERTICAL_ALIGNMENT, value) }
+            emitHomescreenPrefs()
         }
+
+    /** Clock section weight (0.15–0.50). */
+    var clockSectionWeight: Float
+        get() = prefs.getFloat(CLOCK_SECTION_WEIGHT, 0.25f)
+        set(value) {
+            prefs.edit { putFloat(CLOCK_SECTION_WEIGHT, value) }
+            emitHomescreenPrefs()
+        }
+
+    /** Enable/disable Private Space integration. */
+    var privateSpaceEnabled: Boolean
+        get() = prefs.getBoolean(PRIVATE_SPACE_ENABLED, true)
+        set(value) = prefs.edit { putBoolean(PRIVATE_SPACE_ENABLED, value).apply() }
 
     /** Left swipe action: "notification_summary", "widgets", or "notes". */
     var leftSwipeAction: String
@@ -948,5 +1026,37 @@ class Prefs(context: Context) {
         const val NOTIFICATION_SUMMARY = "notification_summary"
         const val WIDGETS = "widgets"
         const val NOTES = "notes"
+        const val NOTIFICATIONS = "notifications"
+        const val APP = "app"
+        const val ACCESSIBILITY = "accessibility"
+        const val NONE = "none"
     }
+
+    var enableGestures: Boolean
+        get() = prefs.getBoolean(ENABLE_GESTURES, true)
+        set(value) {
+            prefs.edit { putBoolean(ENABLE_GESTURES, value) }
+            emitHomescreenPrefs()
+        }
+
+    var enableNotificationSummary: Boolean
+        get() = prefs.getBoolean(ENABLE_NOTIFICATION_SUMMARY, true)
+        set(value) = prefs.edit { putBoolean(ENABLE_NOTIFICATION_SUMMARY, value).apply() }
+
+    var enableWidgets: Boolean
+        get() = prefs.getBoolean(ENABLE_WIDGETS, true)
+        set(value) = prefs.edit { putBoolean(ENABLE_WIDGETS, value).apply() }
+
+    var enableNotes: Boolean
+        get() = prefs.getBoolean(ENABLE_NOTES, true)
+        set(value) = prefs.edit { putBoolean(ENABLE_NOTES, value).apply() }
+
+    var leftSwipeAppPackage: String
+        get() = prefs.getString(APP_PACKAGE_SWIPE_LEFT, "").toString()
+        set(value) = prefs.edit { putString(APP_PACKAGE_SWIPE_LEFT, value).apply() }
+
+    var rightSwipeAppPackage: String
+        get() = prefs.getString(APP_PACKAGE_SWIPE_RIGHT, "").toString()
+        set(value) = prefs.edit { putString(APP_PACKAGE_SWIPE_RIGHT, value).apply() }
+
 }

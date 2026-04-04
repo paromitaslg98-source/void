@@ -38,10 +38,11 @@ As part of the final Compose migration review, the project was audited for:
 - Converted primary bounds to a scalable `GridCells.Fixed(4)` matrix.
 - Enabled long-press context interface on pinned widgets rendering (2x1, 2x2, 4x2) span overrides dynamically propagating through SharedPreferences.
 
-### 2) Seamless Private Space Merge
-- Synchronized with native device biometric states listening securely for `ACTION_MANAGED_PROFILE_UNLOCKED`.
-- Deprecated strict segregated visual compartments for explicit private profile isolation.
-- Homogenized Private App instances safely within the primary AppDrawer registry list rendering with inline Lock indicators autonomously upon authorization.
+### 2) Advanced Private Space Integration (Android 15+)
+- **Automated Profile Detection**: Engineered a dual-layer profile detection system using `UserManager.userProfiles` and `LauncherApps.getLauncherUserInfo` to reliably identify Hidden Profiles (Private Space) on Android 15.
+- **Dynamic Sectioning**: Implemented a dedicated Private Space section at the end of the app library, separated by a visual divider, ensuring clear isolation of sensitive applications.
+- **Biometric Synchronization**: Fully synchronized with native OS states using intensified broadcast monitoring for `ACTION_PROFILE_ACCESSIBLE`, `ACTION_MANAGED_PROFILE_UNLOCKED`, and `ACTION_PROFILE_INACCESSIBLE`.
+- **Permission & Role Requirements**: Optimized for the `ACCESS_HIDDEN_PROFILES` signature permission; requires VOID to be set as the **Default Launcher** for full kernel-level access to the private profile sandbox.
 
 ### 3) Core Dimensional Lockdown
 - Removed reactive bounding instructions (`.systemBarsPadding()`) preventing unpredictable resolution stretch or layout fracturing during OS visibility interruptions.

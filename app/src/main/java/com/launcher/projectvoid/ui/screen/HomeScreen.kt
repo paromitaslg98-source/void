@@ -111,8 +111,8 @@ fun HomeScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = 24.dp, bottom = 24.dp)
-            .pointerInput(state.leftSwipeAction, state.rightSwipeAction) {
+            .padding(top = 48.dp, bottom = 24.dp)
+            .pointerInput(state.leftSwipeAction, state.rightSwipeAction, state.enableGestures) {
                 detectDragGestures(
                     onDragStart = { dragOffset = Offset.Zero },
                     onDragEnd = {
@@ -120,12 +120,15 @@ fun HomeScreen(
                         val absY = abs(dragOffset.y)
                         if (absX > swipeThreshold || absY > swipeThreshold) {
                             if (absX > absY) {
-                                if (dragOffset.x > 0) {
-                                    dispatchSwipeAction(state.rightSwipeAction,
-                                        onOpenNotificationSummary, onOpenWidgets, onOpenNotes)
-                                } else {
-                                    dispatchSwipeAction(state.leftSwipeAction,
-                                        onOpenNotificationSummary, onOpenWidgets, onOpenNotes)
+                                if (state.enableGestures) {
+                                    // Android standard: Swipe your finger RIGHT to reveal the screen on the LEFT.
+                                    if (dragOffset.x > 0) {
+                                        dispatchSwipeAction("left", state.leftSwipeAction, context,
+                                            onOpenNotificationSummary, onOpenWidgets, onOpenNotes, onOpenNotifications)
+                                    } else {
+                                        dispatchSwipeAction("right", state.rightSwipeAction, context,
+                                            onOpenNotificationSummary, onOpenWidgets, onOpenNotes, onOpenNotifications)
+                                    }
                                 }
                             } else {
                                 if (dragOffset.y > 0) onOpenNotifications()
@@ -147,16 +150,18 @@ fun HomeScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(0.25f)
-                    .padding(horizontal = 28.dp, vertical = 16.dp),
+                    .weight(state.clockSectionWeight.coerceIn(0.15f, 0.50f))
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
                 horizontalAlignment = clockAlign,
                 verticalArrangement = clockVertical
             ) {
                 if (state.showClock) {
                     Text(
                         text = state.currentTime,
-                        style = MaterialTheme.typography.displayLarge,
-                        color = MaterialTheme.colorScheme.onBackground,
+                        style = MaterialTheme.typography.displayLarge.copy(
+                            fontSize = MaterialTheme.typography.displayLarge.fontSize * state.homeTextSizeScale
+                        ),
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.87f),
                         textAlign = clockTextAlign,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -171,10 +176,11 @@ fun HomeScreen(
                     )
                 }
                 if (state.showDate) {
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = state.currentDate,
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.60f),
                         textAlign = clockTextAlign,
                         letterSpacing = MaterialTheme.typography.labelMedium.letterSpacing * 1.5f,
                         modifier = Modifier
@@ -191,13 +197,68 @@ fun HomeScreen(
                     )
                 }
                 if (state.showScreenTime && state.screenTime.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = state.screenTime,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
                         textAlign = clockTextAlign,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                val intent = try {
+                                    // 1. Try Google Wellbeing Top Level Settings (Direct Activity - settings)
+                                    Intent().apply {
+                                        setClassName(com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_PACKAGE_NAME, "com.google.android.apps.wellbeing.settings.TopLevelSettingsActivity")
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                } catch (e: Exception) {
+                                    null
+                                }
+
+                                val intent2 = try {
+                                    // 2. Try Google Wellbeing Top Level Settings (Direct Activity - home)
+                                    Intent().apply {
+                                        setClassName(com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_PACKAGE_NAME, "com.google.android.apps.wellbeing.home.TopLevelSettingsActivity")
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                } catch (e: Exception) {
+                                    null
+                                }
+
+                                val intent3 = Intent("com.google.android.apps.wellbeing.VIEW_APP_USAGE").apply {
+                                    setPackage(com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_PACKAGE_NAME)
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+
+                                val intent4 = Intent("android.settings.DIGITAL_WELLBEING_SETTINGS").apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+
+                                val intent5 = Intent().apply {
+                                    setClassName(
+                                        com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_SAMSUNG_PACKAGE_NAME,
+                                        com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_SAMSUNG_ACTIVITY
+                                    )
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+
+                                val intent6 = context.packageManager.getLaunchIntentForPackage(com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_PACKAGE_NAME)?.apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+
+                                val intent7 = Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+
+                                val list = listOfNotNull(intent, intent2, intent3, intent4, intent5, intent6, intent7)
+                                for (target in list) {
+                                    try {
+                                        context.startActivity(target)
+                                        break
+                                    } catch (_: Exception) {}
+                                }
+                            }
                     )
                 }
             }
@@ -207,27 +268,29 @@ fun HomeScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(0.75f)
+                    .weight(1f - state.clockSectionWeight.coerceIn(0.15f, 0.50f))
                     .combinedClickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                         onClick = {},
                         onLongClick = { showAppPicker = true }
                     )
-                    .padding(horizontal = 28.dp),
+                    .padding(horizontal = 20.dp),
                 horizontalAlignment = appAlign,
                 verticalArrangement = appVertical
             ) {
                 state.homeApps.forEach { app ->
                     Text(
                         text = app.label,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onBackground,
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontSize = MaterialTheme.typography.bodyLarge.fontSize * state.homeTextSizeScale
+                        ),
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.87f),
                         textAlign = appTextAlign,
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { onAppClick(app) }
-                            .padding(vertical = 8.dp)
+                            .padding(vertical = 14.dp)  // 14dp top + 14dp bot + ~20sp text ≈ 48dp touch target
                     )
                 }
 
@@ -235,7 +298,7 @@ fun HomeScreen(
                 Text(
                     text = "${state.batteryLevel}%",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
                     textAlign = appTextAlign,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -307,17 +370,10 @@ private fun HomeAppPickerSheet(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                currentApps.forEach { app ->
+                currentApps.forEachIndexed { index, app ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable {
-                                // Remove this app from home
-                                prefs.setAppAtLocation(
-                                    app.position, "", "", null, "", false, ""
-                                )
-                                onHomeAppsChanged()
-                            }
                             .padding(vertical = 10.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
@@ -325,13 +381,41 @@ private fun HomeAppPickerSheet(
                         Text(
                             text = app.label,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f)
                         )
-                        Icon(
-                            Icons.Outlined.Remove,
-                            contentDescription = "Remove",
-                            tint = MaterialTheme.colorScheme.error
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (index > 0) {
+                                androidx.compose.material3.IconButton(onClick = {
+                                    val other = currentApps[index - 1]
+                                    prefs.setAppAtLocation(other.position, app.label, app.packageName, app.activityClassName, app.userString, app.isShortcut, app.shortcutId)
+                                    prefs.setAppAtLocation(app.position, other.label, other.packageName, other.activityClassName, other.userString, other.isShortcut, other.shortcutId)
+                                    onHomeAppsChanged()
+                                }) {
+                                    androidx.compose.material3.Text("↑", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
+                            if (index < currentApps.size - 1) {
+                                androidx.compose.material3.IconButton(onClick = {
+                                    val other = currentApps[index + 1]
+                                    prefs.setAppAtLocation(other.position, app.label, app.packageName, app.activityClassName, app.userString, app.isShortcut, app.shortcutId)
+                                    prefs.setAppAtLocation(app.position, other.label, other.packageName, other.activityClassName, other.userString, other.isShortcut, other.shortcutId)
+                                    onHomeAppsChanged()
+                                }) {
+                                    androidx.compose.material3.Text("↓", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
+                            androidx.compose.material3.IconButton(onClick = {
+                                prefs.setAppAtLocation(app.position, "", "", null, "", false, "")
+                                onHomeAppsChanged()
+                            }) {
+                                Icon(
+                                    Icons.Outlined.Remove,
+                                    contentDescription = "Remove",
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
                     }
                 }
                 HorizontalDivider(
@@ -415,14 +499,32 @@ private fun HomeAppPickerSheet(
 }
 
 private fun dispatchSwipeAction(
+    direction: String,
     action: String,
+    context: android.content.Context,
     onSummary: () -> Unit,
     onWidgets: () -> Unit,
-    onNotes: () -> Unit
+    onNotes: () -> Unit,
+    onNotifications: () -> Unit
 ) {
     when (action) {
-        SwipeAction.NOTIFICATION_SUMMARY -> onSummary()
-        SwipeAction.WIDGETS -> onWidgets()
-        SwipeAction.NOTES -> onNotes()
+        com.launcher.projectvoid.data.Prefs.SwipeAction.NOTIFICATION_SUMMARY -> onSummary()
+        com.launcher.projectvoid.data.Prefs.SwipeAction.WIDGETS -> onWidgets()
+        com.launcher.projectvoid.data.Prefs.SwipeAction.NOTES -> onNotes()
+        com.launcher.projectvoid.data.Prefs.SwipeAction.NOTIFICATIONS -> onNotifications()
+        com.launcher.projectvoid.data.Prefs.SwipeAction.APP -> {
+            val prefs = com.launcher.projectvoid.data.Prefs(context)
+            val pkg = if (direction == "left") prefs.leftSwipeAppPackage else prefs.rightSwipeAppPackage
+            if (pkg.isNotEmpty()) {
+                try {
+                    val intent = context.packageManager.getLaunchIntentForPackage(pkg)
+                    if (intent != null) {
+                        context.startActivity(intent)
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
     }
 }

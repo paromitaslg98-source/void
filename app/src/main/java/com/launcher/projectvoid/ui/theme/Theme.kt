@@ -44,12 +44,13 @@ private val VoidDarkColorScheme = darkColorScheme(
     surfaceDim = VoidBlack
 )
 
+// MD3 Expressive — 3-tier shape vocabulary
 private val VoidExpressiveShapes = Shapes(
-    extraSmall = RoundedCornerShape(8.dp),
-    small = RoundedCornerShape(12.dp),
-    medium = RoundedCornerShape(16.dp),
-    large = RoundedCornerShape(24.dp),
-    extraLarge = RoundedCornerShape(32.dp)
+    extraSmall = RoundedCornerShape(0.dp),     // flat list rows
+    small = RoundedCornerShape(8.dp),          // chips, small pills
+    medium = RoundedCornerShape(8.dp),         // interactive elements
+    large = RoundedCornerShape(20.dp),         // cards, sheets
+    extraLarge = RoundedCornerShape(20.dp)     // search bar, bottom sheets
 )
 
 @Composable

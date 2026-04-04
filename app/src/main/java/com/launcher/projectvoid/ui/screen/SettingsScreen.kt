@@ -1,6 +1,5 @@
 package com.launcher.projectvoid.ui.screen
 
-import android.provider.Settings
 import android.view.Gravity
 import android.content.Intent
 import androidx.compose.foundation.clickable
@@ -34,6 +33,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Remove
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -41,6 +43,10 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -51,6 +57,7 @@ import com.launcher.projectvoid.R
 import com.launcher.projectvoid.data.Prefs
 import com.launcher.projectvoid.data.Prefs.SwipeAction
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
@@ -72,15 +79,59 @@ fun SettingsScreen(onBack: () -> Unit) {
     var leftSwipeAction by remember { mutableStateOf(prefs.leftSwipeAction) }
     var rightSwipeAction by remember { mutableStateOf(prefs.rightSwipeAction) }
     var swipeDownAction by remember { mutableIntStateOf(prefs.swipeDownAction) }
+    var clockSectionWeight by remember { mutableFloatStateOf(prefs.clockSectionWeight) }
+    var privateSpaceEnabled by remember { mutableStateOf(prefs.privateSpaceEnabled) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    var showAppPicker by remember { mutableStateOf<String?>(null) }
+    var showDeveloperInfo by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(top = 24.dp, bottom = 24.dp)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
+    if (showDeveloperInfo) {
+        AlertDialog(
+            onDismissRequest = { showDeveloperInfo = false },
+            title = { Text("Developer Credits") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Made with 💜 by Surajit Das.", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "GitHub: https://github.com/knownassurajit/void",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable {
+                            try {
+                                context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/knownassurajit/void")))
+                            } catch (_: Exception) {}
+                        }
+                    )
+                    Text(
+                        "LinkedIn: https://www.linkedin.com/in/knownassurajit/",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable {
+                            try {
+                                context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://www.linkedin.com/in/knownassurajit/")))
+                            } catch (_: Exception) {}
+                        }
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDeveloperInfo = false }) {
+                    Text("Close")
+                }
+            }
+        )
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 48.dp, bottom = 24.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
         // ── Header Card ──
         OutlinedCard(
             modifier = Modifier.fillMaxWidth(),
@@ -101,12 +152,26 @@ fun SettingsScreen(onBack: () -> Unit) {
                             style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.onSurface
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = "ⓘ", style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        IconButton(onClick = { showDeveloperInfo = true }) {
+                            Icon(
+                                Icons.Outlined.Info,
+                                contentDescription = "Credits",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
-                    Text(text = "⚙", style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    IconButton(onClick = {
+                        try {
+                            context.startActivity(Intent(android.provider.Settings.ACTION_SETTINGS))
+                        } catch (_: Exception) {}
+                    }) {
+                        Icon(
+                            Icons.Outlined.Settings,
+                            contentDescription = "System Settings",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
                 HorizontalDivider(
                     modifier = Modifier.padding(vertical = 12.dp),
@@ -115,10 +180,10 @@ fun SettingsScreen(onBack: () -> Unit) {
                 Row(
                     modifier = Modifier.fillMaxWidth().clickable {
                         try {
-                            val intent = Intent(Settings.ACTION_HOME_SETTINGS)
+                            val intent = Intent(android.provider.Settings.ACTION_HOME_SETTINGS)
                             context.startActivity(intent)
                         } catch (e: Exception) {
-                            val intent = Intent(Settings.ACTION_SETTINGS)
+                            val intent = Intent(android.provider.Settings.ACTION_SETTINGS)
                             context.startActivity(intent)
                         }
                     }.padding(vertical = 4.dp)
@@ -185,15 +250,54 @@ fun SettingsScreen(onBack: () -> Unit) {
                 onChanged = { appVerticalAlignment = it; prefs.homeVerticalAlignment = it }
             )
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
-            SettingsToggle(label = stringResource(R.string.screen_time), checked = showScreenTime) {
+            SettingsToggle(
+                label = stringResource(R.string.screen_time), 
+                checked = showScreenTime,
+                infoTitle = "Screen Time Permissions",
+                infoText = "This feature requires 'Usage Data Access' (PACKAGE_USAGE_STATS) to accurately calculate and display foreground activity time for apps on the Home Screen. If not granted, you will be redirected to Android's Usage Access control panel."
+            ) {
                 showScreenTime = it; prefs.showScreenTimeWidget = it
+                if (it) {
+                    val appOps = context.getSystemService(android.content.Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+                    val mode = appOps.checkOpNoThrow(
+                        android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+                        android.os.Process.myUid(),
+                        context.packageName
+                    )
+                    if (mode != android.app.AppOpsManager.MODE_ALLOWED) {
+                        try {
+                            context.startActivity(Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                            scope.launch { snackbarHostState.showSnackbar("Redirected to Usage Access settings") }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            scope.launch { snackbarHostState.showSnackbar("Could not open settings automatically") }
+                        }
+                    } else {
+                        scope.launch { snackbarHostState.showSnackbar("Screen Time enabled") }
+                    }
+                }
             }
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            SettingsSlider(
+                label = "Clock Section Size",
+                value = clockSectionWeight,
+                range = 0.15f..0.50f
+            ) { clockSectionWeight = it; prefs.clockSectionWeight = it }
         }
 
         // ── APP LIBRARY Section ──
         SettingsSection(title = "App Library") {
             SettingsToggle(label = "Show Alphabet Categories", checked = showAlphabetCategories) {
                 showAlphabetCategories = it; prefs.showAlphabetCategories = it
+            }
+            SettingsToggle(
+                label = "Enable Private Space", 
+                checked = privateSpaceEnabled,
+                infoTitle = "Private Space Profiles",
+                infoText = "Requires OS support for Hidden Profiles (access to Android 15's private spaces). We use LauncherApps.getProfiles to bypass blocks and securely fetch unlocked private sandbox apps directly into your drawer."
+            ) {
+                privateSpaceEnabled = it; prefs.privateSpaceEnabled = it
+                scope.launch { snackbarHostState.showSnackbar(if (it) "Private Space Enabled" else "Private Space Disabled") }
             }
         }
 
@@ -218,31 +322,67 @@ fun SettingsScreen(onBack: () -> Unit) {
         }
 
         // ── GESTURES Section ──
+        var enableGestures by remember { mutableStateOf(prefs.enableGestures) }
+        var enableSummary by remember { mutableStateOf(prefs.enableNotificationSummary) }
+        var enableWidgets by remember { mutableStateOf(prefs.enableWidgets) }
+        var enableNotes by remember { mutableStateOf(prefs.enableNotes) }
+
         SettingsSection(title = stringResource(R.string.gestures)) {
-            SwipeActionSelector(
-                label = stringResource(R.string.left_swipe_action),
-                currentAction = leftSwipeAction,
-                excludeAction = rightSwipeAction
-            ) {
-                leftSwipeAction = it; prefs.leftSwipeAction = it
+            SettingsToggle(label = "Enable Gestures", checked = enableGestures) {
+                enableGestures = it; prefs.enableGestures = it
             }
-            SwipeActionSelector(
-                label = stringResource(R.string.right_swipe_action),
-                currentAction = rightSwipeAction,
-                excludeAction = leftSwipeAction
-            ) {
-                rightSwipeAction = it; prefs.rightSwipeAction = it
-            }
-            SettingsRow(
-                label = stringResource(R.string.swipe_down_for),
-                value = if (swipeDownAction == 1) stringResource(R.string.search) else stringResource(R.string.notifications)
-            ) {
-                swipeDownAction = if (swipeDownAction == 1) 2 else 1
-                prefs.swipeDownAction = swipeDownAction
+            if (enableGestures) {
+                SettingsToggle(label = "Enable Notification Summary", checked = enableSummary) {
+                    enableSummary = it; prefs.enableNotificationSummary = it
+                }
+                SettingsToggle(label = "Enable Widgets Screen", checked = enableWidgets) {
+                    enableWidgets = it; prefs.enableWidgets = it
+                }
+                SettingsToggle(label = "Enable Notes Screen", checked = enableNotes) {
+                    enableNotes = it; prefs.enableNotes = it
+                }
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                SwipeActionSelector(
+                    label = stringResource(R.string.left_swipe_action),
+                    currentAction = leftSwipeAction,
+                    excludeAction = rightSwipeAction,
+                    enableSummary = enableSummary,
+                    enableWidgets = enableWidgets,
+                    enableNotes = enableNotes
+                ) {
+                    leftSwipeAction = it; prefs.leftSwipeAction = it
+                    if (it == SwipeAction.APP) showAppPicker = "left"
+                }
+                SwipeActionSelector(
+                    label = stringResource(R.string.right_swipe_action),
+                    currentAction = rightSwipeAction,
+                    excludeAction = leftSwipeAction,
+                    enableSummary = enableSummary,
+                    enableWidgets = enableWidgets,
+                    enableNotes = enableNotes
+                ) {
+                    rightSwipeAction = it; prefs.rightSwipeAction = it
+                    if (it == SwipeAction.APP) showAppPicker = "right"
+                }
             }
         }
 
         Spacer(modifier = Modifier.height(32.dp))
+        }
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp)
+        )
+        if (showAppPicker != null) {
+            SettingsAppPickerSheet(
+                onDismiss = { showAppPicker = null },
+                onAppSelected = { pkg ->
+                    if (showAppPicker == "left") prefs.leftSwipeAppPackage = pkg
+                    if (showAppPicker == "right") prefs.rightSwipeAppPackage = pkg
+                    showAppPicker = null
+                }
+            )
+        }
     }
 }
 
@@ -257,17 +397,17 @@ private fun SettingsSection(title: String, content: @Composable () -> Unit) {
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         )
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = title.uppercase(),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.60f),
                 fontWeight = FontWeight.Medium,
                 letterSpacing = MaterialTheme.typography.labelSmall.letterSpacing * 1.5f
             )
             HorizontalDivider(
-                modifier = Modifier.padding(vertical = 10.dp),
-                color = MaterialTheme.colorScheme.outlineVariant
+                modifier = Modifier.padding(vertical = 8.dp),
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
             )
             content()
         }
@@ -280,28 +420,37 @@ private fun SettingsRow(label: String, value: String, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 12.dp),
+            .padding(vertical = 14.dp),  // 48dp touch target
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(text = label, style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface)
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.87f))
         Text(text = value, style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.60f))
     }
 }
 
 @Composable
-private fun SettingsToggle(label: String, checked: Boolean, onChanged: (Boolean) -> Unit) {
+private fun SettingsToggle(label: String, checked: Boolean, infoTitle: String? = null, infoText: String? = null, onChanged: (Boolean) -> Unit) {
+    var showInfo by remember { mutableStateOf(false) }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
+            .padding(vertical = 8.dp),  // 48dp touch target with switch height
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = label, style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(text = label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.87f))
+            if (infoTitle != null && infoText != null) {
+                Spacer(modifier = Modifier.width(4.dp))
+                IconButton(onClick = { showInfo = true }) {
+                    Icon(Icons.Outlined.Info, contentDescription = "Info", tint = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
         Switch(
             checked = checked,
             onCheckedChange = onChanged,
@@ -311,6 +460,19 @@ private fun SettingsToggle(label: String, checked: Boolean, onChanged: (Boolean)
                 uncheckedThumbColor = MaterialTheme.colorScheme.outline,
                 uncheckedTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest
             )
+        )
+    }
+
+    if (showInfo && infoTitle != null && infoText != null) {
+        AlertDialog(
+            onDismissRequest = { showInfo = false },
+            title = { Text(infoTitle) },
+            text = { Text(infoText) },
+            confirmButton = {
+                TextButton(onClick = { showInfo = false }) {
+                    Text("OK")
+                }
+            }
         )
     }
 }
@@ -373,15 +535,24 @@ private fun SwipeActionSelector(
     label: String,
     currentAction: String,
     excludeAction: String,
+    enableSummary: Boolean,
+    enableWidgets: Boolean,
+    enableNotes: Boolean,
     onChanged: (String) -> Unit
 ) {
-    val allActions = listOf(
-        SwipeAction.NOTIFICATION_SUMMARY to "Notification Summary",
-        SwipeAction.WIDGETS to "Widgets",
-        SwipeAction.NOTES to "Notes"
-    )
-    // Filter out the action already selected for the other gesture
-    val available = allActions.filter { it.first != excludeAction }
+    val allActions = mutableListOf<Pair<String, String>>()
+    if (enableSummary) allActions.add(SwipeAction.NOTIFICATION_SUMMARY to "Notification Summary")
+    if (enableWidgets) allActions.add(SwipeAction.WIDGETS to "Widgets")
+    if (enableNotes) allActions.add(SwipeAction.NOTES to "Notes")
+    allActions.add(SwipeAction.NOTIFICATIONS to "System Dropdown")
+    allActions.add(SwipeAction.APP to "Open App")
+    allActions.add(SwipeAction.ACCESSIBILITY to "Accessibility Action")
+    allActions.add(SwipeAction.NONE to "None")
+
+    // Filter out the action already selected for the other gesture, except NONE/NOTIFICATIONS/APP
+    val available = allActions.filter {
+        it.first != excludeAction || it.first == SwipeAction.NONE || it.first == SwipeAction.NOTIFICATIONS || it.first == SwipeAction.APP || it.first == SwipeAction.ACCESSIBILITY
+    }
     val displayName = allActions.firstOrNull { it.first == currentAction }?.second ?: currentAction
 
     SettingsRow(label = label, value = displayName) {
@@ -389,5 +560,59 @@ private fun SwipeActionSelector(
         val currentIndex = available.indexOfFirst { it.first == currentAction }
         val nextIndex = (currentIndex + 1) % available.size
         onChanged(available[nextIndex].first)
+    }
+}
+
+@androidx.compose.material3.ExperimentalMaterial3Api
+@Composable
+private fun SettingsAppPickerSheet(
+    onDismiss: () -> Unit,
+    onAppSelected: (String) -> Unit
+) {
+    val context = LocalContext.current
+    var apps by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
+    var search by remember { mutableStateOf("") }
+    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val pm = context.packageManager
+            val intent = Intent(Intent.ACTION_MAIN, null).apply { addCategory(Intent.CATEGORY_LAUNCHER) }
+            val list = pm.queryIntentActivities(intent, 0)
+            val mapped = list.map { it.loadLabel(pm).toString() to it.activityInfo.packageName }.sortedBy { it.first.lowercase() }
+            apps = mapped
+        }
+    }
+
+    androidx.compose.material3.ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Text("Select App", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
+            androidx.compose.material3.OutlinedTextField(
+                value = search,
+                onValueChange = { search = it },
+                placeholder = { Text("Search apps...") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                shape = MaterialTheme.shapes.extraLarge
+            )
+            androidx.compose.foundation.lazy.LazyColumn {
+                val filtered = if (search.isBlank()) apps else apps.filter { it.first.contains(search, ignoreCase = true) }
+                items(filtered.size) { i ->
+                    val app = filtered[i]
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onAppSelected(app.second) }
+                            .padding(vertical = 14.dp)
+                    ) {
+                        Text(app.first, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+        }
     }
 }

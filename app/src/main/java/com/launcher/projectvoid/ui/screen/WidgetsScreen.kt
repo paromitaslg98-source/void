@@ -34,6 +34,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -178,20 +179,7 @@ fun WidgetsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = 24.dp, bottom = 24.dp)
-            .pointerInput(Unit) {
-                detectDragGestures(
-                    onDragStart = { dragOffset = Offset.Zero },
-                    onDragEnd = {
-                        if (abs(dragOffset.x) > 120f && abs(dragOffset.x) > abs(dragOffset.y)) {
-                            if (dragOffset.x < 0) onBack() // swipe left → back
-                        }
-                        dragOffset = Offset.Zero
-                    },
-                    onDragCancel = { dragOffset = Offset.Zero },
-                    onDrag = { change, amount -> change.consume(); dragOffset += amount }
-                )
-            }
+            .padding(top = 48.dp, bottom = 24.dp)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             Text(
@@ -276,10 +264,16 @@ fun WidgetsScreen(
     if (widgetToResize != null) {
         AlertDialog(
             onDismissRequest = { widgetToResize = null },
-            title = { Text("Resize Widget", style = MaterialTheme.typography.titleMedium) },
+            title = { Text("Widget Options", style = MaterialTheme.typography.titleMedium) },
             text = {
                 Column {
                     val currentSpan = widgetSpans[widgetToResize!!.provider.provider.flattenToString()] ?: Pair(2, 2)
+                    Text(
+                        "Resize",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
                     arrayOf("2x1", "2x2", "4x2").forEach { size ->
                         val (sx, sy) = when(size) {
                             "2x1" -> Pair(2, 1)
@@ -293,7 +287,7 @@ fun WidgetsScreen(
                                     viewModel.updateWidgetSpan(widgetToResize!!, sx, sy)
                                     widgetToResize = null
                                 }
-                                .padding(vertical = 12.dp),
+                                .padding(vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
@@ -304,6 +298,33 @@ fun WidgetsScreen(
                             Spacer(Modifier.width(12.dp))
                             Text(size, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
                         }
+                    }
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+                    // Remove widget option
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                viewModel.togglePin(widgetToResize!!)
+                                widgetToResize = null
+                            }
+                            .padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Outlined.Close,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            "Remove Widget",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error
+                        )
                     }
                 }
             },
@@ -338,38 +359,62 @@ private fun WidgetPickerSheet(
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
+            // Group widgets by app name
+            val groupedWidgets = remember(allWidgets) {
+                allWidgets.groupBy { it.appName }.toSortedMap()
+            }
+
+            LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(420.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                    .height(480.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 12.dp)
             ) {
-                items(allWidgets, key = { "${it.provider.provider}" }) { widget ->
-                    val pinned = viewModel.isPinned(widget)
-                    Box(modifier = Modifier.clickable { viewModel.togglePin(widget) }) {
-                        WidgetCard(widget)
-                        // Selection Badge Overlay
-                        Box(
+                groupedWidgets.forEach { (appName, widgets) ->
+                    item(key = "group_$appName") {
+                        Row(
                             modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(8.dp)
+                                .fillMaxWidth()
+                                .padding(top = 12.dp, bottom = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            if (pinned) {
-                                Icon(
-                                    Icons.Outlined.Check, 
-                                    contentDescription = "Pinned",
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            } else {
-                                Icon(
-                                    Icons.Outlined.Add, 
-                                    contentDescription = "Add",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                            Text(
+                                text = appName,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "${widgets.size}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    items(items = widgets, key = { "picker_${it.provider.provider}" }) { widget ->
+                        val pinned = viewModel.isPinned(widget)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { viewModel.togglePin(widget) }
+                                .padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = widget.label,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Icon(
+                                if (pinned) Icons.Outlined.Check else Icons.Outlined.Add,
+                                contentDescription = null,
+                                tint = if (pinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
@@ -410,45 +455,29 @@ private fun WidgetCard(widget: WidgetInfo, spanY: Int = 2) {
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         )
     ) {
-        Column(
-            modifier = Modifier.padding(8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(heightDp)
+                .padding(8.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(heightDp)
-                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.small),
-                contentAlignment = Alignment.Center
-            ) {
-                if (grayscaleBitmap != null) {
-                    Image(
-                        bitmap = grayscaleBitmap.asImageBitmap(),
-                        contentDescription = widget.label,
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier.fillMaxSize().padding(4.dp),
-                        alpha = 0.6f
-                    )
-                } else {
-                    Text("▣", style = MaterialTheme.typography.headlineLarge,
-                        color = MaterialTheme.colorScheme.outlineVariant)
-                }
+            if (grayscaleBitmap != null) {
+                Image(
+                    bitmap = grayscaleBitmap.asImageBitmap(),
+                    contentDescription = widget.label,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize(),
+                    alpha = 0.6f
+                )
+            } else {
+                Text(
+                    text = widget.label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
             }
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = widget.label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()
-            )
-            Text(
-                text = widget.appName,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()
-            )
         }
     }
 }

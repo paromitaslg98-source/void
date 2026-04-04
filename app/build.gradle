@@ -82,4 +82,8 @@ dependencies {
     // App Optimization (Baseline Profiles)
     implementation "androidx.profileinstaller:profileinstaller:1.4.1"
 
+    // On-device AI — Gemini Nano via ML Kit GenAI (AICore)
+    implementation 'com.google.mlkit:genai-summarization:1.0.0-beta1'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1'
+
 }

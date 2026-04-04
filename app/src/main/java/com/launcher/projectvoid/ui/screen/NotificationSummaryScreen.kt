@@ -3,6 +3,7 @@ package com.launcher.projectvoid.ui.screen
 import android.app.Application
 import android.text.format.DateUtils
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,14 +14,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -31,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -69,7 +72,6 @@ class NotificationSummaryViewModel(application: Application) : AndroidViewModel(
 
         viewModelScope.launch {
             NotificationService.notificationsState.collect { groups ->
-                val pm = application.packageManager
                 val summaryList = groups
                     .sortedByDescending { it.latestTimestamp }
                     .map { group ->
@@ -138,20 +140,7 @@ fun NotificationSummaryScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = 24.dp, bottom = 24.dp)
-            .pointerInput(Unit) {
-                detectDragGestures(
-                    onDragStart = { dragOffset = Offset.Zero },
-                    onDragEnd = {
-                        if (abs(dragOffset.x) > 120f && abs(dragOffset.x) > abs(dragOffset.y)) {
-                            if (dragOffset.x > 0) onBack() // swipe right → back
-                        }
-                        dragOffset = Offset.Zero
-                    },
-                    onDragCancel = { dragOffset = Offset.Zero },
-                    onDrag = { change, amount -> change.consume(); dragOffset += amount }
-                )
-            }
+            .padding(top = 48.dp, bottom = 24.dp)
     ) {
     Column(
         modifier = Modifier
@@ -162,30 +151,48 @@ fun NotificationSummaryScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
                 text = "Notification Summary",
                 style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onBackground,
+                fontWeight = FontWeight.Medium
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "✨",
-                style = MaterialTheme.typography.headlineSmall
-            )
+            // Total notification count badge
+            val totalCount = summaries.sumOf { it.notifications.size }
+            if (totalCount > 0) {
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "$totalCount",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
         }
 
         if (aiAvailable == false) {
             Text(
-                text = "AI summary unavailable on this device",
+                text = "On-device AI summary is not available on this device. Displaying raw notification content.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
             )
         }
 
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        HorizontalDivider(
+            modifier = Modifier.padding(horizontal = 20.dp),
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
 
         if (summaries.isEmpty()) {
             Box(
@@ -194,11 +201,20 @@ fun NotificationSummaryScreen(
                     .fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "No notifications to summarize",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "All clear",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "No pending notifications to summarize",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                }
             }
         } else {
             LazyColumn(
@@ -230,9 +246,10 @@ fun NotificationSummaryScreen(
                                 contentAlignment = Alignment.CenterEnd
                             ) {
                                 Text(
-                                    text = "Remove",
+                                    text = "Dismiss",
                                     color = MaterialTheme.colorScheme.error,
-                                    style = MaterialTheme.typography.labelLarge
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Medium
                                 )
                             }
                         }
@@ -257,17 +274,17 @@ private fun SummaryCard(summary: AppNotificationSummary) {
         ).toString()
     }
 
-    ElevatedCard(
+    OutlinedCard(
         modifier = Modifier
             .fillMaxWidth()
             .animateContentSize(),
         shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        colors = CardDefaults.outlinedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // App header
+            // App header with notification count badge
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -280,12 +297,22 @@ private fun SummaryCard(summary: AppNotificationSummary) {
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "${summary.notifications.size}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    // Notification count badge
+                    Box(
+                        modifier = Modifier
+                            .size(22.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.secondaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "${summary.notifications.size}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
                 Text(
                     text = relativeTime,
@@ -299,7 +326,7 @@ private fun SummaryCard(summary: AppNotificationSummary) {
             // AI Summary or loading
             if (summary.isLoading) {
                 Text(
-                    text = "Summarizing…",
+                    text = "Summarizing notifications...",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                 )

@@ -90,36 +90,48 @@ fun AppDrawerScreen(
             allApps.clear()
             allApps.addAll(apps)
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+        if (prefs.privateSpaceEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
             val profile = getPrivateSpaceProfile(context)
             hasPrivateSpace = profile != null
             if (profile != null) {
                 val um = context.getSystemService(Context.USER_SERVICE) as UserManager
                 isPrivateSpaceLocked = um.isQuietModeEnabled(profile)
+                // KEY FIX: Load private apps immediately if space is already unlocked
+                if (!isPrivateSpaceLocked) {
+                    scope.launch {
+                        val pApps = loadPrivateSpaceApps(context, prefs)
+                        privateApps.clear()
+                        privateApps.addAll(pApps)
+                    }
+                }
             }
+        } else {
+            hasPrivateSpace = false
         }
     }
 
     DisposableEffect(Unit) {
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(ctx: Context?, intent: Intent?) {
-                if (intent?.action == Intent.ACTION_MANAGED_PROFILE_UNLOCKED || 
-                    intent?.action == Intent.ACTION_MANAGED_PROFILE_AVAILABLE) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-                        val profile = getPrivateSpaceProfile(context)
-                        if (profile != null) {
-                            val um = context.getSystemService(Context.USER_SERVICE) as UserManager
-                            isPrivateSpaceLocked = um.isQuietModeEnabled(profile)
-                            if (!isPrivateSpaceLocked) {
-                                scope.launch {
-                                    val pApps = loadPrivateSpaceApps(context, prefs)
-                                    privateApps.clear()
-                                    privateApps.addAll(pApps)
-                                }
-                            } else {
+                if (!prefs.privateSpaceEnabled) return
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+                    val profile = getPrivateSpaceProfile(context)
+                    if (profile != null) {
+                        val um = context.getSystemService(Context.USER_SERVICE) as UserManager
+                        isPrivateSpaceLocked = um.isQuietModeEnabled(profile)
+                        if (!isPrivateSpaceLocked) {
+                            scope.launch {
+                                val pApps = loadPrivateSpaceApps(context, prefs)
                                 privateApps.clear()
+                                privateApps.addAll(pApps)
                             }
+                        } else {
+                            privateApps.clear()
                         }
+                    } else {
+                        isPrivateSpaceLocked = true
+                        privateApps.clear()
+                        hasPrivateSpace = false
                     }
                 }
             }
@@ -127,6 +139,11 @@ fun AppDrawerScreen(
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_MANAGED_PROFILE_UNLOCKED)
             addAction(Intent.ACTION_MANAGED_PROFILE_AVAILABLE)
+            addAction(Intent.ACTION_MANAGED_PROFILE_UNAVAILABLE)
+            if (Build.VERSION.SDK_INT >= 35) {
+                addAction(Intent.ACTION_PROFILE_ACCESSIBLE)
+                addAction(Intent.ACTION_PROFILE_INACCESSIBLE)
+            }
         }
         context.registerReceiver(receiver, filter)
         onDispose {
@@ -134,16 +151,20 @@ fun AppDrawerScreen(
         }
     }
 
-    // Filter and combine apps
-    val combinedApps = remember(allApps.toList(), privateApps.toList()) {
-        val list = allApps.toList() + privateApps.toList()
+    // Filter regular apps only (no private apps mixed in)
+    val filteredApps = remember(searchQuery, allApps.toList()) {
+        val list = allApps.toList()
         val collator = java.text.Collator.getInstance()
-        list.sortedWith(compareBy(collator) { it.appLabel })
+        val sorted = list.sortedWith(compareBy(collator) { it.appLabel })
+        if (searchQuery.isBlank()) sorted
+        else sorted.filter { it.appLabel.contains(searchQuery, ignoreCase = true) }
     }
 
-    val filteredApps = remember(searchQuery, combinedApps) {
-        if (searchQuery.isBlank()) combinedApps
-        else combinedApps.filter { it.appLabel.contains(searchQuery, ignoreCase = true) }
+    // Filter private apps separately
+    val filteredPrivateApps = remember(searchQuery, privateApps.toList()) {
+        val list = privateApps.toList()
+        if (searchQuery.isBlank()) list
+        else list.filter { it.appLabel.contains(searchQuery, ignoreCase = true) }
     }
 
     val showPrivateSpaceInSearch = remember(searchQuery, hasPrivateSpace) {
@@ -158,29 +179,16 @@ fun AppDrawerScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = 24.dp, bottom = 24.dp)
-            .pointerInput(Unit) {
-                detectDragGestures(
-                    onDragStart = { dragOffset = Offset.Zero },
-                    onDragEnd = {
-                        if (abs(dragOffset.y) > 120f && abs(dragOffset.y) > abs(dragOffset.x)) {
-                            if (dragOffset.y > 0) onBack() // swipe down → back to home
-                        }
-                        dragOffset = Offset.Zero
-                    },
-                    onDragCancel = { dragOffset = Offset.Zero },
-                    onDrag = { change, amount -> change.consume(); dragOffset += amount }
-                )
-            }
+            .padding(top = 48.dp, bottom = 24.dp)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Search bar row with Settings icon
+            // Search bar row with Settings icon - Responsive and Evenly Spaced
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 OutlinedTextField(
                     value = searchQuery,
@@ -208,32 +216,37 @@ fun AppDrawerScreen(
                     )
                 )
 
-                // Private Space lock/unlock toggle (API 35+)
-                if (hasPrivateSpace) {
-                    IconButton(
-                        onClick = {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-                                togglePrivateSpace(context)
-                                isPrivateSpaceLocked = !isPrivateSpaceLocked
-                                if (!isPrivateSpaceLocked) {
-                                    scope.launch {
-                                        val pApps = loadPrivateSpaceApps(context, prefs)
+                // Sub-row for icons to maintain consistent distribution
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Private Space lock/unlock toggle (API 35+)
+                    if (hasPrivateSpace) {
+                        IconButton(
+                            onClick = {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+                                    togglePrivateSpace(context)
+                                    isPrivateSpaceLocked = !isPrivateSpaceLocked
+                                    if (!isPrivateSpaceLocked) {
+                                        scope.launch {
+                                            val pApps = loadPrivateSpaceApps(context, prefs)
+                                            privateApps.clear()
+                                            privateApps.addAll(pApps)
+                                        }
+                                    } else {
                                         privateApps.clear()
-                                        privateApps.addAll(pApps)
                                     }
-                                } else {
-                                    privateApps.clear()
                                 }
                             }
+                        ) {
+                            Icon(
+                                imageVector = if (isPrivateSpaceLocked) Icons.Outlined.Lock else Icons.Outlined.LockOpen,
+                                contentDescription = "Private Space",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
-                    ) {
-                        Icon(
-                            imageVector = if (isPrivateSpaceLocked) Icons.Outlined.Lock else Icons.Outlined.LockOpen,
-                            contentDescription = "Private Space",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
-                }
 
                     // Settings button (Material Icons)
                     IconButton(onClick = onOpenSettings) {
@@ -244,6 +257,7 @@ fun AppDrawerScreen(
                         )
                     }
                 }
+            }
 
             LaunchedEffect(Unit) {
                 if (prefs.autoShowKeyboard) focusRequester.requestFocus()
@@ -254,8 +268,8 @@ fun AppDrawerScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .padding(horizontal = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                    .padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
                 // Private Space search result — shows when user searches "private"
                 if (showPrivateSpaceInSearch) {
@@ -316,12 +330,63 @@ fun AppDrawerScreen(
                             Text(
                                 text = letter,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.60f),
+                                modifier = Modifier.padding(top = 24.dp, bottom = 4.dp)
                             )
                         }
                     }
                     items(items = apps, key = { "${it.appPackage}_${it.user}" }) { app ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onAppClick(app) }
+                                .padding(vertical = 14.dp),  // 14+14+20sp ≈ 48dp touch target
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = app.appLabel,
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontSize = MaterialTheme.typography.bodyLarge.fontSize * prefs.appDrawerTextSizeScale
+                                ),
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.87f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+
+                // ── Private Space Section (separate, at end) ──
+                if (prefs.privateSpaceEnabled && filteredPrivateApps.isNotEmpty()) {
+                    item(key = "private_divider") {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 16.dp),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                        )
+                    }
+                    item(key = "private_header") {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Shield,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Private Space",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    items(items = filteredPrivateApps, key = { "private_${it.appPackage}_${it.user}" }) { app ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -332,18 +397,19 @@ fun AppDrawerScreen(
                         ) {
                             Text(
                                 text = app.appLabel,
-                                style = MaterialTheme.typography.bodyLarge,
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontSize = MaterialTheme.typography.bodyLarge.fontSize * prefs.appDrawerTextSizeScale
+                                ),
                                 color = MaterialTheme.colorScheme.onSurface,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f)
                             )
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-                                val pProfile = getPrivateSpaceProfile(context)
-                                if (pProfile != null && app.user.toString() == pProfile.toString()) {
-                                    Icon(Icons.Outlined.Lock, contentDescription = "Private App", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            }
+                            Icon(
+                                imageVector = Icons.Outlined.Lock,
+                                contentDescription = "Private App",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
@@ -359,6 +425,7 @@ private fun getPrivateSpaceProfile(context: Context): android.os.UserHandle? {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) return null
     val um = context.getSystemService(Context.USER_SERVICE) as UserManager
     val la = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
+    // Use UserManager.userProfiles instead of la.profiles for better detection of hidden profiles
     return um.userProfiles.firstOrNull { profile ->
         try {
             val info = la.getLauncherUserInfo(profile)
@@ -371,6 +438,8 @@ private fun togglePrivateSpace(context: Context) {
     val profile = getPrivateSpaceProfile(context) ?: return
     val um = context.getSystemService(Context.USER_SERVICE) as UserManager
     val locked = um.isQuietModeEnabled(profile)
+    
+    // On Android 15+, requestQuietModeEnabled handles the biometric/PIN challenge automatically
     um.requestQuietModeEnabled(!locked, profile)
 }
 
@@ -378,31 +447,34 @@ private suspend fun loadPrivateSpaceApps(
     context: Context, prefs: Prefs
 ): List<AppModel> = withContext(Dispatchers.IO) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) return@withContext emptyList()
-    val result = mutableListOf<AppModel>()
+    val pApps = mutableListOf<AppModel>()
     val um = context.getSystemService(Context.USER_SERVICE) as UserManager
     val la = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
     val collator = Collator.getInstance()
+    // Use UserManager.userProfiles for finding the hidden profile
     for (profile in um.userProfiles) {
         try {
             val info = la.getLauncherUserInfo(profile)
             if (info?.userType != UserManager.USER_TYPE_PROFILE_PRIVATE) continue
-            if (um.isQuietModeEnabled(profile)) continue
-            for (app in la.getActivityList(null, profile)) {
-                val label = prefs.getAppRenameLabel(app.applicationInfo.packageName)
-                    .ifBlank { app.label.toString() }
-                result.add(
-                    AppModel.App(
-                        appLabel = label,
-                        key = collator.getCollationKey(label),
-                        appPackage = app.applicationInfo.packageName,
-                        activityClassName = app.componentName.className,
-                        isNew = false,
-                        user = profile
+            // Only load apps if the profile is NOT in quiet mode (unlocked)
+            if (!um.isQuietModeEnabled(profile)) {
+                for (app in la.getActivityList(null, profile)) {
+                    val label = prefs.getAppRenameLabel(app.applicationInfo.packageName)
+                        .ifBlank { app.label.toString() }
+                    pApps.add(
+                        AppModel.App(
+                            appLabel = label,
+                            key = collator.getCollationKey(label),
+                            appPackage = app.applicationInfo.packageName,
+                            activityClassName = app.componentName.className,
+                            isNew = false,
+                            user = profile
+                        )
                     )
-                )
+                }
             }
         } catch (_: Exception) {}
     }
-    result.sortWith(compareBy(collator) { it.appLabel })
-    result
+    pApps.sortWith(compareBy(collator) { it.appLabel })
+    pApps
 }

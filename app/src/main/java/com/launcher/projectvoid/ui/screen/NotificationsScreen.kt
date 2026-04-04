@@ -60,20 +60,7 @@ fun NotificationsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = 24.dp, bottom = 24.dp)
-            .pointerInput(Unit) {
-                detectDragGestures(
-                    onDragStart = { dragOffset = Offset.Zero },
-                    onDragEnd = {
-                        if (abs(dragOffset.y) > 120f && abs(dragOffset.y) > abs(dragOffset.x)) {
-                            if (dragOffset.y < 0) onBack() // swipe up → back
-                        }
-                        dragOffset = Offset.Zero
-                    },
-                    onDragCancel = { dragOffset = Offset.Zero },
-                    onDrag = { change, amount -> change.consume(); dragOffset += amount }
-                )
-            }
+            .padding(top = 48.dp, bottom = 24.dp)
     ) {
     Column(
         modifier = Modifier

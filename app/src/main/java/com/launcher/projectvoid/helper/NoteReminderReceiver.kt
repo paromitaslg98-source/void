@@ -17,7 +17,7 @@ class NoteReminderReceiver : BroadcastReceiver() {
 
     companion object {
         const val CHANNEL_ID = "note_reminders"
-        const val ACTION_IN_APP_REMINDER = "com.launcher.projectvoid.ACTION_IN_APP_REMINDER"
+        const val ACTION_IN_APP_REMINDER = "com.launcher.void.ACTION_IN_APP_REMINDER"
         const val EXTRA_NOTE_ID = "note_id"
         const val EXTRA_NOTE_TITLE = "note_title"
         const val EXTRA_NOTE_TEXT = "note_text"

@@ -14,6 +14,14 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
@@ -37,6 +45,7 @@ class MainActivity : ComponentActivity() {
     private val viewModel: MainUiViewModel by viewModels()
     private val mainViewModel: MainViewModel by viewModels()
 
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -56,15 +65,45 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                NavHost(
-                    navController = navController,
-                    startDestination = HomeRoute,
-                    enterTransition = { directionEnter(initialState, targetState, uiState) },
-                    exitTransition = { fadeOut(animationSpec = tween(160)) },
-                    popEnterTransition = { fadeIn(animationSpec = tween(160)) },
-                    popExitTransition = { directionExit(initialState, targetState, uiState) }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(Unit) {
+                            awaitEachGesture {
+                                val down = awaitFirstDown(pass = PointerEventPass.Initial)
+                                val isTopEdge = down.position.y < size.height * 0.1f
+                                var totalY = 0f
+                                while (true) {
+                                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                                    val change = event.changes.firstOrNull() ?: break
+                                    val deltaY = change.position.y - change.previousPosition.y
+                                    totalY += deltaY
+                                    if (isTopEdge && totalY > 120f) {
+                                        try {
+                                            @Suppress("PrivateApi")
+                                            val sbservice = getSystemService("statusbar")
+                                            val statusbarManager = Class.forName("android.app.StatusBarManager")
+                                            val expands = statusbarManager.getMethod("expandNotificationsPanel")
+                                            expands.invoke(sbservice)
+                                        } catch (e: Exception) {
+                                            e.printStackTrace()
+                                        }
+                                        break
+                                    }
+                                    if (!change.pressed) break
+                                }
+                            }
+                        }
                 ) {
-                    composable<HomeRoute> {
+                    NavHost(
+                        navController = navController,
+                        startDestination = HomeRoute,
+                        enterTransition = { directionEnter(initialState, targetState, uiState) },
+                        exitTransition = { fadeOut(animationSpec = tween(160)) },
+                        popEnterTransition = { fadeIn(animationSpec = tween(160)) },
+                        popExitTransition = { directionExit(initialState, targetState, uiState) }
+                    ) {
+                        composable<HomeRoute> {
                         HomeScreen(
                             state = uiState,
                             onOpenApps = { navController.navigate(AppDrawerRoute) },
@@ -123,6 +162,7 @@ class MainActivity : ComponentActivity() {
                     composable<NotesRoute> {
                         NotesScreen(onBack = { navController.popBackStack() })
                     }
+                    }
                 }
             }
         }
@@ -131,10 +171,6 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         viewModel.refreshFromPrefs()
-        mainViewModel.getTodaysScreenTime()
-        mainViewModel.screenTimeValue.observe(this) { text ->
-            viewModel.updateScreenTime(text)
-        }
     }
 
     private fun launchHomeApp(app: HomeApp) {

@@ -79,20 +79,7 @@ fun NotesScreen(onBack: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = 24.dp, bottom = 24.dp)
-            .pointerInput(Unit) {
-                detectDragGestures(
-                    onDragStart = { dragOffset = Offset.Zero },
-                    onDragEnd = {
-                        if (abs(dragOffset.x) > 120f && abs(dragOffset.x) > abs(dragOffset.y)) {
-                            onBack() // swipe in either horizontal direction → back
-                        }
-                        dragOffset = Offset.Zero
-                    },
-                    onDragCancel = { dragOffset = Offset.Zero },
-                    onDrag = { change, amount -> change.consume(); dragOffset += amount }
-                )
-            }
+            .padding(top = 48.dp, bottom = 24.dp)
     ) {
         Column(
             modifier = Modifier
@@ -263,7 +250,7 @@ private fun NoteRow(note: NoteItem, onToggle: () -> Unit, onDelete: () -> Unit) 
             Icon(
                 imageVector = Icons.Outlined.Delete,
                 contentDescription = stringResource(R.string.delete_note),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                tint = MaterialTheme.colorScheme.error
             )
         }
     }
