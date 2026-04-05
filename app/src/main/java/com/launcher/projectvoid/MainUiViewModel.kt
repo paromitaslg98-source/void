@@ -39,7 +39,7 @@ data class MainUiState(
     val showClock: Boolean = true,
     val showDate: Boolean = true,
     val showScreenTime: Boolean = true,
-    val showStatusBar: Boolean = true,
+    val showStatusBar: Boolean = false,
     val homeAppsCount: Int = 4,
     val leftSwipeAction: String = SwipeAction.NOTIFICATION_SUMMARY,
     val rightSwipeAction: String = SwipeAction.WIDGETS,
@@ -63,7 +63,12 @@ class MainUiViewModel(application: Application) : AndroidViewModel(application) 
     private val appContext = application.applicationContext
     private val prefs = Prefs(appContext)
 
-    private val _uiState = MutableStateFlow(MainUiState())
+    private val _uiState = MutableStateFlow(
+        MainUiState(
+            // Seed with persisted value so first composition uses the correct visibility whenever possible.
+            showStatusBar = prefs.showStatusBar
+        )
+    )
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
     private val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
