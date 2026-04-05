@@ -1,13 +1,14 @@
 package com.launcher.projectvoid
 
 import android.app.Application
+import android.app.AppOpsManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
 import android.view.Gravity
-import android.provider.Settings
+import android.os.Process
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import android.app.usage.UsageStatsManager
@@ -62,7 +63,12 @@ class MainUiViewModel(application: Application) : AndroidViewModel(application) 
     private val appContext = application.applicationContext
     private val prefs = Prefs(appContext)
 
-    private val _uiState = MutableStateFlow(MainUiState())
+    private val _uiState = MutableStateFlow(
+        MainUiState(
+            // Seed with persisted value so first composition uses the correct visibility whenever possible.
+            showStatusBar = prefs.showStatusBar
+        )
+    )
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
     private val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
@@ -221,10 +227,22 @@ class MainUiViewModel(application: Application) : AndroidViewModel(application) 
                 } else {
                     _uiState.update { it.copy(screenTime = "Screen time: None") }
                 }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(screenTime = "") }
+            } catch (_: Exception) {
+                _uiState.update { it.copy(screenTime = "Screen time: Data unavailable") }
             }
         }
+    }
+
+    private fun hasUsageStatsPermission(): Boolean {
+        val appOpsManager = appContext.getSystemService(Context.APP_OPS_SERVICE) as? AppOpsManager
+            ?: return false
+        val mode = appOpsManager.unsafeCheckOpNoThrow(
+            AppOpsManager.OPSTR_GET_USAGE_STATS,
+            Process.myUid(),
+            appContext.packageName
+        )
+
+        return mode == AppOpsManager.MODE_ALLOWED
     }
 
     override fun onCleared() {

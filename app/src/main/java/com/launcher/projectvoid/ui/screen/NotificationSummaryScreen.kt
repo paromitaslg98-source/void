@@ -1,7 +1,10 @@
 package com.launcher.projectvoid.ui.screen
 
 import android.app.Application
+import android.app.Notification
+import android.os.Bundle
 import android.text.format.DateUtils
+import android.util.Log
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -48,6 +51,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -58,6 +63,11 @@ import kotlin.math.abs
 // ── ViewModel ──
 
 class NotificationSummaryViewModel(application: Application) : AndroidViewModel(application) {
+    companion object {
+        private const val TAG = "NotificationSummaryVM"
+        private const val SUMMARY_DEBOUNCE_MS = 250L
+    }
+
     private val summarizer = AiSummarizer(application.applicationContext)
     private val summaryJobs = mutableMapOf<String, Job>()
     private var generation = 0L
@@ -111,11 +121,62 @@ class NotificationSummaryViewModel(application: Application) : AndroidViewModel(
                                     isLoading = false
                                 )
                             }
+
+                            val fallbackSummary = texts.joinToString(". ")
+                            _summaries.value = _summaries.value.map { current ->
+                                if (current.packageName == summary.packageName) {
+                                    current.copy(
+                                        aiSummary = aiResult ?: fallbackSummary,
+                                        isLoading = false
+                                    )
+                                } else {
+                                    current
+                                }
+                            }
                         }
                     }
                 }
-            }
         }
+    }
+
+    private fun extractNotificationTexts(extras: Bundle?): List<String> {
+        if (extras == null) return emptyList()
+
+        val extractedTexts = linkedSetOf<String>()
+        val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
+
+        fun addWithTitle(raw: String?) {
+            val text = raw?.trim().orEmpty()
+            if (text.isBlank()) return
+            val formatted = if (title.isNotBlank() && !text.startsWith("$title:")) {
+                "$title: $text"
+            } else {
+                text
+            }
+            extractedTexts.add(formatted)
+        }
+
+        addWithTitle(extras.getCharSequence(Notification.EXTRA_TEXT)?.toString())
+        addWithTitle(extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString())
+
+        extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)
+            ?.forEach { line -> addWithTitle(line?.toString()) }
+
+        extras.getParcelableArray(Notification.EXTRA_MESSAGES)
+            ?.mapNotNull { message ->
+                Notification.MessagingStyle.Message.getMessageFromBundle(message as? Bundle)
+            }
+            ?.forEach { message ->
+                val sender = message.sender?.toString()?.trim().orEmpty()
+                val body = message.text?.toString()?.trim().orEmpty()
+                if (body.isNotBlank()) {
+                    extractedTexts.add(
+                        if (sender.isNotBlank()) "$sender: $body" else body
+                    )
+                }
+            }
+
+        return extractedTexts.toList()
     }
 
     fun dismissApp(packageName: String) {

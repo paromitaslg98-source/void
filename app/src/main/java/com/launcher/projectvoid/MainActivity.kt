@@ -8,6 +8,7 @@ import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.spring
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.compose.animation.core.Spring
@@ -22,11 +23,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.launcher.projectvoid.data.AppModel
 import com.launcher.projectvoid.helper.NotificationService
@@ -53,8 +56,12 @@ class MainActivity : ComponentActivity() {
             VoidAppTheme {
                 val navController = rememberNavController()
                 val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+                val currentBackStackEntry by navController.currentBackStackEntryAsState()
+                val currentRoute = currentBackStackEntry?.destination?.route
                 val notifications by NotificationService.notificationsState
                     .collectAsStateWithLifecycle(initialValue = emptyList())
+                val allowTopEdgeNotificationExpansion =
+                    uiState.showStatusBar && (currentBackStackEntry?.isRoute("HomeRoute") == true)
 
                 LaunchedEffect(uiState.showStatusBar) {
                     val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
@@ -73,10 +80,13 @@ class MainActivity : ComponentActivity() {
                                 val down = awaitFirstDown(pass = PointerEventPass.Initial)
                                 val isTopEdge = down.position.y < size.height * 0.1f
                                 var totalY = 0f
+                                var totalX = 0f
                                 while (true) {
                                     val event = awaitPointerEvent(PointerEventPass.Initial)
                                     val change = event.changes.firstOrNull() ?: break
+                                    val deltaX = change.position.x - change.previousPosition.x
                                     val deltaY = change.position.y - change.previousPosition.y
+                                    totalX += deltaX
                                     totalY += deltaY
                                     if (uiState.showStatusBar && isTopEdge && totalY > 120f) {
                                         try {
@@ -196,6 +206,26 @@ class MainActivity : ComponentActivity() {
         }
         mainViewModel.selectedApp(appModel, com.launcher.projectvoid.data.Constants.FLAG_LAUNCH_APP)
     }
+
+    private fun expandNotificationsPanelIfAllowed(isAllowed: Boolean) {
+        if (!isAllowed) return
+        try {
+            @Suppress("PrivateApi")
+            val sbservice = getSystemService("statusbar")
+            val statusbarManager = Class.forName("android.app.StatusBarManager")
+            val expands = statusbarManager.getMethod("expandNotificationsPanel")
+            expands.invoke(sbservice)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+}
+
+private fun navigateHome(navController: NavHostController) {
+    navController.navigate(HomeRoute) {
+        launchSingleTop = true
+        popUpTo(HomeRoute) { inclusive = false }
+    }
 }
 
 // ── Direction-aware transitions ──
@@ -213,9 +243,11 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.directionEnter(
             slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Up, tween(280)) + fadeIn(tween(220))
         targetState.isRoute("NotificationPanelRoute") ->
             slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Down, tween(280)) + fadeIn(tween(220))
-        targetState.isRoute(leftRoute) ->
+        // We only evaluate swipe-driven horizontal transitions when the swipe action actually maps
+        // to a supported route. This avoids accidentally matching everything when the action is unsupported.
+        leftRoute != null && targetState.isRoute(leftRoute) ->
             slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(280)) + fadeIn(tween(220))
-        targetState.isRoute(rightRoute) ->
+        rightRoute != null && targetState.isRoute(rightRoute) ->
             slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, tween(280)) + fadeIn(tween(220))
         else -> fadeIn(animationSpec = tween(200))
     }
@@ -234,9 +266,9 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.directionExit(
             slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down, tween(260)) + fadeOut(tween(200))
         initialState.isRoute("NotificationPanelRoute") ->
             slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Up, tween(260)) + fadeOut(tween(200))
-        initialState.isRoute(leftRoute) ->
+        leftRoute != null && initialState.isRoute(leftRoute) ->
             slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Start, tween(260)) + fadeOut(tween(200))
-        initialState.isRoute(rightRoute) ->
+        rightRoute != null && initialState.isRoute(rightRoute) ->
             slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(260)) + fadeOut(tween(200))
         else -> fadeOut(animationSpec = tween(200))
     }

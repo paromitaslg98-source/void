@@ -1,13 +1,18 @@
 package com.launcher.projectvoid.ui.screen
 
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.provider.AlarmClock
+import android.provider.Settings
 import android.provider.CalendarContract
 import android.view.Gravity
+import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -50,6 +55,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -86,6 +92,79 @@ private fun gravityToTextAlign(gravity: Int): TextAlign = when (gravity) {
     Gravity.CENTER, Gravity.CENTER_HORIZONTAL -> TextAlign.Center
     Gravity.END, Gravity.RIGHT -> TextAlign.End
     else -> TextAlign.Start
+}
+
+private fun openScreenTimeDestination(context: android.content.Context) {
+    val packageManager = context.packageManager
+
+    val usageAccessIntent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    val appDetailsIntent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+        data = Uri.fromParts("package", context.packageName, null)
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+
+    val candidateIntents = listOf(
+        Intent().apply {
+            setClassName(
+                com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_PACKAGE_NAME,
+                "com.google.android.apps.wellbeing.settings.TopLevelSettingsActivity"
+            )
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        },
+        Intent().apply {
+            setClassName(
+                com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_PACKAGE_NAME,
+                "com.google.android.apps.wellbeing.home.TopLevelSettingsActivity"
+            )
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        },
+        Intent("com.google.android.apps.wellbeing.VIEW_APP_USAGE").apply {
+            setPackage(com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_PACKAGE_NAME)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        },
+        Intent("android.settings.DIGITAL_WELLBEING_SETTINGS").apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        },
+        Intent().apply {
+            setClassName(
+                com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_SAMSUNG_PACKAGE_NAME,
+                com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_SAMSUNG_ACTIVITY
+            )
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        },
+        context.packageManager
+            .getLaunchIntentForPackage(com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_PACKAGE_NAME)
+            ?.apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) },
+        usageAccessIntent,
+        appDetailsIntent
+    ).filterNotNull()
+
+    // Resolve first and launch in list order so behavior is deterministic across taps/devices.
+    val resolvedIntent = candidateIntents.firstOrNull { intent ->
+        packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY) != null
+    }
+
+    if (resolvedIntent != null) {
+        val launchedFallback = resolvedIntent.action == Settings.ACTION_USAGE_ACCESS_SETTINGS ||
+            resolvedIntent.action == Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+        if (launchedFallback) {
+            Toast.makeText(
+                context,
+                "Digital Wellbeing not found. Opening a settings fallback.",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+        context.startActivity(resolvedIntent)
+        return
+    }
+
+    Toast.makeText(
+        context,
+        "No screen-time destination available on this device.",
+        Toast.LENGTH_SHORT
+    ).show()
 }
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -163,7 +242,6 @@ fun HomeScreen(
                     .weight(state.clockSectionWeight.coerceIn(0.15f, 0.50f))
                     .padding(horizontal = 20.dp, vertical = 16.dp),
                 horizontalAlignment = clockAlign,
-                verticalArrangement = clockVertical
             ) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -336,6 +414,45 @@ fun HomeScreen(
                         }
                     }
                 }
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+            ) {
+                visibleApps.forEach { app ->
+                    var cumulativeDragY by remember(app.packageName) { mutableStateOf(0f) }
+                // This block owns app alignment behavior only.
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .combinedClickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {},
+                            onLongClick = { showAppPicker = true }
+                        )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = 6.dp, bottom = 10.dp),
+                        horizontalAlignment = appAlign,
+                        verticalArrangement = appVertical
+                    ) {
+                        state.homeApps.forEach { app ->
+                            Text(
+                                text = app.label,
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontSize = MaterialTheme.typography.bodyLarge.fontSize * state.homeTextSizeScale
+                                ),
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.87f),
+                                textAlign = appTextAlign,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onAppClick(app) }
+                                    .padding(vertical = 14.dp) // Comfortable touch target + visual breathing room.
+                            )
+                        }
+                    }
+                }
 
                 // Bottom block is intentionally isolated so future footer items
                 // (weather, connectivity, etc.) can be added without disturbing app alignment.
@@ -486,7 +603,7 @@ private fun HomeAppPickerSheet(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                currentApps.forEachIndexed { index, app ->
+                currentApps.forEach { app ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -501,26 +618,6 @@ private fun HomeAppPickerSheet(
                             modifier = Modifier.weight(1f)
                         )
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (index > 0) {
-                                androidx.compose.material3.IconButton(onClick = {
-                                    val other = currentApps[index - 1]
-                                    prefs.setAppAtLocation(other.position, app.label, app.packageName, app.activityClassName, app.userString, app.isShortcut, app.shortcutId)
-                                    prefs.setAppAtLocation(app.position, other.label, other.packageName, other.activityClassName, other.userString, other.isShortcut, other.shortcutId)
-                                    onHomeAppsChanged()
-                                }) {
-                                    androidx.compose.material3.Text("↑", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-                                }
-                            }
-                            if (index < currentApps.size - 1) {
-                                androidx.compose.material3.IconButton(onClick = {
-                                    val other = currentApps[index + 1]
-                                    prefs.setAppAtLocation(other.position, app.label, app.packageName, app.activityClassName, app.userString, app.isShortcut, app.shortcutId)
-                                    prefs.setAppAtLocation(app.position, other.label, other.packageName, other.activityClassName, other.userString, other.isShortcut, other.shortcutId)
-                                    onHomeAppsChanged()
-                                }) {
-                                    androidx.compose.material3.Text("↓", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-                                }
-                            }
                             androidx.compose.material3.IconButton(onClick = {
                                 prefs.setAppAtLocation(app.position, "", "", null, "", false, "")
                                 onHomeAppsChanged()
