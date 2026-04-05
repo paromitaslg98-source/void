@@ -44,6 +44,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.launcher.projectvoid.data.AppNotificationSummary
 import com.launcher.projectvoid.helper.AiSummarizer
 import com.launcher.projectvoid.helper.NotificationService
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -58,6 +59,8 @@ import kotlin.math.abs
 
 class NotificationSummaryViewModel(application: Application) : AndroidViewModel(application) {
     private val summarizer = AiSummarizer(application.applicationContext)
+    private val summaryJobs = mutableMapOf<String, Job>()
+    private var generation = 0L
 
     private val _summaries = MutableStateFlow<List<AppNotificationSummary>>(emptyList())
     val summaries: StateFlow<List<AppNotificationSummary>> = _summaries.asStateFlow()
@@ -72,17 +75,16 @@ class NotificationSummaryViewModel(application: Application) : AndroidViewModel(
 
         viewModelScope.launch {
             NotificationService.notificationsState.collect { groups ->
+                generation += 1
+                val currentGeneration = generation
+                val activePackages = groups.map { it.packageName }.toSet()
+                summaryJobs.keys.filter { it !in activePackages }.forEach { pkg ->
+                    summaryJobs.remove(pkg)?.cancel()
+                }
+
                 val summaryList = groups
                     .sortedByDescending { it.latestTimestamp }
                     .map { group ->
-                        val texts = group.notifications.map { sbn ->
-                            val extras = sbn.notification.extras
-                            val title = extras.getCharSequence("android.title")?.toString() ?: ""
-                            val text = extras.getCharSequence("android.text")?.toString() ?: ""
-                            if (title.isNotBlank() && text.isNotBlank()) "$title: $text"
-                            else title.ifBlank { text }
-                        }.filter { it.isNotBlank() }
-
                         AppNotificationSummary(
                             packageName = group.packageName,
                             appLabel = group.appLabel,
@@ -95,20 +97,16 @@ class NotificationSummaryViewModel(application: Application) : AndroidViewModel(
                 _summaries.value = summaryList
 
                 // Generate AI summaries in background
-                summaryList.forEachIndexed { index, summary ->
-                    launch {
-                        val texts = summary.notifications.map { sbn ->
-                            val extras = sbn.notification.extras
-                            val title = extras.getCharSequence("android.title")?.toString() ?: ""
-                            val text = extras.getCharSequence("android.text")?.toString() ?: ""
-                            if (title.isNotBlank() && text.isNotBlank()) "$title: $text"
-                            else title.ifBlank { text }
-                        }.filter { it.isNotBlank() }
+                summaryList.forEach { summary ->
+                    summaryJobs[summary.packageName]?.cancel()
+                    summaryJobs[summary.packageName] = launch {
+                        val texts = extractNotificationTexts(summary.notifications)
 
                         val aiResult = summarizer.summarize(summary.appLabel, texts)
                         _summaries.value = _summaries.value.toMutableList().also {
-                            if (index < it.size) {
-                                it[index] = it[index].copy(
+                            val rowIndex = it.indexOfFirst { row -> row.packageName == summary.packageName }
+                            if (currentGeneration == generation && rowIndex >= 0) {
+                                it[rowIndex] = it[rowIndex].copy(
                                     aiSummary = aiResult ?: texts.joinToString(". "),
                                     isLoading = false
                                 )
@@ -121,8 +119,32 @@ class NotificationSummaryViewModel(application: Application) : AndroidViewModel(
     }
 
     fun dismissApp(packageName: String) {
+        summaryJobs.remove(packageName)?.cancel()
         NotificationService.dismissNotificationsForPackage(packageName)
         _summaries.value = _summaries.value.filter { it.packageName != packageName }
+    }
+
+    private fun extractNotificationTexts(notifications: List<android.service.notification.StatusBarNotification>): List<String> {
+        return notifications.mapNotNull { sbn ->
+            val extras = sbn.notification.extras
+            val title = extras.getCharSequence("android.title")?.toString()?.trim().orEmpty()
+            val text = extras.getCharSequence("android.text")?.toString()?.trim().orEmpty()
+            val bigText = extras.getCharSequence("android.bigText")?.toString()?.trim().orEmpty()
+            val lines = extras.getCharSequenceArray("android.textLines")
+                ?.map { it.toString().trim() }
+                ?.filter { it.isNotBlank() }
+                .orEmpty()
+
+            when {
+                title.isNotBlank() && bigText.isNotBlank() -> "$title: $bigText"
+                title.isNotBlank() && text.isNotBlank() -> "$title: $text"
+                bigText.isNotBlank() -> bigText
+                text.isNotBlank() -> text
+                lines.isNotEmpty() -> lines.joinToString(" • ")
+                title.isNotBlank() -> title
+                else -> null
+            }
+        }
     }
 }
 

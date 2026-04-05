@@ -68,7 +68,7 @@ class MainActivity : ComponentActivity() {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .pointerInput(Unit) {
+                        .pointerInput(uiState.showStatusBar) {
                             awaitEachGesture {
                                 val down = awaitFirstDown(pass = PointerEventPass.Initial)
                                 val isTopEdge = down.position.y < size.height * 0.1f
@@ -78,7 +78,7 @@ class MainActivity : ComponentActivity() {
                                     val change = event.changes.firstOrNull() ?: break
                                     val deltaY = change.position.y - change.previousPosition.y
                                     totalY += deltaY
-                                    if (isTopEdge && totalY > 120f) {
+                                    if (uiState.showStatusBar && isTopEdge && totalY > 120f) {
                                         try {
                                             @Suppress("PrivateApi")
                                             val sbservice = getSystemService("statusbar")
@@ -108,15 +108,17 @@ class MainActivity : ComponentActivity() {
                             state = uiState,
                             onOpenApps = { navController.navigate(AppDrawerRoute) },
                             onOpenSettings = { navController.navigate(SettingsRoute) },
-                            onOpenNotifications = { 
-                                try {
-                                    @Suppress("PrivateApi")
-                                    val sbservice = getSystemService("statusbar")
-                                    val statusbarManager = Class.forName("android.app.StatusBarManager")
-                                    val expands = statusbarManager.getMethod("expandNotificationsPanel")
-                                    expands.invoke(sbservice)
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
+                            onOpenNotifications = {
+                                if (uiState.showStatusBar) {
+                                    try {
+                                        @Suppress("PrivateApi")
+                                        val sbservice = getSystemService("statusbar")
+                                        val statusbarManager = Class.forName("android.app.StatusBarManager")
+                                        val expands = statusbarManager.getMethod("expandNotificationsPanel")
+                                        expands.invoke(sbservice)
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                    }
                                 }
                             },
                             onOpenNotificationSummary = { navController.navigate(NotificationSummaryRoute) },
@@ -240,13 +242,14 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.directionExit(
     }
 }
 
-private fun actionToRouteName(action: String): String = when (action) {
+private fun actionToRouteName(action: String): String? = when (action) {
     com.launcher.projectvoid.data.Prefs.SwipeAction.NOTIFICATION_SUMMARY -> "NotificationSummaryRoute"
     com.launcher.projectvoid.data.Prefs.SwipeAction.WIDGETS -> "WidgetsRoute"
     com.launcher.projectvoid.data.Prefs.SwipeAction.NOTES -> "NotesRoute"
-    else -> ""
+    else -> null
 }
 
-private fun NavBackStackEntry.isRoute(name: String): Boolean {
+private fun NavBackStackEntry.isRoute(name: String?): Boolean {
+    if (name.isNullOrBlank()) return false
     return destination.route?.contains(name) == true
 }

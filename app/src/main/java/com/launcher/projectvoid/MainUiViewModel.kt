@@ -38,7 +38,7 @@ data class MainUiState(
     val showClock: Boolean = true,
     val showDate: Boolean = true,
     val showScreenTime: Boolean = true,
-    val showStatusBar: Boolean = true,
+    val showStatusBar: Boolean = false,
     val homeAppsCount: Int = 4,
     val leftSwipeAction: String = SwipeAction.NOTIFICATION_SUMMARY,
     val rightSwipeAction: String = SwipeAction.WIDGETS,
@@ -187,6 +187,17 @@ class MainUiViewModel(application: Application) : AndroidViewModel(application) 
     private fun loadScreenTime() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                val appOps = appContext.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+                val mode = appOps.checkOpNoThrow(
+                    android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+                    android.os.Process.myUid(),
+                    appContext.packageName
+                )
+                if (mode != android.app.AppOpsManager.MODE_ALLOWED) {
+                    _uiState.update { it.copy(screenTime = "Screen time: Permission required") }
+                    return@launch
+                }
+
                 val usageStatsManager = getApplication<android.app.Application>().getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
                 val calendar = java.util.Calendar.getInstance()
                 calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
@@ -199,7 +210,9 @@ class MainUiViewModel(application: Application) : AndroidViewModel(application) 
                     System.currentTimeMillis()
                 )
                 
-                val totalMillis = stats.sumOf { it.totalTimeInForeground }
+                val totalMillis = stats
+                    .filter { it.packageName != appContext.packageName }
+                    .sumOf { it.totalTimeInForeground }
                 if (totalMillis > 0) {
                     val hours = totalMillis / (1000 * 60 * 60)
                     val minutes = (totalMillis / (1000 * 60)) % 60

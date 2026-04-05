@@ -33,7 +33,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -74,6 +76,12 @@ fun gravityToVerticalArrangement(gravity: Int): Arrangement.Vertical = when (gra
     else -> Arrangement.Center
 }
 
+private fun gravityToVerticalContentAlignment(gravity: Int): Alignment.Vertical = when (gravity) {
+    Gravity.TOP -> Alignment.Top
+    Gravity.BOTTOM -> Alignment.Bottom
+    else -> Alignment.CenterVertically
+}
+
 private fun gravityToTextAlign(gravity: Int): TextAlign = when (gravity) {
     Gravity.CENTER, Gravity.CENTER_HORIZONTAL -> TextAlign.Center
     Gravity.END, Gravity.RIGHT -> TextAlign.End
@@ -96,10 +104,11 @@ fun HomeScreen(
     onHomeAppsChanged: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val prefs = remember { Prefs(context) }
     val clockAlign = gravityToAlignment(state.clockHorizontalAlignment)
     val appAlign = gravityToAlignment(state.appHorizontalAlignment)
     val clockVertical = gravityToVerticalArrangement(state.clockVerticalAlignment)
-    val appVertical = gravityToVerticalArrangement(state.appVerticalAlignment)
+    val appVerticalAlignment = gravityToVerticalContentAlignment(state.appVerticalAlignment)
     
     val clockTextAlign = gravityToTextAlign(state.clockHorizontalAlignment)
     val appTextAlign = gravityToTextAlign(state.appHorizontalAlignment)
@@ -107,6 +116,7 @@ fun HomeScreen(
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
     val swipeThreshold = 120f
     var showAppPicker by remember { mutableStateOf(false) }
+    var reorderTarget by remember { mutableStateOf<HomeApp?>(null) }
 
     Box(
         modifier = Modifier
@@ -155,154 +165,184 @@ fun HomeScreen(
                 horizontalAlignment = clockAlign,
                 verticalArrangement = clockVertical
             ) {
-                if (state.showClock) {
-                    Text(
-                        text = state.currentTime,
-                        style = MaterialTheme.typography.displayLarge.copy(
-                            fontSize = MaterialTheme.typography.displayLarge.fontSize * state.homeTextSizeScale
-                        ),
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.87f),
-                        textAlign = clockTextAlign,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                try {
-                                    val intent = Intent(AlarmClock.ACTION_SHOW_ALARMS)
-                                    context.startActivity(intent)
-                                } catch (e: Exception) {
-                                    onClockClick()
-                                }
-                            }
-                    )
-                }
-                if (state.showDate) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = state.currentDate,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.60f),
-                        textAlign = clockTextAlign,
-                        letterSpacing = MaterialTheme.typography.labelMedium.letterSpacing * 1.5f,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                try {
-                                    val builder = CalendarContract.CONTENT_URI.buildUpon().appendPath("time")
-                                    val intent = Intent(Intent.ACTION_VIEW).setData(builder.build())
-                                    context.startActivity(intent)
-                                } catch (e: Exception) {
-                                    onDateClick()
-                                }
-                            }
-                    )
-                }
-                if (state.showScreenTime && state.screenTime.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = state.screenTime,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
-                        textAlign = clockTextAlign,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                val intent = try {
-                                    // 1. Try Google Wellbeing Top Level Settings (Direct Activity - settings)
-                                    Intent().apply {
-                                        setClassName(com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_PACKAGE_NAME, "com.google.android.apps.wellbeing.settings.TopLevelSettingsActivity")
-                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = clockAlign,
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // Keeping these as separate sub-blocks makes spacing predictable now,
+                    // and gives us clean extension points if we add more clock widgets later.
+                    if (state.showClock) {
+                        ClockInfoBlock {
+                            Text(
+                                text = state.currentTime,
+                                style = MaterialTheme.typography.displayLarge.copy(
+                                    fontSize = MaterialTheme.typography.displayLarge.fontSize * state.homeTextSizeScale
+                                ),
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.87f),
+                                textAlign = clockTextAlign,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        try {
+                                            val intent = Intent(AlarmClock.ACTION_SHOW_ALARMS)
+                                            context.startActivity(intent)
+                                        } catch (e: Exception) {
+                                            onClockClick()
+                                        }
                                     }
-                                } catch (e: Exception) {
-                                    null
-                                }
+                            )
+                        }
+                    }
 
-                                val intent2 = try {
-                                    // 2. Try Google Wellbeing Top Level Settings (Direct Activity - home)
-                                    Intent().apply {
-                                        setClassName(com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_PACKAGE_NAME, "com.google.android.apps.wellbeing.home.TopLevelSettingsActivity")
-                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    if (state.showDate) {
+                        ClockInfoBlock {
+                            Text(
+                                text = state.currentDate,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.60f),
+                                textAlign = clockTextAlign,
+                                letterSpacing = MaterialTheme.typography.labelMedium.letterSpacing * 1.5f,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        try {
+                                            val builder = CalendarContract.CONTENT_URI.buildUpon().appendPath("time")
+                                            val intent = Intent(Intent.ACTION_VIEW).setData(builder.build())
+                                            context.startActivity(intent)
+                                        } catch (e: Exception) {
+                                            onDateClick()
+                                        }
                                     }
-                                } catch (e: Exception) {
-                                    null
-                                }
+                            )
+                        }
+                    }
 
-                                val intent3 = Intent("com.google.android.apps.wellbeing.VIEW_APP_USAGE").apply {
-                                    setPackage(com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_PACKAGE_NAME)
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                }
+                    if (state.showScreenTime && state.screenTime.isNotBlank()) {
+                        ClockInfoBlock {
+                            Text(
+                                text = state.screenTime,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+                                textAlign = clockTextAlign,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        val intent = try {
+                                            // 1. Try Google Wellbeing Top Level Settings (Direct Activity - settings)
+                                            Intent().apply {
+                                                setClassName(com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_PACKAGE_NAME, "com.google.android.apps.wellbeing.settings.TopLevelSettingsActivity")
+                                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                            }
+                                        } catch (e: Exception) {
+                                            null
+                                        }
 
-                                val intent4 = Intent("android.settings.DIGITAL_WELLBEING_SETTINGS").apply {
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                }
+                                        val intent2 = try {
+                                            // 2. Try Google Wellbeing Top Level Settings (Direct Activity - home)
+                                            Intent().apply {
+                                                setClassName(com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_PACKAGE_NAME, "com.google.android.apps.wellbeing.home.TopLevelSettingsActivity")
+                                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                            }
+                                        } catch (e: Exception) {
+                                            null
+                                        }
 
-                                val intent5 = Intent().apply {
-                                    setClassName(
-                                        com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_SAMSUNG_PACKAGE_NAME,
-                                        com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_SAMSUNG_ACTIVITY
-                                    )
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                }
+                                        val intent3 = Intent("com.google.android.apps.wellbeing.VIEW_APP_USAGE").apply {
+                                            setPackage(com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_PACKAGE_NAME)
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
 
-                                val intent6 = context.packageManager.getLaunchIntentForPackage(com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_PACKAGE_NAME)?.apply {
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                }
+                                        val intent4 = Intent("android.settings.DIGITAL_WELLBEING_SETTINGS").apply {
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
 
-                                val intent7 = Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                }
+                                        val intent5 = Intent().apply {
+                                            setClassName(
+                                                com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_SAMSUNG_PACKAGE_NAME,
+                                                com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_SAMSUNG_ACTIVITY
+                                            )
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
 
-                                val list = listOfNotNull(intent, intent2, intent3, intent4, intent5, intent6, intent7)
-                                for (target in list) {
-                                    try {
-                                        context.startActivity(target)
-                                        break
-                                    } catch (_: Exception) {}
-                                }
-                            }
-                    )
+                                        val intent6 = context.packageManager.getLaunchIntentForPackage(com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_PACKAGE_NAME)?.apply {
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+
+                                        val intent7 = Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+
+                                        val list = listOfNotNull(intent, intent2, intent3, intent4, intent5, intent6, intent7)
+                                        for (target in list) {
+                                            try {
+                                                if (target.resolveActivity(context.packageManager) != null) {
+                                                    context.startActivity(target)
+                                                    break
+                                                }
+                                            } catch (_: Exception) {}
+                                        }
+                                    }
+                            )
+                        }
+                    }
                 }
             }
 
-            // ── Apps section: 3/4 of screen ──
-            // Long press anywhere in this section → open app picker
+            // ── Apps section: separate middle + bottom blocks for independent alignment ──
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f - state.clockSectionWeight.coerceIn(0.15f, 0.50f))
-                    .combinedClickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {},
-                        onLongClick = { showAppPicker = true }
-                    )
-                    .padding(horizontal = 20.dp),
-                horizontalAlignment = appAlign,
-                verticalArrangement = appVertical
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
             ) {
-                state.homeApps.forEach { app ->
-                    Text(
-                        text = app.label,
-                        style = MaterialTheme.typography.bodyLarge.copy(
-                            fontSize = MaterialTheme.typography.bodyLarge.fontSize * state.homeTextSizeScale
-                        ),
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.87f),
-                        textAlign = appTextAlign,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onAppClick(app) }
-                            .padding(vertical = 14.dp)  // 14dp top + 14dp bot + ~20sp text ≈ 48dp touch target
-                    )
-                }
-
-                Spacer(modifier = Modifier.weight(1f))
-                Text(
-                    text = "${state.batteryLevel}%",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
-                    textAlign = appTextAlign,
+                // This block owns app alignment behavior only.
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 16.dp)
+                        .weight(1f)
+                        .combinedClickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {},
+                            onLongClick = { showAppPicker = true }
+                        )
+                ) {
+                    // We keep the app list in a dedicated full-size box so vertical gravity can
+                    // be applied independently of the footer block.
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = 8.dp, bottom = 12.dp),
+                        horizontalAlignment = appAlign,
+                        verticalArrangement = Arrangement.spacedBy(6.dp, appVerticalAlignment)
+                    ) {
+                        state.homeApps.forEach { app ->
+                            Text(
+                                text = app.label,
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontSize = MaterialTheme.typography.bodyLarge.fontSize * state.homeTextSizeScale
+                                ),
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.87f),
+                                textAlign = appTextAlign,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .combinedClickable(
+                                        onClick = { onAppClick(app) },
+                                        onLongClick = { reorderTarget = app }
+                                    )
+                                    .padding(vertical = 14.dp) // Comfortable touch target + visual breathing room.
+                            )
+                        }
+                    }
+                }
+
+                // Bottom block is intentionally isolated so future footer items
+                // (weather, connectivity, etc.) can be added without disturbing app alignment.
+                HomeFooterBlock(
+                    alignment = appAlign,
+                    appTextAlign = appTextAlign,
+                    batteryLevel = state.batteryLevel
                 )
             }
         }
@@ -317,6 +357,82 @@ fun HomeScreen(
                 showAppPicker = false
             },
             onHomeAppsChanged = onHomeAppsChanged
+        )
+    }
+
+    if (reorderTarget != null) {
+        val target = reorderTarget!!
+        val currentIndex = state.homeApps.indexOfFirst { it.position == target.position }
+        AlertDialog(
+            onDismissRequest = { reorderTarget = null },
+            title = { Text("Reorder ${target.label}") },
+            text = { Text("Move this app directly from the Home screen without opening the app selector.") },
+            confirmButton = {
+                Row {
+                    TextButton(
+                        enabled = currentIndex > 0,
+                        onClick = {
+                            if (currentIndex > 0) {
+                                val other = state.homeApps[currentIndex - 1]
+                                prefs.setAppAtLocation(other.position, target.label, target.packageName, target.activityClassName, target.userString, target.isShortcut, target.shortcutId)
+                                prefs.setAppAtLocation(target.position, other.label, other.packageName, other.activityClassName, other.userString, other.isShortcut, other.shortcutId)
+                                onHomeAppsChanged()
+                            }
+                            reorderTarget = null
+                        }
+                    ) { Text("Move Up") }
+                    TextButton(
+                        enabled = currentIndex >= 0 && currentIndex < state.homeApps.lastIndex,
+                        onClick = {
+                            if (currentIndex >= 0 && currentIndex < state.homeApps.lastIndex) {
+                                val other = state.homeApps[currentIndex + 1]
+                                prefs.setAppAtLocation(other.position, target.label, target.packageName, target.activityClassName, target.userString, target.isShortcut, target.shortcutId)
+                                prefs.setAppAtLocation(target.position, other.label, other.packageName, other.activityClassName, other.userString, other.isShortcut, other.shortcutId)
+                                onHomeAppsChanged()
+                            }
+                            reorderTarget = null
+                        }
+                    ) { Text("Move Down") }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { reorderTarget = null }) { Text("Cancel") }
+            }
+        )
+    }
+}
+
+@Composable
+private fun ClockInfoBlock(content: @Composable () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp)
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun HomeFooterBlock(
+    alignment: Alignment.Horizontal,
+    appTextAlign: TextAlign,
+    batteryLevel: Int
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 10.dp, bottom = 12.dp),
+        horizontalAlignment = alignment
+    ) {
+        Text(
+            text = "$batteryLevel%",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+            textAlign = appTextAlign,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 6.dp)
         )
     }
 }
