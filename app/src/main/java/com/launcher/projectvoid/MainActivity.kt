@@ -25,6 +25,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -59,6 +60,8 @@ class MainActivity : ComponentActivity() {
                 val currentRoute = currentBackStackEntry?.destination?.route
                 val notifications by NotificationService.notificationsState
                     .collectAsStateWithLifecycle(initialValue = emptyList())
+                val allowTopEdgeNotificationExpansion =
+                    uiState.showStatusBar && (currentBackStackEntry?.isRoute("HomeRoute") == true)
 
                 LaunchedEffect(uiState.showStatusBar) {
                     val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
@@ -72,6 +75,7 @@ class MainActivity : ComponentActivity() {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .pointerInput(allowTopEdgeNotificationExpansion) {
                         .pointerInput(uiState.leftSwipeAction, uiState.rightSwipeAction, currentRoute) {
                             awaitEachGesture {
                                 val down = awaitFirstDown(pass = PointerEventPass.Initial)
@@ -85,16 +89,10 @@ class MainActivity : ComponentActivity() {
                                     val deltaY = change.position.y - change.previousPosition.y
                                     totalX += deltaX
                                     totalY += deltaY
-                                    if (isTopEdge && totalY > 120f) {
-                                        try {
-                                            @Suppress("PrivateApi")
-                                            val sbservice = getSystemService("statusbar")
-                                            val statusbarManager = Class.forName("android.app.StatusBarManager")
-                                            val expands = statusbarManager.getMethod("expandNotificationsPanel")
-                                            expands.invoke(sbservice)
-                                        } catch (e: Exception) {
-                                            e.printStackTrace()
-                                        }
+                                    if (allowTopEdgeNotificationExpansion && isTopEdge && totalY > 120f) {
+                                        expandNotificationsPanelIfAllowed(
+                                            isAllowed = uiState.showStatusBar
+                                        )
                                         break
                                     }
                                     val absX = kotlin.math.abs(totalX)
@@ -132,16 +130,10 @@ class MainActivity : ComponentActivity() {
                             state = uiState,
                             onOpenApps = { navController.navigate(AppDrawerRoute) },
                             onOpenSettings = { navController.navigate(SettingsRoute) },
-                            onOpenNotifications = { 
-                                try {
-                                    @Suppress("PrivateApi")
-                                    val sbservice = getSystemService("statusbar")
-                                    val statusbarManager = Class.forName("android.app.StatusBarManager")
-                                    val expands = statusbarManager.getMethod("expandNotificationsPanel")
-                                    expands.invoke(sbservice)
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                }
+                            onOpenNotifications = {
+                                expandNotificationsPanelIfAllowed(
+                                    isAllowed = uiState.showStatusBar
+                                )
                             },
                             onOpenNotificationSummary = { navController.navigate(NotificationSummaryRoute) },
                             onOpenWidgets = { navController.navigate(WidgetsRoute) },
@@ -217,6 +209,19 @@ class MainActivity : ComponentActivity() {
             )
         }
         mainViewModel.selectedApp(appModel, com.launcher.projectvoid.data.Constants.FLAG_LAUNCH_APP)
+    }
+
+    private fun expandNotificationsPanelIfAllowed(isAllowed: Boolean) {
+        if (!isAllowed) return
+        try {
+            @Suppress("PrivateApi")
+            val sbservice = getSystemService("statusbar")
+            val statusbarManager = Class.forName("android.app.StatusBarManager")
+            val expands = statusbarManager.getMethod("expandNotificationsPanel")
+            expands.invoke(sbservice)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 }
 
