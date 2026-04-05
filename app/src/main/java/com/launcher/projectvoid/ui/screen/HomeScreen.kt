@@ -1,13 +1,18 @@
 package com.launcher.projectvoid.ui.screen
 
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.provider.AlarmClock
+import android.provider.Settings
 import android.provider.CalendarContract
 import android.view.Gravity
+import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -48,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -80,6 +86,79 @@ private fun gravityToTextAlign(gravity: Int): TextAlign = when (gravity) {
     else -> TextAlign.Start
 }
 
+private fun openScreenTimeDestination(context: android.content.Context) {
+    val packageManager = context.packageManager
+
+    val usageAccessIntent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    val appDetailsIntent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+        data = Uri.fromParts("package", context.packageName, null)
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+
+    val candidateIntents = listOf(
+        Intent().apply {
+            setClassName(
+                com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_PACKAGE_NAME,
+                "com.google.android.apps.wellbeing.settings.TopLevelSettingsActivity"
+            )
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        },
+        Intent().apply {
+            setClassName(
+                com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_PACKAGE_NAME,
+                "com.google.android.apps.wellbeing.home.TopLevelSettingsActivity"
+            )
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        },
+        Intent("com.google.android.apps.wellbeing.VIEW_APP_USAGE").apply {
+            setPackage(com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_PACKAGE_NAME)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        },
+        Intent("android.settings.DIGITAL_WELLBEING_SETTINGS").apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        },
+        Intent().apply {
+            setClassName(
+                com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_SAMSUNG_PACKAGE_NAME,
+                com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_SAMSUNG_ACTIVITY
+            )
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        },
+        context.packageManager
+            .getLaunchIntentForPackage(com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_PACKAGE_NAME)
+            ?.apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) },
+        usageAccessIntent,
+        appDetailsIntent
+    ).filterNotNull()
+
+    // Resolve first and launch in list order so behavior is deterministic across taps/devices.
+    val resolvedIntent = candidateIntents.firstOrNull { intent ->
+        packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY) != null
+    }
+
+    if (resolvedIntent != null) {
+        val launchedFallback = resolvedIntent.action == Settings.ACTION_USAGE_ACCESS_SETTINGS ||
+            resolvedIntent.action == Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+        if (launchedFallback) {
+            Toast.makeText(
+                context,
+                "Digital Wellbeing not found. Opening a settings fallback.",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+        context.startActivity(resolvedIntent)
+        return
+    }
+
+    Toast.makeText(
+        context,
+        "No screen-time destination available on this device.",
+        Toast.LENGTH_SHORT
+    ).show()
+}
+
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -107,6 +186,41 @@ fun HomeScreen(
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
     val swipeThreshold = 120f
     var showAppPicker by remember { mutableStateOf(false) }
+    val prefs = remember { Prefs(context) }
+    val visibleApps = remember { mutableStateListOf<HomeApp>() }
+    var isReorderMode by remember { mutableStateOf(false) }
+    var draggingAppPackage by remember { mutableStateOf<String?>(null) }
+    var movedDuringDrag by remember { mutableStateOf(false) }
+    val itemSwapThresholdPx = with(LocalDensity.current) { 56.dp.toPx() }
+
+    LaunchedEffect(state.homeApps) {
+        visibleApps.clear()
+        visibleApps.addAll(state.homeApps)
+        if (draggingAppPackage != null && visibleApps.none { it.packageName == draggingAppPackage }) {
+            draggingAppPackage = null
+        }
+    }
+
+    fun persistHomeAppOrder(appsInOrder: List<HomeApp>) {
+        // We always rewrite the list sequentially from slot 1 so drag order is exactly what survives restart.
+        appsInOrder.forEachIndexed { index, app ->
+            prefs.setAppAtLocation(
+                index + 1,
+                app.label,
+                app.packageName,
+                app.activityClassName,
+                app.userString,
+                app.isShortcut,
+                app.shortcutId
+            )
+        }
+        // Clear any trailing slots so old entries do not stick around after a reorder/removal.
+        for (index in appsInOrder.size + 1..state.homeAppsCount.coerceIn(1, 10)) {
+            prefs.setAppAtLocation(index, "", "", null, "", false, "")
+        }
+        // Trigger a refresh from prefs so UI state is rebuilt from persisted order.
+        onHomeAppsChanged()
+    }
 
     Box(
         modifier = Modifier
@@ -171,6 +285,73 @@ fun HomeScreen(
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         if (state.showClock) {
+                if (state.showClock) {
+                    Text(
+                        text = state.currentTime,
+                        style = MaterialTheme.typography.displayLarge.copy(
+                            fontSize = MaterialTheme.typography.displayLarge.fontSize * state.homeTextSizeScale
+                        ),
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.87f),
+                        textAlign = clockTextAlign,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                try {
+                                    val intent = Intent(AlarmClock.ACTION_SHOW_ALARMS)
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    onClockClick()
+                                }
+                            }
+                    )
+                }
+                if (state.showDate) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = state.currentDate,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.60f),
+                        textAlign = clockTextAlign,
+                        letterSpacing = MaterialTheme.typography.labelMedium.letterSpacing * 1.5f,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                try {
+                                    val builder = CalendarContract.CONTENT_URI.buildUpon().appendPath("time")
+                                    val intent = Intent(Intent.ACTION_VIEW).setData(builder.build())
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    onDateClick()
+                                }
+                            }
+                    )
+                }
+                if (state.showScreenTime && state.screenTime.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = state.screenTime,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+                        textAlign = clockTextAlign,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                openScreenTimeDestination(context)
+                            }
+                    )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = clockAlign,
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // Keeping these as separate sub-blocks makes spacing predictable now,
+                    // and gives us clean extension points if we add more clock widgets later.
+                    if (state.showClock) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 2.dp)
+                        ) {
                             Text(
                                 text = state.currentTime,
                                 style = MaterialTheme.typography.displayLarge.copy(
@@ -193,6 +374,16 @@ fun HomeScreen(
                         }
 
                         if (state.showDate) {
+                            )
+                        }
+                    }
+
+                    if (state.showDate) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 2.dp)
+                        ) {
                             Text(
                                 text = state.currentDate,
                                 style = MaterialTheme.typography.labelMedium,
@@ -215,6 +406,16 @@ fun HomeScreen(
                         }
 
                         if (state.showScreenTime && state.screenTime.isNotBlank()) {
+                            )
+                        }
+                    }
+
+                    if (state.showScreenTime && state.screenTime.isNotBlank()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 2.dp)
+                        ) {
                             Text(
                                 text = state.screenTime,
                                 style = MaterialTheme.typography.bodySmall,
@@ -284,7 +485,8 @@ fun HomeScreen(
             }
 
             // ── Apps section: 3/4 of screen ──
-            // Long press anywhere in this section → open app picker
+            // Long press empty space in this section → open app picker
+            // ── Apps section: separate middle + bottom blocks for independent alignment ──
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -338,6 +540,117 @@ fun HomeScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
                         textAlign = appTextAlign,
                         modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+            ) {
+                visibleApps.forEach { app ->
+                    var cumulativeDragY by remember(app.packageName) { mutableStateOf(0f) }
+                // This block owns app alignment behavior only.
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .combinedClickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {},
+                            onLongClick = { showAppPicker = true }
+                        )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = 6.dp, bottom = 10.dp),
+                        horizontalAlignment = appAlign,
+                        verticalArrangement = appVertical
+                    ) {
+                        state.homeApps.forEach { app ->
+                            Text(
+                                text = app.label,
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontSize = MaterialTheme.typography.bodyLarge.fontSize * state.homeTextSizeScale
+                                ),
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.87f),
+                                textAlign = appTextAlign,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onAppClick(app) }
+                                    .padding(vertical = 14.dp) // Comfortable touch target + visual breathing room.
+                            )
+                        }
+                    }
+                }
+
+                // Bottom block is intentionally isolated so future footer items
+                // (weather, connectivity, etc.) can be added without disturbing app alignment.
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp, bottom = 12.dp),
+                    horizontalAlignment = appAlign
+                ) {
+                    Text(
+                        text = "${state.batteryLevel}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+                        textAlign = appTextAlign,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .pointerInput(isReorderMode, visibleApps.size, app.packageName) {
+                                detectDragGesturesAfterLongPress(
+                                    onDragStart = {
+                                        isReorderMode = true
+                                        draggingAppPackage = app.packageName
+                                        movedDuringDrag = false
+                                        cumulativeDragY = 0f
+                                    },
+                                    onDragCancel = {
+                                        cumulativeDragY = 0f
+                                        draggingAppPackage = null
+                                        if (movedDuringDrag) {
+                                            persistHomeAppOrder(visibleApps.toList())
+                                        }
+                                        isReorderMode = false
+                                        movedDuringDrag = false
+                                    },
+                                    onDragEnd = {
+                                        cumulativeDragY = 0f
+                                        draggingAppPackage = null
+                                        if (movedDuringDrag) {
+                                            persistHomeAppOrder(visibleApps.toList())
+                                        }
+                                        isReorderMode = false
+                                        movedDuringDrag = false
+                                    },
+                                    onDrag = { change, dragAmount ->
+                                        change.consume()
+                                        cumulativeDragY += dragAmount.y
+                                        // We resolve index from package every move because the dragged item is
+                                        // continuously changing position as we reorder.
+                                        var currentIndex = visibleApps.indexOfFirst { it.packageName == app.packageName }
+                                        while (cumulativeDragY > itemSwapThresholdPx && currentIndex in 0 until visibleApps.lastIndex) {
+                                            visibleApps.removeAt(currentIndex).also { draggedApp ->
+                                                visibleApps.add(currentIndex + 1, draggedApp)
+                                            }
+                                            cumulativeDragY -= itemSwapThresholdPx
+                                            movedDuringDrag = true
+                                            currentIndex += 1
+                                        }
+                                        while (cumulativeDragY < -itemSwapThresholdPx && currentIndex > 0) {
+                                            visibleApps.removeAt(currentIndex).also { draggedApp ->
+                                                visibleApps.add(currentIndex - 1, draggedApp)
+                                            }
+                                            cumulativeDragY += itemSwapThresholdPx
+                                            movedDuringDrag = true
+                                            currentIndex -= 1
+                                        }
+                                    }
+                                )
+                            }
+                            .clickable(enabled = !isReorderMode) { onAppClick(app) }
+                            .padding(vertical = 14.dp)  // 14dp top + 14dp bot + ~20sp text ≈ 48dp touch target
+                            .padding(vertical = 6.dp)
                     )
                 }
             }
@@ -406,7 +719,7 @@ private fun HomeAppPickerSheet(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                currentApps.forEachIndexed { index, app ->
+                currentApps.forEach { app ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -421,26 +734,6 @@ private fun HomeAppPickerSheet(
                             modifier = Modifier.weight(1f)
                         )
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (index > 0) {
-                                androidx.compose.material3.IconButton(onClick = {
-                                    val other = currentApps[index - 1]
-                                    prefs.setAppAtLocation(other.position, app.label, app.packageName, app.activityClassName, app.userString, app.isShortcut, app.shortcutId)
-                                    prefs.setAppAtLocation(app.position, other.label, other.packageName, other.activityClassName, other.userString, other.isShortcut, other.shortcutId)
-                                    onHomeAppsChanged()
-                                }) {
-                                    androidx.compose.material3.Text("↑", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-                                }
-                            }
-                            if (index < currentApps.size - 1) {
-                                androidx.compose.material3.IconButton(onClick = {
-                                    val other = currentApps[index + 1]
-                                    prefs.setAppAtLocation(other.position, app.label, app.packageName, app.activityClassName, app.userString, app.isShortcut, app.shortcutId)
-                                    prefs.setAppAtLocation(app.position, other.label, other.packageName, other.activityClassName, other.userString, other.isShortcut, other.shortcutId)
-                                    onHomeAppsChanged()
-                                }) {
-                                    androidx.compose.material3.Text("↓", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-                                }
-                            }
                             androidx.compose.material3.IconButton(onClick = {
                                 prefs.setAppAtLocation(app.position, "", "", null, "", false, "")
                                 onHomeAppsChanged()
