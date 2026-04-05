@@ -26,8 +26,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.launcher.projectvoid.data.AppModel
 import com.launcher.projectvoid.helper.NotificationService
@@ -55,6 +57,7 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                 val currentBackStackEntry by navController.currentBackStackEntryAsState()
+                val currentRoute = currentBackStackEntry?.destination?.route
                 val notifications by NotificationService.notificationsState
                     .collectAsStateWithLifecycle(initialValue = emptyList())
                 val allowTopEdgeNotificationExpansion =
@@ -73,19 +76,40 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier
                         .fillMaxSize()
                         .pointerInput(allowTopEdgeNotificationExpansion) {
+                        .pointerInput(uiState.leftSwipeAction, uiState.rightSwipeAction, currentRoute) {
                             awaitEachGesture {
                                 val down = awaitFirstDown(pass = PointerEventPass.Initial)
                                 val isTopEdge = down.position.y < size.height * 0.1f
                                 var totalY = 0f
+                                var totalX = 0f
                                 while (true) {
                                     val event = awaitPointerEvent(PointerEventPass.Initial)
                                     val change = event.changes.firstOrNull() ?: break
+                                    val deltaX = change.position.x - change.previousPosition.x
                                     val deltaY = change.position.y - change.previousPosition.y
+                                    totalX += deltaX
                                     totalY += deltaY
                                     if (allowTopEdgeNotificationExpansion && isTopEdge && totalY > 120f) {
                                         expandNotificationsPanelIfAllowed(
                                             isAllowed = uiState.showStatusBar
                                         )
+                                        break
+                                    }
+                                    val absX = kotlin.math.abs(totalX)
+                                    val absY = kotlin.math.abs(totalY)
+                                    if (absX > 120f && absX > absY) {
+                                        val direction = if (totalX > 0) SwipeDirection.RIGHT else SwipeDirection.LEFT
+                                        if (shouldNavigateHomeFromSwipe(
+                                                currentRoute = currentRoute,
+                                                swipeDirection = direction,
+                                                leftSwipeAction = uiState.leftSwipeAction,
+                                                rightSwipeAction = uiState.rightSwipeAction
+                                            )
+                                        ) {
+                                            // We intentionally force navigation to HomeRoute so "go-home" gestures
+                                            // are consistent regardless of how deep the current stack is.
+                                            navigateHome(navController)
+                                        }
                                         break
                                     }
                                     if (!change.pressed) break
@@ -201,6 +225,13 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+private fun navigateHome(navController: NavHostController) {
+    navController.navigate(HomeRoute) {
+        launchSingleTop = true
+        popUpTo(HomeRoute) { inclusive = false }
+    }
+}
+
 // ── Direction-aware transitions ──
 
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.directionEnter(
@@ -216,9 +247,11 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.directionEnter(
             slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Up, tween(280)) + fadeIn(tween(220))
         targetState.isRoute("NotificationPanelRoute") ->
             slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Down, tween(280)) + fadeIn(tween(220))
-        targetState.isRoute(leftRoute) ->
+        // We only evaluate swipe-driven horizontal transitions when the swipe action actually maps
+        // to a supported route. This avoids accidentally matching everything when the action is unsupported.
+        leftRoute != null && targetState.isRoute(leftRoute) ->
             slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(280)) + fadeIn(tween(220))
-        targetState.isRoute(rightRoute) ->
+        rightRoute != null && targetState.isRoute(rightRoute) ->
             slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, tween(280)) + fadeIn(tween(220))
         else -> fadeIn(animationSpec = tween(200))
     }
@@ -237,21 +270,56 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.directionExit(
             slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Down, tween(260)) + fadeOut(tween(200))
         initialState.isRoute("NotificationPanelRoute") ->
             slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Up, tween(260)) + fadeOut(tween(200))
-        initialState.isRoute(leftRoute) ->
+        leftRoute != null && initialState.isRoute(leftRoute) ->
             slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Start, tween(260)) + fadeOut(tween(200))
-        initialState.isRoute(rightRoute) ->
+        rightRoute != null && initialState.isRoute(rightRoute) ->
             slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(260)) + fadeOut(tween(200))
         else -> fadeOut(animationSpec = tween(200))
     }
 }
 
-private fun actionToRouteName(action: String): String = when (action) {
+private fun actionToRouteName(action: String): String? = when (action) {
     com.launcher.projectvoid.data.Prefs.SwipeAction.NOTIFICATION_SUMMARY -> "NotificationSummaryRoute"
     com.launcher.projectvoid.data.Prefs.SwipeAction.WIDGETS -> "WidgetsRoute"
     com.launcher.projectvoid.data.Prefs.SwipeAction.NOTES -> "NotesRoute"
-    else -> ""
+    else -> null
 }
 
 private fun NavBackStackEntry.isRoute(name: String): Boolean {
-    return destination.route?.contains(name) == true
+    return routeMatches(destination.route, name)
+}
+
+internal fun routeMatches(destinationRoute: String?, name: String?): Boolean {
+    // Reject blank/unknown names up front; this prevents false-positives for transitions
+    // like Home back gestures when the swipe action doesn't map to any route.
+    if (name.isNullOrBlank()) return false
+    return destinationRoute?.contains(name) == true
+}
+
+internal enum class SwipeDirection { LEFT, RIGHT }
+
+internal fun shouldNavigateHomeFromSwipe(
+    currentRoute: String?,
+    swipeDirection: SwipeDirection,
+    leftSwipeAction: String,
+    rightSwipeAction: String
+): Boolean {
+    // Home itself should not respond to this "return home" rule; we only apply it to gesture-opened pages.
+    if (routeMatches(currentRoute, "HomeRoute")) return false
+
+    val leftRoute = actionToRouteName(leftSwipeAction)
+    val rightRoute = actionToRouteName(rightSwipeAction)
+
+    // Example behavior:
+    // - Home -> swipe that opens Notes (left action) -> Notes
+    // - Notes -> swipe in reverse direction -> Home
+    val isReverseFromLeftRoute = swipeDirection == SwipeDirection.RIGHT &&
+        leftRoute != null &&
+        routeMatches(currentRoute, leftRoute)
+
+    val isReverseFromRightRoute = swipeDirection == SwipeDirection.LEFT &&
+        rightRoute != null &&
+        routeMatches(currentRoute, rightRoute)
+
+    return isReverseFromLeftRoute || isReverseFromRightRoute
 }
