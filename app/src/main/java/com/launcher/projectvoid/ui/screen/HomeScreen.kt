@@ -267,8 +267,24 @@ fun HomeScreen(
                     .weight(state.clockSectionWeight.coerceIn(0.15f, 0.50f))
                     .padding(horizontal = 20.dp, vertical = 16.dp),
                 horizontalAlignment = clockAlign,
-                verticalArrangement = clockVertical
             ) {
+                // Separate, weighted clock content block so vertical alignment controls the
+                // entire clock/date/screen-time group as one unit.
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    horizontalAlignment = clockAlign,
+                    verticalArrangement = clockVertical
+                ) {
+                    // Keep each clock-related item in its own block so spacing remains predictable
+                    // and future additions can slot in without crowding neighboring content.
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = clockAlign,
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        if (state.showClock) {
                 if (state.showClock) {
                     Text(
                         text = state.currentTime,
@@ -353,6 +369,11 @@ fun HomeScreen(
                                             onClockClick()
                                         }
                                     }
+                                    .padding(vertical = 2.dp)
+                            )
+                        }
+
+                        if (state.showDate) {
                             )
                         }
                     }
@@ -380,6 +401,11 @@ fun HomeScreen(
                                             onDateClick()
                                         }
                                     }
+                                    .padding(vertical = 2.dp)
+                            )
+                        }
+
+                        if (state.showScreenTime && state.screenTime.isNotBlank()) {
                             )
                         }
                     }
@@ -451,6 +477,7 @@ fun HomeScreen(
                                             } catch (_: Exception) {}
                                         }
                                     }
+                                    .padding(vertical = 2.dp)
                             )
                         }
                     }
@@ -464,6 +491,57 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f - state.clockSectionWeight.coerceIn(0.15f, 0.50f))
+                    .combinedClickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {},
+                        onLongClick = { showAppPicker = true }
+                    )
+                    .padding(horizontal = 20.dp),
+                horizontalAlignment = appAlign
+            ) {
+                // Keep apps in their own weighted content block so vertical alignment actually
+                // controls where the app group appears (Top / Center / Bottom).
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(top = 8.dp, bottom = 8.dp),
+                    horizontalAlignment = appAlign,
+                    verticalArrangement = appVertical
+                ) {
+                    state.homeApps.forEach { app ->
+                        Text(
+                            text = app.label,
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontSize = MaterialTheme.typography.bodyLarge.fontSize * state.homeTextSizeScale
+                            ),
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.87f),
+                            textAlign = appTextAlign,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onAppClick(app) }
+                                .padding(vertical = 14.dp)  // 14dp top + 14dp bot + ~20sp text ≈ 48dp touch target
+                        )
+                    }
+                }
+
+                // Keep the bottom area isolated so we can add more footer items later
+                // (network status, next alarm, etc.) without touching app-list alignment logic.
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp, bottom = 16.dp),
+                    horizontalAlignment = appAlign
+                ) {
+                    Text(
+                        text = "${state.batteryLevel}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+                        textAlign = appTextAlign,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
                     .padding(horizontal = 20.dp, vertical = 8.dp)
             ) {
                 visibleApps.forEach { app ->
