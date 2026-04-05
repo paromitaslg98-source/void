@@ -47,6 +47,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.launcher.projectvoid.data.AppNotificationSummary
 import com.launcher.projectvoid.helper.AiSummarizer
 import com.launcher.projectvoid.helper.NotificationService
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -68,6 +69,8 @@ class NotificationSummaryViewModel(application: Application) : AndroidViewModel(
     }
 
     private val summarizer = AiSummarizer(application.applicationContext)
+    private val summaryJobs = mutableMapOf<String, Job>()
+    private var generation = 0L
 
     private val _summaries = MutableStateFlow<List<AppNotificationSummary>>(emptyList())
     val summaries: StateFlow<List<AppNotificationSummary>> = _summaries.asStateFlow()
@@ -81,50 +84,41 @@ class NotificationSummaryViewModel(application: Application) : AndroidViewModel(
         }
 
         viewModelScope.launch {
-            NotificationService.notificationsState
-                .debounce(SUMMARY_DEBOUNCE_MS)
-                .collectLatest { groups ->
-                    val groupedByPackage = groups
-                        .groupBy { it.packageName }
-                        .mapValues { (_, packageGroups) ->
-                            packageGroups
-                                .flatMap { group -> group.notifications }
-                                .sortedByDescending { it.postTime }
-                        }
+            NotificationService.notificationsState.collect { groups ->
+                generation += 1
+                val currentGeneration = generation
+                val activePackages = groups.map { it.packageName }.toSet()
+                summaryJobs.keys.filter { it !in activePackages }.forEach { pkg ->
+                    summaryJobs.remove(pkg)?.cancel()
+                }
 
-                    val summaryList = groups
-                        .sortedByDescending { it.latestTimestamp }
-                        .map { group ->
-                            AppNotificationSummary(
-                                packageName = group.packageName,
-                                appLabel = group.appLabel,
-                                notifications = group.notifications,
-                                latestTimestamp = group.latestTimestamp,
-                                isLoading = true
-                            )
-                        }
+                val summaryList = groups
+                    .sortedByDescending { it.latestTimestamp }
+                    .map { group ->
+                        AppNotificationSummary(
+                            packageName = group.packageName,
+                            appLabel = group.appLabel,
+                            notifications = group.notifications,
+                            latestTimestamp = group.latestTimestamp,
+                            isLoading = true
+                        )
+                    }
 
-                    _summaries.value = summaryList
+                _summaries.value = summaryList
 
-                    // Every new state emission cancels this whole block (via collectLatest),
-                    // so stale summary jobs cannot write over new UI state.
-                    summaryList.forEach { summary ->
-                        launch {
-                            val texts = groupedByPackage[summary.packageName]
-                                .orEmpty()
-                                .flatMap { sbn -> extractNotificationTexts(sbn.notification.extras) }
-                                .filter { it.isNotBlank() }
+                // Generate AI summaries in background
+                summaryList.forEach { summary ->
+                    summaryJobs[summary.packageName]?.cancel()
+                    summaryJobs[summary.packageName] = launch {
+                        val texts = extractNotificationTexts(summary.notifications)
 
-                            Log.d(
-                                TAG,
-                                "Extracted ${texts.size} text entries for ${summary.packageName}"
-                            )
-
-                            val aiResult = summarizer.summarize(summary.appLabel, texts)
-                            if (aiResult.isNullOrBlank()) {
-                                Log.d(
-                                    TAG,
-                                    "AiSummarizer fallback for ${summary.packageName}; using raw text join"
+                        val aiResult = summarizer.summarize(summary.appLabel, texts)
+                        _summaries.value = _summaries.value.toMutableList().also {
+                            val rowIndex = it.indexOfFirst { row -> row.packageName == summary.packageName }
+                            if (currentGeneration == generation && rowIndex >= 0) {
+                                it[rowIndex] = it[rowIndex].copy(
+                                    aiSummary = aiResult ?: texts.joinToString(". "),
+                                    isLoading = false
                                 )
                             }
 
@@ -186,8 +180,32 @@ class NotificationSummaryViewModel(application: Application) : AndroidViewModel(
     }
 
     fun dismissApp(packageName: String) {
+        summaryJobs.remove(packageName)?.cancel()
         NotificationService.dismissNotificationsForPackage(packageName)
         _summaries.value = _summaries.value.filter { it.packageName != packageName }
+    }
+
+    private fun extractNotificationTexts(notifications: List<android.service.notification.StatusBarNotification>): List<String> {
+        return notifications.mapNotNull { sbn ->
+            val extras = sbn.notification.extras
+            val title = extras.getCharSequence("android.title")?.toString()?.trim().orEmpty()
+            val text = extras.getCharSequence("android.text")?.toString()?.trim().orEmpty()
+            val bigText = extras.getCharSequence("android.bigText")?.toString()?.trim().orEmpty()
+            val lines = extras.getCharSequenceArray("android.textLines")
+                ?.map { it.toString().trim() }
+                ?.filter { it.isNotBlank() }
+                .orEmpty()
+
+            when {
+                title.isNotBlank() && bigText.isNotBlank() -> "$title: $bigText"
+                title.isNotBlank() && text.isNotBlank() -> "$title: $text"
+                bigText.isNotBlank() -> bigText
+                text.isNotBlank() -> text
+                lines.isNotEmpty() -> lines.joinToString(" • ")
+                title.isNotBlank() -> title
+                else -> null
+            }
+        }
     }
 }
 

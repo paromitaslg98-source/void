@@ -75,8 +75,7 @@ class MainActivity : ComponentActivity() {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .pointerInput(allowTopEdgeNotificationExpansion) {
-                        .pointerInput(uiState.leftSwipeAction, uiState.rightSwipeAction, currentRoute) {
+                        .pointerInput(uiState.showStatusBar) {
                             awaitEachGesture {
                                 val down = awaitFirstDown(pass = PointerEventPass.Initial)
                                 val isTopEdge = down.position.y < size.height * 0.1f
@@ -89,26 +88,15 @@ class MainActivity : ComponentActivity() {
                                     val deltaY = change.position.y - change.previousPosition.y
                                     totalX += deltaX
                                     totalY += deltaY
-                                    if (allowTopEdgeNotificationExpansion && isTopEdge && totalY > 120f) {
-                                        expandNotificationsPanelIfAllowed(
-                                            isAllowed = uiState.showStatusBar
-                                        )
-                                        break
-                                    }
-                                    val absX = kotlin.math.abs(totalX)
-                                    val absY = kotlin.math.abs(totalY)
-                                    if (absX > 120f && absX > absY) {
-                                        val direction = if (totalX > 0) SwipeDirection.RIGHT else SwipeDirection.LEFT
-                                        if (shouldNavigateHomeFromSwipe(
-                                                currentRoute = currentRoute,
-                                                swipeDirection = direction,
-                                                leftSwipeAction = uiState.leftSwipeAction,
-                                                rightSwipeAction = uiState.rightSwipeAction
-                                            )
-                                        ) {
-                                            // We intentionally force navigation to HomeRoute so "go-home" gestures
-                                            // are consistent regardless of how deep the current stack is.
-                                            navigateHome(navController)
+                                    if (uiState.showStatusBar && isTopEdge && totalY > 120f) {
+                                        try {
+                                            @Suppress("PrivateApi")
+                                            val sbservice = getSystemService("statusbar")
+                                            val statusbarManager = Class.forName("android.app.StatusBarManager")
+                                            val expands = statusbarManager.getMethod("expandNotificationsPanel")
+                                            expands.invoke(sbservice)
+                                        } catch (e: Exception) {
+                                            e.printStackTrace()
                                         }
                                         break
                                     }
@@ -131,9 +119,17 @@ class MainActivity : ComponentActivity() {
                             onOpenApps = { navController.navigate(AppDrawerRoute) },
                             onOpenSettings = { navController.navigate(SettingsRoute) },
                             onOpenNotifications = {
-                                expandNotificationsPanelIfAllowed(
-                                    isAllowed = uiState.showStatusBar
-                                )
+                                if (uiState.showStatusBar) {
+                                    try {
+                                        @Suppress("PrivateApi")
+                                        val sbservice = getSystemService("statusbar")
+                                        val statusbarManager = Class.forName("android.app.StatusBarManager")
+                                        val expands = statusbarManager.getMethod("expandNotificationsPanel")
+                                        expands.invoke(sbservice)
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                    }
+                                }
                             },
                             onOpenNotificationSummary = { navController.navigate(NotificationSummaryRoute) },
                             onOpenWidgets = { navController.navigate(WidgetsRoute) },
@@ -285,41 +281,7 @@ private fun actionToRouteName(action: String): String? = when (action) {
     else -> null
 }
 
-private fun NavBackStackEntry.isRoute(name: String): Boolean {
-    return routeMatches(destination.route, name)
-}
-
-internal fun routeMatches(destinationRoute: String?, name: String?): Boolean {
-    // Reject blank/unknown names up front; this prevents false-positives for transitions
-    // like Home back gestures when the swipe action doesn't map to any route.
+private fun NavBackStackEntry.isRoute(name: String?): Boolean {
     if (name.isNullOrBlank()) return false
-    return destinationRoute?.contains(name) == true
-}
-
-internal enum class SwipeDirection { LEFT, RIGHT }
-
-internal fun shouldNavigateHomeFromSwipe(
-    currentRoute: String?,
-    swipeDirection: SwipeDirection,
-    leftSwipeAction: String,
-    rightSwipeAction: String
-): Boolean {
-    // Home itself should not respond to this "return home" rule; we only apply it to gesture-opened pages.
-    if (routeMatches(currentRoute, "HomeRoute")) return false
-
-    val leftRoute = actionToRouteName(leftSwipeAction)
-    val rightRoute = actionToRouteName(rightSwipeAction)
-
-    // Example behavior:
-    // - Home -> swipe that opens Notes (left action) -> Notes
-    // - Notes -> swipe in reverse direction -> Home
-    val isReverseFromLeftRoute = swipeDirection == SwipeDirection.RIGHT &&
-        leftRoute != null &&
-        routeMatches(currentRoute, leftRoute)
-
-    val isReverseFromRightRoute = swipeDirection == SwipeDirection.LEFT &&
-        rightRoute != null &&
-        routeMatches(currentRoute, rightRoute)
-
-    return isReverseFromLeftRoute || isReverseFromRightRoute
+    return destination.route?.contains(name) == true
 }

@@ -193,46 +193,32 @@ class MainUiViewModel(application: Application) : AndroidViewModel(application) 
     private fun loadScreenTime() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                if (!hasUsageStatsPermission()) {
-                    // We call out permission denial clearly so users understand this is actionable,
-                    // instead of looking like they simply have no usage today.
-                    _uiState.update { it.copy(screenTime = "Screen time: Grant usage access") }
+                val appOps = appContext.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+                val mode = appOps.checkOpNoThrow(
+                    android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+                    android.os.Process.myUid(),
+                    appContext.packageName
+                )
+                if (mode != android.app.AppOpsManager.MODE_ALLOWED) {
+                    _uiState.update { it.copy(screenTime = "Screen time: Permission required") }
                     return@launch
                 }
 
-                val usageStatsManager = getApplication<android.app.Application>()
-                    .getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
-                val calendar = java.util.Calendar.getInstance().apply {
-                    set(java.util.Calendar.HOUR_OF_DAY, 0)
-                    set(java.util.Calendar.MINUTE, 0)
-                    set(java.util.Calendar.SECOND, 0)
-                    set(java.util.Calendar.MILLISECOND, 0)
-                }
-
+                val usageStatsManager = getApplication<android.app.Application>().getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+                val calendar = java.util.Calendar.getInstance()
+                calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+                calendar.set(java.util.Calendar.MINUTE, 0)
+                calendar.set(java.util.Calendar.SECOND, 0)
+                
                 val stats = usageStatsManager.queryUsageStats(
                     UsageStatsManager.INTERVAL_DAILY,
                     calendar.timeInMillis,
                     System.currentTimeMillis()
                 )
-
-                if (stats.isNullOrEmpty()) {
-                    _uiState.update { it.copy(screenTime = "Screen time: Data unavailable") }
-                    return@launch
-                }
-
-                val ignoredPackages = setOf(
-                    appContext.packageName,
-                    "android",
-                    "com.android.systemui",
-                    "com.google.android.permissioncontroller"
-                )
-                // We deliberately filter launcher + obvious OS plumbing packages so the number
-                // better reflects user-facing app usage.
+                
                 val totalMillis = stats
-                    .asSequence()
-                    .filterNot { stat -> ignoredPackages.contains(stat.packageName) }
+                    .filter { it.packageName != appContext.packageName }
                     .sumOf { it.totalTimeInForeground }
-
                 if (totalMillis > 0) {
                     val hours = totalMillis / (1000 * 60 * 60)
                     val minutes = (totalMillis / (1000 * 60)) % 60
