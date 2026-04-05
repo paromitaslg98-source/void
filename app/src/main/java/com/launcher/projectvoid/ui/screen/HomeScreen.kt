@@ -138,7 +138,7 @@ fun HomeScreen(
             )
         }
         // Clear any trailing slots so old entries do not stick around after a reorder/removal.
-        for (index in appsInOrder.size + 1..state.homeAppsCount.coerceIn(1, 15)) {
+        for (index in appsInOrder.size + 1..state.homeAppsCount.coerceIn(1, 10)) {
             prefs.setAppAtLocation(index, "", "", null, "", false, "")
         }
         // Trigger a refresh from prefs so UI state is rebuilt from persisted order.
