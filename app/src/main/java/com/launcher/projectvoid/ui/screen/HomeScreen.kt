@@ -1,9 +1,13 @@
 package com.launcher.projectvoid.ui.screen
 
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.provider.AlarmClock
+import android.provider.Settings
 import android.provider.CalendarContract
 import android.view.Gravity
+import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -78,6 +82,79 @@ private fun gravityToTextAlign(gravity: Int): TextAlign = when (gravity) {
     Gravity.CENTER, Gravity.CENTER_HORIZONTAL -> TextAlign.Center
     Gravity.END, Gravity.RIGHT -> TextAlign.End
     else -> TextAlign.Start
+}
+
+private fun openScreenTimeDestination(context: android.content.Context) {
+    val packageManager = context.packageManager
+
+    val usageAccessIntent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    val appDetailsIntent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+        data = Uri.fromParts("package", context.packageName, null)
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+
+    val candidateIntents = listOf(
+        Intent().apply {
+            setClassName(
+                com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_PACKAGE_NAME,
+                "com.google.android.apps.wellbeing.settings.TopLevelSettingsActivity"
+            )
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        },
+        Intent().apply {
+            setClassName(
+                com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_PACKAGE_NAME,
+                "com.google.android.apps.wellbeing.home.TopLevelSettingsActivity"
+            )
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        },
+        Intent("com.google.android.apps.wellbeing.VIEW_APP_USAGE").apply {
+            setPackage(com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_PACKAGE_NAME)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        },
+        Intent("android.settings.DIGITAL_WELLBEING_SETTINGS").apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        },
+        Intent().apply {
+            setClassName(
+                com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_SAMSUNG_PACKAGE_NAME,
+                com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_SAMSUNG_ACTIVITY
+            )
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        },
+        context.packageManager
+            .getLaunchIntentForPackage(com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_PACKAGE_NAME)
+            ?.apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) },
+        usageAccessIntent,
+        appDetailsIntent
+    ).filterNotNull()
+
+    // Resolve first and launch in list order so behavior is deterministic across taps/devices.
+    val resolvedIntent = candidateIntents.firstOrNull { intent ->
+        packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY) != null
+    }
+
+    if (resolvedIntent != null) {
+        val launchedFallback = resolvedIntent.action == Settings.ACTION_USAGE_ACCESS_SETTINGS ||
+            resolvedIntent.action == Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+        if (launchedFallback) {
+            Toast.makeText(
+                context,
+                "Digital Wellbeing not found. Opening a settings fallback.",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+        context.startActivity(resolvedIntent)
+        return
+    }
+
+    Toast.makeText(
+        context,
+        "No screen-time destination available on this device.",
+        Toast.LENGTH_SHORT
+    ).show()
 }
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -206,58 +283,7 @@ fun HomeScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                val intent = try {
-                                    // 1. Try Google Wellbeing Top Level Settings (Direct Activity - settings)
-                                    Intent().apply {
-                                        setClassName(com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_PACKAGE_NAME, "com.google.android.apps.wellbeing.settings.TopLevelSettingsActivity")
-                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                    }
-                                } catch (e: Exception) {
-                                    null
-                                }
-
-                                val intent2 = try {
-                                    // 2. Try Google Wellbeing Top Level Settings (Direct Activity - home)
-                                    Intent().apply {
-                                        setClassName(com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_PACKAGE_NAME, "com.google.android.apps.wellbeing.home.TopLevelSettingsActivity")
-                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                    }
-                                } catch (e: Exception) {
-                                    null
-                                }
-
-                                val intent3 = Intent("com.google.android.apps.wellbeing.VIEW_APP_USAGE").apply {
-                                    setPackage(com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_PACKAGE_NAME)
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                }
-
-                                val intent4 = Intent("android.settings.DIGITAL_WELLBEING_SETTINGS").apply {
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                }
-
-                                val intent5 = Intent().apply {
-                                    setClassName(
-                                        com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_SAMSUNG_PACKAGE_NAME,
-                                        com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_SAMSUNG_ACTIVITY
-                                    )
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                }
-
-                                val intent6 = context.packageManager.getLaunchIntentForPackage(com.launcher.projectvoid.data.Constants.DIGITAL_WELLBEING_PACKAGE_NAME)?.apply {
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                }
-
-                                val intent7 = Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                }
-
-                                val list = listOfNotNull(intent, intent2, intent3, intent4, intent5, intent6, intent7)
-                                for (target in list) {
-                                    try {
-                                        context.startActivity(target)
-                                        break
-                                    } catch (_: Exception) {}
-                                }
+                                openScreenTimeDestination(context)
                             }
                     )
                 }

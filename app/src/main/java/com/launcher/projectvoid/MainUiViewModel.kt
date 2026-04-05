@@ -1,13 +1,14 @@
 package com.launcher.projectvoid
 
 import android.app.Application
+import android.app.AppOpsManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
 import android.view.Gravity
-import android.provider.Settings
+import android.os.Process
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import android.app.usage.UsageStatsManager
@@ -187,19 +188,46 @@ class MainUiViewModel(application: Application) : AndroidViewModel(application) 
     private fun loadScreenTime() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val usageStatsManager = getApplication<android.app.Application>().getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
-                val calendar = java.util.Calendar.getInstance()
-                calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
-                calendar.set(java.util.Calendar.MINUTE, 0)
-                calendar.set(java.util.Calendar.SECOND, 0)
-                
+                if (!hasUsageStatsPermission()) {
+                    // We call out permission denial clearly so users understand this is actionable,
+                    // instead of looking like they simply have no usage today.
+                    _uiState.update { it.copy(screenTime = "Screen time: Grant usage access") }
+                    return@launch
+                }
+
+                val usageStatsManager = getApplication<android.app.Application>()
+                    .getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+                val calendar = java.util.Calendar.getInstance().apply {
+                    set(java.util.Calendar.HOUR_OF_DAY, 0)
+                    set(java.util.Calendar.MINUTE, 0)
+                    set(java.util.Calendar.SECOND, 0)
+                    set(java.util.Calendar.MILLISECOND, 0)
+                }
+
                 val stats = usageStatsManager.queryUsageStats(
                     UsageStatsManager.INTERVAL_DAILY,
                     calendar.timeInMillis,
                     System.currentTimeMillis()
                 )
-                
-                val totalMillis = stats.sumOf { it.totalTimeInForeground }
+
+                if (stats.isNullOrEmpty()) {
+                    _uiState.update { it.copy(screenTime = "Screen time: Data unavailable") }
+                    return@launch
+                }
+
+                val ignoredPackages = setOf(
+                    appContext.packageName,
+                    "android",
+                    "com.android.systemui",
+                    "com.google.android.permissioncontroller"
+                )
+                // We deliberately filter launcher + obvious OS plumbing packages so the number
+                // better reflects user-facing app usage.
+                val totalMillis = stats
+                    .asSequence()
+                    .filterNot { stat -> ignoredPackages.contains(stat.packageName) }
+                    .sumOf { it.totalTimeInForeground }
+
                 if (totalMillis > 0) {
                     val hours = totalMillis / (1000 * 60 * 60)
                     val minutes = (totalMillis / (1000 * 60)) % 60
@@ -208,10 +236,22 @@ class MainUiViewModel(application: Application) : AndroidViewModel(application) 
                 } else {
                     _uiState.update { it.copy(screenTime = "Screen time: None") }
                 }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(screenTime = "") }
+            } catch (_: Exception) {
+                _uiState.update { it.copy(screenTime = "Screen time: Data unavailable") }
             }
         }
+    }
+
+    private fun hasUsageStatsPermission(): Boolean {
+        val appOpsManager = appContext.getSystemService(Context.APP_OPS_SERVICE) as? AppOpsManager
+            ?: return false
+        val mode = appOpsManager.unsafeCheckOpNoThrow(
+            AppOpsManager.OPSTR_GET_USAGE_STATS,
+            Process.myUid(),
+            appContext.packageName
+        )
+
+        return mode == AppOpsManager.MODE_ALLOWED
     }
 
     override fun onCleared() {
