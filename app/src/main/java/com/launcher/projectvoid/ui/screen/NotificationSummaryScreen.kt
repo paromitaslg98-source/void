@@ -1,7 +1,10 @@
 package com.launcher.projectvoid.ui.screen
 
 import android.app.Application
+import android.app.Notification
+import android.os.Bundle
 import android.text.format.DateUtils
+import android.util.Log
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -47,6 +50,8 @@ import com.launcher.projectvoid.helper.NotificationService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -57,6 +62,11 @@ import kotlin.math.abs
 // ── ViewModel ──
 
 class NotificationSummaryViewModel(application: Application) : AndroidViewModel(application) {
+    companion object {
+        private const val TAG = "NotificationSummaryVM"
+        private const val SUMMARY_DEBOUNCE_MS = 250L
+    }
+
     private val summarizer = AiSummarizer(application.applicationContext)
 
     private val _summaries = MutableStateFlow<List<AppNotificationSummary>>(emptyList())
@@ -71,53 +81,108 @@ class NotificationSummaryViewModel(application: Application) : AndroidViewModel(
         }
 
         viewModelScope.launch {
-            NotificationService.notificationsState.collect { groups ->
-                val summaryList = groups
-                    .sortedByDescending { it.latestTimestamp }
-                    .map { group ->
-                        val texts = group.notifications.map { sbn ->
-                            val extras = sbn.notification.extras
-                            val title = extras.getCharSequence("android.title")?.toString() ?: ""
-                            val text = extras.getCharSequence("android.text")?.toString() ?: ""
-                            if (title.isNotBlank() && text.isNotBlank()) "$title: $text"
-                            else title.ifBlank { text }
-                        }.filter { it.isNotBlank() }
+            NotificationService.notificationsState
+                .debounce(SUMMARY_DEBOUNCE_MS)
+                .collectLatest { groups ->
+                    val groupedByPackage = groups
+                        .groupBy { it.packageName }
+                        .mapValues { (_, packageGroups) ->
+                            packageGroups
+                                .flatMap { group -> group.notifications }
+                                .sortedByDescending { it.postTime }
+                        }
 
-                        AppNotificationSummary(
-                            packageName = group.packageName,
-                            appLabel = group.appLabel,
-                            notifications = group.notifications,
-                            latestTimestamp = group.latestTimestamp,
-                            isLoading = true
-                        )
-                    }
+                    val summaryList = groups
+                        .sortedByDescending { it.latestTimestamp }
+                        .map { group ->
+                            AppNotificationSummary(
+                                packageName = group.packageName,
+                                appLabel = group.appLabel,
+                                notifications = group.notifications,
+                                latestTimestamp = group.latestTimestamp,
+                                isLoading = true
+                            )
+                        }
 
-                _summaries.value = summaryList
+                    _summaries.value = summaryList
 
-                // Generate AI summaries in background
-                summaryList.forEachIndexed { index, summary ->
-                    launch {
-                        val texts = summary.notifications.map { sbn ->
-                            val extras = sbn.notification.extras
-                            val title = extras.getCharSequence("android.title")?.toString() ?: ""
-                            val text = extras.getCharSequence("android.text")?.toString() ?: ""
-                            if (title.isNotBlank() && text.isNotBlank()) "$title: $text"
-                            else title.ifBlank { text }
-                        }.filter { it.isNotBlank() }
+                    // Every new state emission cancels this whole block (via collectLatest),
+                    // so stale summary jobs cannot write over new UI state.
+                    summaryList.forEach { summary ->
+                        launch {
+                            val texts = groupedByPackage[summary.packageName]
+                                .orEmpty()
+                                .flatMap { sbn -> extractNotificationTexts(sbn.notification.extras) }
+                                .filter { it.isNotBlank() }
 
-                        val aiResult = summarizer.summarize(summary.appLabel, texts)
-                        _summaries.value = _summaries.value.toMutableList().also {
-                            if (index < it.size) {
-                                it[index] = it[index].copy(
-                                    aiSummary = aiResult ?: texts.joinToString(". "),
-                                    isLoading = false
+                            Log.d(
+                                TAG,
+                                "Extracted ${texts.size} text entries for ${summary.packageName}"
+                            )
+
+                            val aiResult = summarizer.summarize(summary.appLabel, texts)
+                            if (aiResult.isNullOrBlank()) {
+                                Log.d(
+                                    TAG,
+                                    "AiSummarizer fallback for ${summary.packageName}; using raw text join"
                                 )
+                            }
+
+                            val fallbackSummary = texts.joinToString(". ")
+                            _summaries.value = _summaries.value.map { current ->
+                                if (current.packageName == summary.packageName) {
+                                    current.copy(
+                                        aiSummary = aiResult ?: fallbackSummary,
+                                        isLoading = false
+                                    )
+                                } else {
+                                    current
+                                }
                             }
                         }
                     }
                 }
-            }
         }
+    }
+
+    private fun extractNotificationTexts(extras: Bundle?): List<String> {
+        if (extras == null) return emptyList()
+
+        val extractedTexts = linkedSetOf<String>()
+        val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
+
+        fun addWithTitle(raw: String?) {
+            val text = raw?.trim().orEmpty()
+            if (text.isBlank()) return
+            val formatted = if (title.isNotBlank() && !text.startsWith("$title:")) {
+                "$title: $text"
+            } else {
+                text
+            }
+            extractedTexts.add(formatted)
+        }
+
+        addWithTitle(extras.getCharSequence(Notification.EXTRA_TEXT)?.toString())
+        addWithTitle(extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString())
+
+        extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)
+            ?.forEach { line -> addWithTitle(line?.toString()) }
+
+        extras.getParcelableArray(Notification.EXTRA_MESSAGES)
+            ?.mapNotNull { message ->
+                Notification.MessagingStyle.Message.getMessageFromBundle(message as? Bundle)
+            }
+            ?.forEach { message ->
+                val sender = message.sender?.toString()?.trim().orEmpty()
+                val body = message.text?.toString()?.trim().orEmpty()
+                if (body.isNotBlank()) {
+                    extractedTexts.add(
+                        if (sender.isNotBlank()) "$sender: $body" else body
+                    )
+                }
+            }
+
+        return extractedTexts.toList()
     }
 
     fun dismissApp(packageName: String) {
