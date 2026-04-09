@@ -21,6 +21,7 @@ data class HomescreenPreferences(
     val clockSectionWeight: Float,
     val homeTextSizeScale: Float,
     val appDrawerTextSizeScale: Float,
+    val appSpacingDp: Float,
     val showStatusBar: Boolean,
     val leftSwipeAction: String,
     val rightSwipeAction: String,
@@ -83,6 +84,7 @@ class Prefs(context: Context) {
     private val ENABLE_NOTIFICATION_SUMMARY = "ENABLE_NOTIFICATION_SUMMARY"
     private val ENABLE_WIDGETS = "ENABLE_WIDGETS"
     private val ENABLE_NOTES = "ENABLE_NOTES"
+    private val APP_SPACING_DP = "APP_SPACING_DP"
 
     private val APP_NAME_1 = "APP_NAME_1"
     private val APP_NAME_2 = "APP_NAME_2"
@@ -181,6 +183,7 @@ class Prefs(context: Context) {
         CLOCK_SECTION_WEIGHT,
         HOME_TEXT_SIZE_SCALE,
         APP_DRAWER_TEXT_SIZE_SCALE,
+        APP_SPACING_DP,
         STATUS_BAR,
         LEFT_SWIPE_ACTION,
         RIGHT_SWIPE_ACTION,
@@ -246,6 +249,7 @@ class Prefs(context: Context) {
             clockSectionWeight = prefs.getFloat(CLOCK_SECTION_WEIGHT, 0.25f),
             homeTextSizeScale = prefs.getFloat(HOME_TEXT_SIZE_SCALE, prefs.getFloat(TEXT_SIZE_SCALE, 1.0f)),
             appDrawerTextSizeScale = prefs.getFloat(APP_DRAWER_TEXT_SIZE_SCALE, prefs.getFloat(TEXT_SIZE_SCALE, 1.0f)),
+            appSpacingDp = prefs.getFloat(APP_SPACING_DP, 16f),
             showStatusBar = prefs.getBoolean(STATUS_BAR, false),
             leftSwipeAction = prefs.getString(LEFT_SWIPE_ACTION, SwipeAction.NOTIFICATION_SUMMARY) ?: SwipeAction.NOTIFICATION_SUMMARY,
             rightSwipeAction = prefs.getString(RIGHT_SWIPE_ACTION, SwipeAction.WIDGETS) ?: SwipeAction.WIDGETS,
@@ -1058,5 +1062,9 @@ class Prefs(context: Context) {
     var rightSwipeAppPackage: String
         get() = prefs.getString(APP_PACKAGE_SWIPE_RIGHT, "").toString()
         set(value) = prefs.edit { putString(APP_PACKAGE_SWIPE_RIGHT, value).apply() }
+
+    var appSpacingDp: Float
+        get() = prefs.getFloat(APP_SPACING_DP, 16f)
+        set(value) = prefs.edit { putFloat(APP_SPACING_DP, value).apply() }
 
 }

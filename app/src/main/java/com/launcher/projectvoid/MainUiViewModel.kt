@@ -46,6 +46,7 @@ data class MainUiState(
     val clockSectionWeight: Float = 0.25f,
     val homeTextSizeScale: Float = 1.0f,
     val appDrawerTextSizeScale: Float = 1.0f,
+    val appSpacingDp: Float = 16f,
     val enableGestures: Boolean = true
 )
 
@@ -137,6 +138,7 @@ class MainUiViewModel(application: Application) : AndroidViewModel(application) 
                         clockSectionWeight = hsPrefs.clockSectionWeight,
                         homeTextSizeScale = hsPrefs.homeTextSizeScale,
                         appDrawerTextSizeScale = hsPrefs.appDrawerTextSizeScale,
+                        appSpacingDp = hsPrefs.appSpacingDp,
                         enableGestures = hsPrefs.enableGestures
                     )
                 }
@@ -186,6 +188,7 @@ class MainUiViewModel(application: Application) : AndroidViewModel(application) 
                 clockSectionWeight = prefs.clockSectionWeight,
                 homeTextSizeScale = prefs.homeTextSizeScale,
                 appDrawerTextSizeScale = prefs.appDrawerTextSizeScale,
+                appSpacingDp = prefs.appSpacingDp,
             )
         }
     }

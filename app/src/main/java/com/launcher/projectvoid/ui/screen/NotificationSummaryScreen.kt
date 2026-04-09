@@ -113,70 +113,23 @@ class NotificationSummaryViewModel(application: Application) : AndroidViewModel(
                         val texts = extractNotificationTexts(summary.notifications)
 
                         val aiResult = summarizer.summarize(summary.appLabel, texts)
-                        _summaries.value = _summaries.value.toMutableList().also {
-                            val rowIndex = it.indexOfFirst { row -> row.packageName == summary.packageName }
-                            if (currentGeneration == generation && rowIndex >= 0) {
-                                it[rowIndex] = it[rowIndex].copy(
-                                    aiSummary = aiResult ?: texts.joinToString(". "),
+                        if (currentGeneration != generation) return@launch
+
+                        val fallbackSummary = texts.joinToString(". ")
+                        _summaries.value = _summaries.value.map { current ->
+                            if (current.packageName == summary.packageName) {
+                                current.copy(
+                                    aiSummary = aiResult ?: fallbackSummary,
                                     isLoading = false
                                 )
-                            }
-
-                            val fallbackSummary = texts.joinToString(". ")
-                            _summaries.value = _summaries.value.map { current ->
-                                if (current.packageName == summary.packageName) {
-                                    current.copy(
-                                        aiSummary = aiResult ?: fallbackSummary,
-                                        isLoading = false
-                                    )
-                                } else {
-                                    current
-                                }
+                            } else {
+                                current
                             }
                         }
                     }
                 }
+            }
         }
-    }
-
-    private fun extractNotificationTexts(extras: Bundle?): List<String> {
-        if (extras == null) return emptyList()
-
-        val extractedTexts = linkedSetOf<String>()
-        val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
-
-        fun addWithTitle(raw: String?) {
-            val text = raw?.trim().orEmpty()
-            if (text.isBlank()) return
-            val formatted = if (title.isNotBlank() && !text.startsWith("$title:")) {
-                "$title: $text"
-            } else {
-                text
-            }
-            extractedTexts.add(formatted)
-        }
-
-        addWithTitle(extras.getCharSequence(Notification.EXTRA_TEXT)?.toString())
-        addWithTitle(extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString())
-
-        extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)
-            ?.forEach { line -> addWithTitle(line?.toString()) }
-
-        extras.getParcelableArray(Notification.EXTRA_MESSAGES)
-            ?.mapNotNull { message ->
-                Notification.MessagingStyle.Message.getMessageFromBundle(message as? Bundle)
-            }
-            ?.forEach { message ->
-                val sender = message.sender?.toString()?.trim().orEmpty()
-                val body = message.text?.toString()?.trim().orEmpty()
-                if (body.isNotBlank()) {
-                    extractedTexts.add(
-                        if (sender.isNotBlank()) "$sender: $body" else body
-                    )
-                }
-            }
-
-        return extractedTexts.toList()
     }
 
     fun dismissApp(packageName: String) {
