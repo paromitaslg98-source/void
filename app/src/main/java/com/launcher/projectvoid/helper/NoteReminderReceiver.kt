@@ -85,6 +85,7 @@ class NoteReminderReceiver : BroadcastReceiver() {
                 builder.setDefaults(NotificationCompat.DEFAULT_SOUND)
             }
 
+            @Suppress("MissingPermission")
             NotificationManagerCompat.from(context).notify(noteId.toInt(), builder.build())
         }
 

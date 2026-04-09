@@ -54,10 +54,10 @@ private val VoidExpressiveShapes = Shapes(
 )
 
 @Composable
-fun VoidAppTheme(content: @Composable () -> Unit) {
+fun VoidAppTheme(appFont: String = "inter", content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = VoidDarkColorScheme,
-        typography = VoidTypography,
+        typography = getTypography(appFont),
         shapes = VoidExpressiveShapes,
         content = content
     )

@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -62,6 +63,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.Collator
 import kotlin.math.abs
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.launcher.projectvoid.helper.AppCacheManager
 
 @Composable
 fun AppDrawerScreen(
@@ -74,7 +77,7 @@ fun AppDrawerScreen(
     val scope = rememberCoroutineScope()
 
     var searchQuery by remember { mutableStateOf("") }
-    val allApps = remember { mutableStateListOf<AppModel>() }
+    val allApps by AppCacheManager.appCacheFlow.collectAsStateWithLifecycle(emptyList())
     val privateApps = remember { mutableStateListOf<AppModel>() }
     var isPrivateSpaceLocked by remember { mutableStateOf(true) }
     var hasPrivateSpace by remember { mutableStateOf(false) }
@@ -85,11 +88,6 @@ fun AppDrawerScreen(
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
 
     LaunchedEffect(Unit) {
-        scope.launch {
-            val apps = getAppsList(context, prefs, includeRegularApps = true, includeHiddenApps = false)
-            allApps.clear()
-            allApps.addAll(apps)
-        }
         if (prefs.privateSpaceEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
             val profile = getPrivateSpaceProfile(context)
             hasPrivateSpace = profile != null
@@ -175,7 +173,6 @@ fun AppDrawerScreen(
     val groupedApps = remember(filteredApps) {
         filteredApps.groupBy { it.appLabel.firstOrNull()?.uppercase() ?: "#" }.toSortedMap()
     }
-
     Box(
         modifier = Modifier
             .fillMaxSize()

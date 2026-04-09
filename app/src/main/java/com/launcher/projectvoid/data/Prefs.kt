@@ -25,7 +25,8 @@ data class HomescreenPreferences(
     val showStatusBar: Boolean,
     val leftSwipeAction: String,
     val rightSwipeAction: String,
-    val enableGestures: Boolean
+    val enableGestures: Boolean,
+    val appFont: String
 )
 
 class Prefs(context: Context) {
@@ -85,6 +86,7 @@ class Prefs(context: Context) {
     private val ENABLE_WIDGETS = "ENABLE_WIDGETS"
     private val ENABLE_NOTES = "ENABLE_NOTES"
     private val APP_SPACING_DP = "APP_SPACING_DP"
+    private val APP_FONT = "APP_FONT"
 
     private val APP_NAME_1 = "APP_NAME_1"
     private val APP_NAME_2 = "APP_NAME_2"
@@ -187,7 +189,8 @@ class Prefs(context: Context) {
         STATUS_BAR,
         LEFT_SWIPE_ACTION,
         RIGHT_SWIPE_ACTION,
-        ENABLE_GESTURES
+        ENABLE_GESTURES,
+        APP_FONT
     )
 
     private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -253,7 +256,8 @@ class Prefs(context: Context) {
             showStatusBar = prefs.getBoolean(STATUS_BAR, false),
             leftSwipeAction = prefs.getString(LEFT_SWIPE_ACTION, SwipeAction.NOTIFICATION_SUMMARY) ?: SwipeAction.NOTIFICATION_SUMMARY,
             rightSwipeAction = prefs.getString(RIGHT_SWIPE_ACTION, SwipeAction.WIDGETS) ?: SwipeAction.WIDGETS,
-            enableGestures = prefs.getBoolean(ENABLE_GESTURES, true)
+            enableGestures = prefs.getBoolean(ENABLE_GESTURES, true),
+            appFont = prefs.getString(APP_FONT, "inter") ?: "inter"
         )
     }
 
@@ -407,6 +411,13 @@ class Prefs(context: Context) {
     var appDrawerTextSizeScale: Float
         get() = prefs.getFloat(APP_DRAWER_TEXT_SIZE_SCALE, textSizeScale) // Migration fallback
         set(value) = prefs.edit { putFloat(APP_DRAWER_TEXT_SIZE_SCALE, value).apply() }
+
+    var appFont: String
+        get() = prefs.getString(APP_FONT, "inter") ?: "inter"
+        set(value) {
+            prefs.edit { putString(APP_FONT, value).apply() }
+            emitHomescreenPrefs()
+        }
 
     var proMessageShown: Boolean
         get() = prefs.getBoolean(PRO_MESSAGE_SHOWN, false)

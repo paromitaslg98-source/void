@@ -47,7 +47,8 @@ data class MainUiState(
     val homeTextSizeScale: Float = 1.0f,
     val appDrawerTextSizeScale: Float = 1.0f,
     val appSpacingDp: Float = 16f,
-    val enableGestures: Boolean = true
+    val enableGestures: Boolean = true,
+    val appFont: String = "inter"
 )
 
 data class HomeApp(
@@ -139,7 +140,8 @@ class MainUiViewModel(application: Application) : AndroidViewModel(application) 
                         homeTextSizeScale = hsPrefs.homeTextSizeScale,
                         appDrawerTextSizeScale = hsPrefs.appDrawerTextSizeScale,
                         appSpacingDp = hsPrefs.appSpacingDp,
-                        enableGestures = hsPrefs.enableGestures
+                        enableGestures = hsPrefs.enableGestures,
+                        appFont = hsPrefs.appFont
                     )
                 }
             }
@@ -189,6 +191,7 @@ class MainUiViewModel(application: Application) : AndroidViewModel(application) 
                 homeTextSizeScale = prefs.homeTextSizeScale,
                 appDrawerTextSizeScale = prefs.appDrawerTextSizeScale,
                 appSpacingDp = prefs.appSpacingDp,
+                appFont = prefs.appFont,
             )
         }
     }

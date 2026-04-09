@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CardDefaults
@@ -114,6 +115,7 @@ fun SettingsScreen(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     var showAppPicker by remember { mutableStateOf<String?>(null) }
     var showDeveloperInfo by remember { mutableStateOf(false) }
+    var appFont by remember { mutableStateOf(prefs.appFont) }
 
     if (showDeveloperInfo) {
         AlertDialog(
@@ -175,8 +177,9 @@ fun SettingsScreen(onBack: () -> Unit) {
     ) { paddingValues ->
         Column(
             modifier = Modifier
-                .padding(paddingValues)
                 .fillMaxSize()
+                .padding(paddingValues)
+                .padding(top = 48.dp, bottom = 24.dp)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -195,6 +198,20 @@ fun SettingsScreen(onBack: () -> Unit) {
                         val intent = Intent(android.provider.Settings.ACTION_SETTINGS)
                         context.startActivity(intent)
                     }
+                }
+            )
+
+            // --- Aesthetics Section ---
+            SettingsSectionHeader("Aesthetics")
+            SettingAlignmentItem(
+                title = "Launcher Font",
+                subtitle = "Select system default or minimalist Inter",
+                icon = { Icon(Icons.Default.TextFields, contentDescription = null) },
+                currentGravity = if (appFont == "inter") 1 else 0,
+                options = listOf(0 to "System", 1 to "Inter"),
+                onChanged = { 
+                    appFont = if (it == 1) "inter" else "google_sans"
+                    prefs.appFont = appFont
                 }
             )
 
@@ -480,12 +497,10 @@ fun SettingActionItem(
     icon: @Composable () -> Unit,
     onClick: () -> Unit
 ) {
-    Card(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            .clickable(onClick = onClick)
     ) {
         Row(
             modifier = Modifier.padding(16.dp).fillMaxWidth(),
@@ -518,9 +533,8 @@ fun SettingToggleItem(
     onCheckedChange: (Boolean) -> Unit,
     onInfoClick: (() -> Unit)? = null
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    Column(
+        modifier = Modifier.fillMaxWidth().clickable { onCheckedChange(!checked) }
     ) {
         Row(
             modifier = Modifier.padding(16.dp).fillMaxWidth(),
@@ -563,9 +577,8 @@ fun SettingSliderItem(
     range: ClosedFloatingPointRange<Float>,
     onChanged: (Float) -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -606,9 +619,8 @@ fun SettingAlignmentItem(
     options: List<Pair<Int, String>>,
     onChanged: (Int) -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -655,9 +667,8 @@ fun SettingCounterItem(
     onDecrease: () -> Unit,
     onIncrease: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    Column(
+        modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier.padding(16.dp).fillMaxWidth(),
@@ -709,16 +720,38 @@ private fun SwipeActionSelector(
         it.first != excludeAction || it.first == SwipeAction.NONE || it.first == SwipeAction.NOTIFICATIONS || it.first == SwipeAction.APP || it.first == SwipeAction.ACCESSIBILITY
     }
     val displayName = allActions.firstOrNull { it.first == currentAction }?.second ?: currentAction
+    var showDialog by remember { mutableStateOf(false) }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Select Action") },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    available.forEach { (actionKey, label) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onChanged(actionKey)
+                                    showDialog = false
+                                }
+                                .padding(vertical = 12.dp, horizontal = 16.dp)
+                        ) {
+                            Text(text = label, style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
 
     SettingActionItem(
         title = label,
         subtitle = displayName,
         icon = icon,
-        onClick = {
-            val currentIndex = available.indexOfFirst { it.first == currentAction }
-            val nextIndex = (currentIndex + 1) % available.size
-            onChanged(available[nextIndex].first)
-        }
+        onClick = { showDialog = true }
     )
 }
 

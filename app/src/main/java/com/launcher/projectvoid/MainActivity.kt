@@ -19,6 +19,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -43,7 +44,21 @@ import com.launcher.projectvoid.ui.screen.SettingsScreen
 import com.launcher.projectvoid.ui.screen.WidgetsScreen
 import com.launcher.projectvoid.ui.theme.VoidAppTheme
 
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+
 class MainActivity : ComponentActivity() {
+    private val appReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            context?.let { ctx ->
+                lifecycleScope.launch { com.launcher.projectvoid.helper.AppCacheManager.syncCache(ctx) }
+            }
+        }
+    }
 
     private val viewModel: MainUiViewModel by viewModels()
     private val mainViewModel: MainViewModel by viewModels()
@@ -51,11 +66,21 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        com.launcher.projectvoid.helper.AppCacheManager.initializeCache(this)
+
+        val pkgFilter = IntentFilter().apply {
+            addAction(Intent.ACTION_PACKAGE_ADDED)
+            addAction(Intent.ACTION_PACKAGE_REMOVED)
+            addAction(Intent.ACTION_PACKAGE_CHANGED)
+            addDataScheme("package")
+        }
+        registerReceiver(appReceiver, pkgFilter)
+
         enableEdgeToEdge()
         setContent {
-            VoidAppTheme {
-                val navController = rememberNavController()
-                val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+            val navController = rememberNavController()
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+            VoidAppTheme(appFont = uiState.appFont) {
                 val currentBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = currentBackStackEntry?.destination?.route
                 val notifications by NotificationService.notificationsState
@@ -67,8 +92,10 @@ class MainActivity : ComponentActivity() {
                     val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
                     if (uiState.showStatusBar) {
                         windowInsetsController.show(WindowInsetsCompat.Type.statusBars())
+                        windowInsetsController.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
                     } else {
                         windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
+                        windowInsetsController.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
                     }
                 }
 
@@ -183,6 +210,12 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         viewModel.refreshFromPrefs()
+        lifecycleScope.launch { com.launcher.projectvoid.helper.AppCacheManager.syncCache(this@MainActivity) }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterReceiver(appReceiver)
     }
 
     private fun launchHomeApp(app: HomeApp) {
