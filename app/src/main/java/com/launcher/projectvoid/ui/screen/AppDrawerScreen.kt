@@ -434,6 +434,7 @@ private fun getPrivateSpaceProfile(context: Context): android.os.UserHandle? {
     }
 }
 
+@androidx.annotation.RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
 private fun togglePrivateSpace(context: Context) {
     val profile = getPrivateSpaceProfile(context) ?: return
     val um = context.getSystemService(Context.USER_SERVICE) as UserManager

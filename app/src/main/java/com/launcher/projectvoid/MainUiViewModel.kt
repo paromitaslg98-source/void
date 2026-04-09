@@ -197,11 +197,12 @@ class MainUiViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val appOps = appContext.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
-                val mode = appOps.checkOpNoThrow(
-                    android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
-                    android.os.Process.myUid(),
-                    appContext.packageName
-                )
+                val mode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    appOps.unsafeCheckOpNoThrow(android.app.AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), appContext.packageName)
+                } else {
+                    @Suppress("DEPRECATION")
+                    appOps.checkOpNoThrow(android.app.AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), appContext.packageName)
+                }
                 if (mode != android.app.AppOpsManager.MODE_ALLOWED) {
                     _uiState.update { it.copy(screenTime = "Screen time: Permission required") }
                     return@launch
@@ -239,11 +240,12 @@ class MainUiViewModel(application: Application) : AndroidViewModel(application) 
     private fun hasUsageStatsPermission(): Boolean {
         val appOpsManager = appContext.getSystemService(Context.APP_OPS_SERVICE) as? AppOpsManager
             ?: return false
-        val mode = appOpsManager.unsafeCheckOpNoThrow(
-            AppOpsManager.OPSTR_GET_USAGE_STATS,
-            Process.myUid(),
-            appContext.packageName
-        )
+        val mode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            appOpsManager.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), appContext.packageName)
+        } else {
+            @Suppress("DEPRECATION")
+            appOpsManager.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), appContext.packageName)
+        }
 
         return mode == AppOpsManager.MODE_ALLOWED
     }

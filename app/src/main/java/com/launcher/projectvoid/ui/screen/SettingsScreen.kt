@@ -226,11 +226,12 @@ fun SettingsScreen(onBack: () -> Unit) {
                     showScreenTime = it; prefs.showScreenTimeWidget = it
                     if (it) {
                         val appOps = context.getSystemService(android.content.Context.APP_OPS_SERVICE) as android.app.AppOpsManager
-                        val mode = appOps.checkOpNoThrow(
-                            android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
-                            android.os.Process.myUid(),
-                            context.packageName
-                        )
+                        val mode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                            appOps.unsafeCheckOpNoThrow(android.app.AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), context.packageName)
+                        } else {
+                            @Suppress("DEPRECATION")
+                            appOps.checkOpNoThrow(android.app.AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), context.packageName)
+                        }
                         if (mode != android.app.AppOpsManager.MODE_ALLOWED) {
                             try {
                                 context.startActivity(Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS))

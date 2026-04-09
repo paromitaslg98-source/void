@@ -23,6 +23,7 @@ class NoteReminderReceiver : BroadcastReceiver() {
         const val EXTRA_NOTE_TEXT = "note_text"
         const val NOTIFICATION_GROUP = "note_reminder_group"
 
+        @android.annotation.SuppressLint("MissingPermission")
         fun dispatchReminder(context: Context, noteId: Long, noteTitle: String?, noteText: String) {
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
