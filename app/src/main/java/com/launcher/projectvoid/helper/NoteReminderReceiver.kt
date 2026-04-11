@@ -85,7 +85,7 @@ class NoteReminderReceiver : BroadcastReceiver() {
                 builder.setDefaults(NotificationCompat.DEFAULT_SOUND)
             }
 
-            @Suppress("MissingPermission")
+            @android.annotation.SuppressLint("MissingPermission", "NotificationPermission")
             NotificationManagerCompat.from(context).notify(noteId.toInt(), builder.build())
         }
 

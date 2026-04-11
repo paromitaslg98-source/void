@@ -14,7 +14,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import com.launcher.projectvoid.LocalFixedStatusBarHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -79,7 +81,8 @@ fun NotesScreen(onBack: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = 48.dp, bottom = 24.dp)
+            .padding(top = LocalFixedStatusBarHeight.current)
+            .navigationBarsPadding()
     ) {
         Column(
             modifier = Modifier
@@ -203,55 +206,152 @@ fun NotesScreen(onBack: () -> Unit) {
     }
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun NoteRow(note: NoteItem, onToggle: () -> Unit, onDelete: () -> Unit) {
     val context = LocalContext.current
-    var showMenu by remember { mutableStateOf(false) }
+    val repo = remember { NoteRepository(context) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+    var selectedDateMillis by remember { mutableStateOf<Long?>(null) }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable {
-                try {
-                    val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
-                        putExtra(AlarmClock.EXTRA_MESSAGE, note.text)
-                        putExtra(AlarmClock.EXTRA_SKIP_UI, false)
+    // MD3 DatePickerDialog
+    if (showDatePicker) {
+        val datePickerState = androidx.compose.material3.rememberDatePickerState(
+            initialSelectedDateMillis = System.currentTimeMillis()
+        )
+        androidx.compose.material3.DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    selectedDateMillis = datePickerState.selectedDateMillis
+                    showDatePicker = false
+                    showTimePicker = true
+                }) { Text("Next") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+            }
+        ) {
+            androidx.compose.material3.DatePicker(state = datePickerState)
+        }
+    }
+
+    // MD3 TimePickerDialog (custom since M3 doesn't have a built-in dialog wrapper)
+    if (showTimePicker && selectedDateMillis != null) {
+        val timePickerState = androidx.compose.material3.rememberTimePickerState(
+            initialHour = 9, initialMinute = 0, is24Hour = false
+        )
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            title = { Text("Set Time") },
+            text = {
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    androidx.compose.material3.TimePicker(state = timePickerState)
+                }
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    val cal = java.util.Calendar.getInstance().apply {
+                        timeInMillis = selectedDateMillis!!
+                        set(java.util.Calendar.HOUR_OF_DAY, timePickerState.hour)
+                        set(java.util.Calendar.MINUTE, timePickerState.minute)
+                        set(java.util.Calendar.SECOND, 0)
                     }
-                    context.startActivity(intent)
-                } catch (e: Exception) {
-                    // Fallback if no alarm app found
+                    val triggerTime = cal.timeInMillis
+                    repo.updateNoteReminder(note.id, triggerTime)
+
+                    // Schedule alarm
+                    try {
+                        val alarmManager = context.getSystemService(android.content.Context.ALARM_SERVICE) as android.app.AlarmManager
+                        val alarmIntent = Intent(context, com.launcher.projectvoid.helper.NoteReminderReceiver::class.java).apply {
+                            putExtra("note_id", note.id)
+                            putExtra("note_text", note.text)
+                        }
+                        val pending = android.app.PendingIntent.getBroadcast(
+                            context, note.id.toInt(), alarmIntent,
+                            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+                        )
+                        alarmManager.setExactAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, triggerTime, pending)
+                    } catch (_: Exception) {}
+
+                    // Insert calendar event via intent (transparent to user)
+                    try {
+                        val calIntent = Intent(Intent.ACTION_INSERT).apply {
+                            data = android.provider.CalendarContract.Events.CONTENT_URI
+                            putExtra(android.provider.CalendarContract.Events.TITLE, note.text)
+                            putExtra(android.provider.CalendarContract.EXTRA_EVENT_BEGIN_TIME, triggerTime)
+                            putExtra(android.provider.CalendarContract.EXTRA_EVENT_END_TIME, triggerTime + 30 * 60 * 1000)
+                        }
+                        context.startActivity(calIntent)
+                    } catch (_: Exception) {}
+
+                    showTimePicker = false
+                }) { Text("Set Reminder") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showTimePicker = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    // Card-based note item
+    androidx.compose.material3.OutlinedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.small,
+        colors = androidx.compose.material3.CardDefaults.outlinedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { showDatePicker = true }
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = note.isCompleted,
+                onCheckedChange = { onToggle() },
+                colors = CheckboxDefaults.colors(
+                    checkedColor = MaterialTheme.colorScheme.primary,
+                    uncheckedColor = MaterialTheme.colorScheme.outline,
+                    checkmarkColor = MaterialTheme.colorScheme.onPrimary
+                )
+            )
+
+            Column(modifier = Modifier.weight(1f).padding(start = 4.dp)) {
+                Text(
+                    text = note.text,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (note.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant
+                            else MaterialTheme.colorScheme.onSurface,
+                    textDecoration = if (note.isCompleted) TextDecoration.LineThrough else TextDecoration.None,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                // Reminder badge
+                if (note.reminderTime != null && note.reminderTime > 0L) {
+                    val formatted = remember(note.reminderTime) {
+                        java.text.SimpleDateFormat("MMM d, h:mm a", java.util.Locale.getDefault())
+                            .format(java.util.Date(note.reminderTime))
+                    }
+                    Text(
+                        text = "⏰ $formatted",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Checkbox(
-            checked = note.isCompleted,
-            onCheckedChange = { onToggle() },
-            colors = CheckboxDefaults.colors(
-                checkedColor = MaterialTheme.colorScheme.primary,
-                uncheckedColor = MaterialTheme.colorScheme.outline,
-                checkmarkColor = MaterialTheme.colorScheme.onPrimary
-            )
-        )
 
-        Text(
-            text = note.text,
-            modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.bodyLarge,
-            color = if (note.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant
-                    else MaterialTheme.colorScheme.onSurface,
-            textDecoration = if (note.isCompleted) TextDecoration.LineThrough else TextDecoration.None,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
-
-        IconButton(onClick = onDelete) {
-            Icon(
-                imageVector = Icons.Outlined.Delete,
-                contentDescription = stringResource(R.string.delete_note),
-                tint = MaterialTheme.colorScheme.error
-            )
+            IconButton(onClick = onDelete) {
+                Icon(
+                    imageVector = Icons.Outlined.Delete,
+                    contentDescription = stringResource(R.string.delete_note),
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
         }
     }
 }

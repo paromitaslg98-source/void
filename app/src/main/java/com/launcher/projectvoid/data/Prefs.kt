@@ -26,7 +26,9 @@ data class HomescreenPreferences(
     val leftSwipeAction: String,
     val rightSwipeAction: String,
     val enableGestures: Boolean,
-    val appFont: String
+    val appFont: String,
+    val use24HourClock: Boolean,
+    val showSeconds: Boolean
 )
 
 class Prefs(context: Context) {
@@ -72,6 +74,7 @@ class Prefs(context: Context) {
     private val SHOWN_ON_DAY_OF_YEAR = "SHOWN_ON_DAY_OF_YEAR"
     private val SHOW_CLOCK_WIDGET = "SHOW_CLOCK_WIDGET"
     private val SHOW_DATE_WIDGET = "SHOW_DATE_WIDGET"
+    private val SHOW_CLOCK_SECONDS = "SHOW_CLOCK_SECONDS"
     private val SHOW_SCREEN_TIME_WIDGET = "SHOW_SCREEN_TIME_WIDGET"
     private val CLOCK_ALIGNMENT = "CLOCK_ALIGNMENT"
     private val CLOCK_VERTICAL_ALIGNMENT = "CLOCK_VERTICAL_ALIGNMENT"
@@ -87,6 +90,7 @@ class Prefs(context: Context) {
     private val ENABLE_NOTES = "ENABLE_NOTES"
     private val APP_SPACING_DP = "APP_SPACING_DP"
     private val APP_FONT = "APP_FONT"
+    private val USE_24_HOUR_CLOCK = "USE_24_HOUR_CLOCK"
 
     private val APP_NAME_1 = "APP_NAME_1"
     private val APP_NAME_2 = "APP_NAME_2"
@@ -190,7 +194,8 @@ class Prefs(context: Context) {
         LEFT_SWIPE_ACTION,
         RIGHT_SWIPE_ACTION,
         ENABLE_GESTURES,
-        APP_FONT
+        APP_FONT,
+        USE_24_HOUR_CLOCK
     )
 
     private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -257,7 +262,9 @@ class Prefs(context: Context) {
             leftSwipeAction = prefs.getString(LEFT_SWIPE_ACTION, SwipeAction.NOTIFICATION_SUMMARY) ?: SwipeAction.NOTIFICATION_SUMMARY,
             rightSwipeAction = prefs.getString(RIGHT_SWIPE_ACTION, SwipeAction.WIDGETS) ?: SwipeAction.WIDGETS,
             enableGestures = prefs.getBoolean(ENABLE_GESTURES, true),
-            appFont = prefs.getString(APP_FONT, "inter") ?: "inter"
+            appFont = prefs.getString(APP_FONT, "inter") ?: "inter",
+            use24HourClock = prefs.getBoolean(USE_24_HOUR_CLOCK, false),
+            showSeconds = prefs.getBoolean(SHOW_CLOCK_SECONDS, false)
         )
     }
 
@@ -416,6 +423,20 @@ class Prefs(context: Context) {
         get() = prefs.getString(APP_FONT, "inter") ?: "inter"
         set(value) {
             prefs.edit { putString(APP_FONT, value).apply() }
+            emitHomescreenPrefs()
+        }
+
+    var use24HourClock: Boolean
+        get() = prefs.getBoolean(USE_24_HOUR_CLOCK, false)
+        set(value) {
+            prefs.edit { putBoolean(USE_24_HOUR_CLOCK, value).apply() }
+            emitHomescreenPrefs()
+        }
+
+    var showClockSeconds: Boolean
+        get() = prefs.getBoolean(SHOW_CLOCK_SECONDS, false)
+        set(value) {
+            prefs.edit { putBoolean(SHOW_CLOCK_SECONDS, value).apply() }
             emitHomescreenPrefs()
         }
 
@@ -777,6 +798,7 @@ class Prefs(context: Context) {
             8 -> prefs.getString(APP_NAME_8, "").toString()
             9 -> prefs.getString(APP_NAME_9, "").toString()
             10 -> prefs.getString(APP_NAME_10, "").toString()
+            in 11..15 -> prefs.getString("APP_NAME_$location", "").toString()
             else -> ""
         }
     }
@@ -793,6 +815,7 @@ class Prefs(context: Context) {
             8 -> prefs.getString(APP_PACKAGE_8, "").toString()
             9 -> prefs.getString(APP_PACKAGE_9, "").toString()
             10 -> prefs.getString(APP_PACKAGE_10, "").toString()
+            in 11..15 -> prefs.getString("APP_PACKAGE_$location", "").toString()
             else -> ""
         }
     }
@@ -809,6 +832,7 @@ class Prefs(context: Context) {
             8 -> prefs.getString(APP_ACTIVITY_CLASS_NAME_8, "").toString()
             9 -> prefs.getString(APP_ACTIVITY_CLASS_NAME_9, "").toString()
             10 -> prefs.getString(APP_ACTIVITY_CLASS_NAME_10, "").toString()
+            in 11..15 -> prefs.getString("APP_ACTIVITY_CLASS_NAME_$location", "").toString()
             else -> ""
         }
     }
@@ -825,6 +849,7 @@ class Prefs(context: Context) {
             8 -> prefs.getString(APP_USER_8, "").toString()
             9 -> prefs.getString(APP_USER_9, "").toString()
             10 -> prefs.getString(APP_USER_10, "").toString()
+            in 11..15 -> prefs.getString("APP_USER_$location", "").toString()
             else -> ""
         }
     }
@@ -841,6 +866,7 @@ class Prefs(context: Context) {
             8 -> shortcutId8
             9 -> shortcutId9
             10 -> shortcutId10
+            in 11..15 -> prefs.getString("SHORTCUT_ID_$location", "").toString()
             else -> ""
         }
     }
@@ -857,6 +883,7 @@ class Prefs(context: Context) {
             8 -> isShortcut8
             9 -> isShortcut9
             10 -> isShortcut10
+            in 11..15 -> prefs.getBoolean("IS_SHORTCUT_$location", false)
             else -> false
         }
     }
@@ -975,6 +1002,16 @@ class Prefs(context: Context) {
                 this.appUser10 = appUser
                 this.isShortcut10 = isShortcut
                 this.shortcutId10 = shortcutId
+            }
+            in 11..15 -> {
+                prefs.edit()
+                    .putString("APP_NAME_$location", appName)
+                    .putString("APP_PACKAGE_$location", appPackage)
+                    .putString("APP_ACTIVITY_CLASS_NAME_$location", appClassName)
+                    .putString("APP_USER_$location", appUser)
+                    .putBoolean("IS_SHORTCUT_$location", isShortcut)
+                    .putString("SHORTCUT_ID_$location", shortcutId)
+                    .apply()
             }
         }
     }

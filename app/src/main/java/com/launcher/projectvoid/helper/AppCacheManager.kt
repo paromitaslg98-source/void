@@ -20,42 +20,44 @@ object AppCacheManager {
 
     private const val CACHE_FILE_NAME = "apps_cache.json"
 
-    fun initializeCache(context: Context) {
-        val cacheFile = File(context.filesDir, CACHE_FILE_NAME)
-        if (cacheFile.exists()) {
-            try {
-                val jsonStr = cacheFile.readText()
-                val jsonArray = JSONArray(jsonStr)
-                val list = mutableListOf<AppModel>()
-                for (i in 0 until jsonArray.length()) {
-                    val obj = jsonArray.getJSONObject(i)
-                    val type = obj.getString("type")
-                    if (type == "App") {
-                        list.add(
-                            AppModel.App(
-                                appLabel = obj.getString("appLabel"),
-                                appPackage = obj.getString("appPackage"),
-                                activityClassName = obj.getString("activityClassName"),
-                                user = getUserHandleFromString(context, obj.getString("user")),
-                                key = null,
-                                isNew = obj.optBoolean("isNew", false)
+    suspend fun initializeCache(context: Context) {
+        withContext(Dispatchers.IO) {
+            val cacheFile = File(context.filesDir, CACHE_FILE_NAME)
+            if (cacheFile.exists()) {
+                try {
+                    val jsonStr = cacheFile.readText()
+                    val jsonArray = JSONArray(jsonStr)
+                    val list = mutableListOf<AppModel>()
+                    for (i in 0 until jsonArray.length()) {
+                        val obj = jsonArray.getJSONObject(i)
+                        val type = obj.getString("type")
+                        if (type == "App") {
+                            list.add(
+                                AppModel.App(
+                                    appLabel = obj.getString("appLabel"),
+                                    appPackage = obj.getString("appPackage"),
+                                    activityClassName = obj.getString("activityClassName"),
+                                    user = getUserHandleFromString(context, obj.getString("user")),
+                                    key = null,
+                                    isNew = obj.optBoolean("isNew", false)
+                                )
                             )
-                        )
-                    } else if (type == "PinnedShortcut" && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        list.add(
-                            AppModel.PinnedShortcut(
-                                appLabel = obj.getString("appLabel"),
-                                appPackage = obj.getString("appPackage"),
-                                shortcutId = obj.getString("shortcutId"),
-                                user = getUserHandleFromString(context, obj.getString("user")),
-                                key = null
+                        } else if (type == "PinnedShortcut" && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            list.add(
+                                AppModel.PinnedShortcut(
+                                    appLabel = obj.getString("appLabel"),
+                                    appPackage = obj.getString("appPackage"),
+                                    shortcutId = obj.getString("shortcutId"),
+                                    user = getUserHandleFromString(context, obj.getString("user")),
+                                    key = null
+                                )
                             )
-                        )
+                        }
                     }
+                    _appCacheFlow.value = list
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
-                _appCacheFlow.value = list
-            } catch (e: Exception) {
-                e.printStackTrace()
             }
         }
     }

@@ -23,7 +23,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -67,6 +68,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.compose.ui.platform.LocalConfiguration
+import com.launcher.projectvoid.LocalFixedStatusBarHeight
 import com.launcher.projectvoid.HomeApp
 import com.launcher.projectvoid.MainUiState
 import com.launcher.projectvoid.R
@@ -76,6 +79,7 @@ import com.launcher.projectvoid.data.Prefs.SwipeAction
 import com.launcher.projectvoid.helper.getAppsList
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import androidx.activity.compose.BackHandler
 
 // ── Alignment helpers ──
 
@@ -208,6 +212,17 @@ fun HomeScreen(
     val swipeThreshold = 120f
     var showAppPicker by remember { mutableStateOf(false) }
 
+    // ── Dynamic app spacing based on screen real-estate ──
+    val configuration = LocalConfiguration.current
+    val screenHeightDp = configuration.screenHeightDp
+    val displayedCount = state.homeApps.size.coerceAtLeast(1)
+    // Base spacing: proportional to available screen height for the apps section (~75% of screen)
+    // divided by the number of elements, yielding a natural spacing.
+    val dynamicBaseSpacing = ((screenHeightDp * 0.75f) / (displayedCount + 3)).coerceIn(4f, 32f)
+    // User slider (appSpacingDp) acts as a multiplier: 0 = compact, 24 = default (1×), 48 = generous (2×)
+    val spacingMultiplier = if (state.appSpacingDp <= 0f) 0f else state.appSpacingDp / 24f
+    val computedSpacing = (dynamicBaseSpacing * spacingMultiplier).coerceIn(0f, 64f)
+
     // ── Drag-to-reorder state ──
     // A single continuous touch: long-press → drag → release.
     // `isDragging` is true from the moment the long-press fires until the finger lifts.
@@ -274,10 +289,14 @@ fun HomeScreen(
         }
     }
 
+    // Consume back press on home screen — prevents re-transition to self
+    BackHandler { /* Do nothing — home screen is the root */ }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = 48.dp, bottom = 24.dp)
+            .padding(top = LocalFixedStatusBarHeight.current)
+            .navigationBarsPadding()
             .pointerInput(state.leftSwipeAction, state.rightSwipeAction, state.enableGestures, isDragging) {
                 if (!isDragging) {
                     detectDragGestures(
@@ -353,8 +372,6 @@ fun HomeScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
-
                     // ── Date ──
                     if (state.showDate) {
                         Text(
@@ -397,6 +414,12 @@ fun HomeScreen(
                     }
                 }
             }
+            
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 24.dp),
+                thickness = 0.5.dp,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.25f)
+            )
 
             // ════════════════════════════════════════════════════════════════════
             // APPS SECTION — main content area
@@ -426,7 +449,7 @@ fun HomeScreen(
                             .fillMaxSize()
                             .padding(top = 8.dp, bottom = 12.dp),
                         horizontalAlignment = appAlign,
-                        verticalArrangement = Arrangement.spacedBy(state.appSpacingDp.dp, appVerticalAlignment)
+                        verticalArrangement = Arrangement.spacedBy(computedSpacing.dp, appVerticalAlignment)
                     ) {
                         // Keep itemHeights list in sync with displayApps count.
                         while (itemHeights.size < displayApps.size) itemHeights.add(0f)
@@ -539,7 +562,7 @@ fun HomeScreen(
     if (showAppPicker) {
         HomeAppPickerSheet(
             currentApps = state.homeApps,
-            maxApps = state.homeAppsCount.coerceIn(1, 15),
+            maxApps = state.homeAppsCount.coerceIn(1, 10),
             onDismiss = { showAppPicker = false },
             onHomeAppsChanged = onHomeAppsChanged
         )

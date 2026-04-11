@@ -5,8 +5,12 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.googlefonts.Font
+import androidx.compose.ui.text.googlefonts.GoogleFont
 import androidx.compose.ui.unit.sp
 import com.launcher.projectvoid.R
+
+// ── Bundled font families (always available offline) ──
 
 val GoogleSansFamily = FontFamily(
     Font(R.font.google_sans_regular, FontWeight.Normal),
@@ -20,9 +24,22 @@ val InterFamily = FontFamily(
     Font(R.font.inter_bold, FontWeight.Bold)
 )
 
+// ── All available font families ──
+
+/** Map of font key → (display name, FontFamily). */
+val availableFonts: List<Triple<String, String, FontFamily>> = listOf(
+    Triple("inter", "Inter", InterFamily),
+    Triple("system", "System", FontFamily.Default),
+    Triple("google_sans", "Google Sans", GoogleSansFamily)
+)
+
+fun resolveFontFamily(appFont: String): FontFamily {
+    return availableFonts.firstOrNull { it.first == appFont }?.third ?: InterFamily
+}
+
 // MD3 Expressive — 1.25× line-height rule, Regular + Medium weights only
 fun getTypography(appFont: String): Typography {
-    val family = if (appFont == "google_sans") GoogleSansFamily else if (appFont == "inter") InterFamily else FontFamily.Default
+    val family = resolveFontFamily(appFont)
 
     return Typography(
         displayLarge = TextStyle(

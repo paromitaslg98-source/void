@@ -59,6 +59,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import kotlin.math.abs
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import com.launcher.projectvoid.LocalFixedStatusBarHeight
 
 // ── ViewModel ──
 
@@ -176,7 +179,8 @@ fun NotificationSummaryScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = 48.dp, bottom = 24.dp)
+            .padding(top = LocalFixedStatusBarHeight.current)
+            .navigationBarsPadding()
     ) {
     Column(
         modifier = Modifier

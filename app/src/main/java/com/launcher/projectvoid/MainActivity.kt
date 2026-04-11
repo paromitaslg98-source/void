@@ -19,10 +19,16 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
@@ -51,6 +57,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 
+/** Physical status bar height, available to all screens regardless of bar visibility. */
+val LocalFixedStatusBarHeight = compositionLocalOf<Dp> { 24.dp }
+
 class MainActivity : ComponentActivity() {
     private val appReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -66,7 +75,9 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        com.launcher.projectvoid.helper.AppCacheManager.initializeCache(this)
+        lifecycleScope.launch {
+            com.launcher.projectvoid.helper.AppCacheManager.initializeCache(this@MainActivity)
+        }
 
         val pkgFilter = IntentFilter().apply {
             addAction(Intent.ACTION_PACKAGE_ADDED)
@@ -81,6 +92,19 @@ class MainActivity : ComponentActivity() {
             val navController = rememberNavController()
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             VoidAppTheme(appFont = uiState.appFont) {
+                // Capture the physical status bar height — this returns the
+                // hardware inset even before the bar is programmatically hidden.
+                val density = LocalDensity.current
+                val statusBarHeightDp = with(density) {
+                    val heightPx = android.view.WindowInsets.CONSUMED.let {
+                        // Fallback: read from system resource
+                        val resourceId = resources.getIdentifier("status_bar_height", "dimen", "android")
+                        if (resourceId > 0) resources.getDimensionPixelSize(resourceId) else 0
+                    }
+                    if (heightPx > 0) (heightPx / density.density).dp else 24.dp
+                }
+
+                CompositionLocalProvider(LocalFixedStatusBarHeight provides statusBarHeightDp) {
                 val currentBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = currentBackStackEntry?.destination?.route
                 val notifications by NotificationService.notificationsState
@@ -143,8 +167,8 @@ class MainActivity : ComponentActivity() {
                         composable<HomeRoute> {
                         HomeScreen(
                             state = uiState,
-                            onOpenApps = { navController.navigate(AppDrawerRoute) },
-                            onOpenSettings = { navController.navigate(SettingsRoute) },
+                            onOpenApps = { navController.navigate(AppDrawerRoute) { launchSingleTop = true } },
+                            onOpenSettings = { navController.navigate(SettingsRoute) { launchSingleTop = true } },
                             onOpenNotifications = {
                                 if (uiState.showStatusBar) {
                                     try {
@@ -158,9 +182,9 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             },
-                            onOpenNotificationSummary = { navController.navigate(NotificationSummaryRoute) },
-                            onOpenWidgets = { navController.navigate(WidgetsRoute) },
-                            onOpenNotes = { navController.navigate(NotesRoute) },
+                            onOpenNotificationSummary = { navController.navigate(NotificationSummaryRoute) { launchSingleTop = true } },
+                            onOpenWidgets = { navController.navigate(WidgetsRoute) { launchSingleTop = true } },
+                            onOpenNotes = { navController.navigate(NotesRoute) { launchSingleTop = true } },
                             onAppClick = { app -> launchHomeApp(app) },
                             onClockClick = { mainViewModel.setDefaultClockApp() },
                             onDateClick = { /* open calendar */ },
@@ -203,6 +227,7 @@ class MainActivity : ComponentActivity() {
                     }
                     }
                 }
+            } // end CompositionLocalProvider
             }
         }
     }

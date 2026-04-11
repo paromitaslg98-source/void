@@ -48,7 +48,9 @@ data class MainUiState(
     val appDrawerTextSizeScale: Float = 1.0f,
     val appSpacingDp: Float = 16f,
     val enableGestures: Boolean = true,
-    val appFont: String = "inter"
+    val appFont: String = "inter",
+    val use24HourClock: Boolean = false,
+    val showSeconds: Boolean = false
 )
 
 data class HomeApp(
@@ -73,7 +75,10 @@ class MainUiViewModel(application: Application) : AndroidViewModel(application) 
     )
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
-    private val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+    private val timeFormat12 = SimpleDateFormat("h:mm a", Locale.getDefault())
+    private val timeFormat24 = SimpleDateFormat("HH:mm", Locale.getDefault())
+    private val timeFormat12Seconds = SimpleDateFormat("h:mm:ss a", Locale.getDefault())
+    private val timeFormat24Seconds = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
     private val dateFormat = SimpleDateFormat("EEE, d MMM", Locale.getDefault())
 
     private val batteryReceiver = object : BroadcastReceiver() {
@@ -88,13 +93,26 @@ class MainUiViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             while (isActive) {
                 val now = Date()
+                val currentState = _uiState.value
+                val formatter = when {
+                    currentState.use24HourClock && currentState.showSeconds -> timeFormat24Seconds
+                    currentState.use24HourClock -> timeFormat24
+                    currentState.showSeconds -> timeFormat12Seconds
+                    else -> timeFormat12
+                }
+                val timeStr = if (currentState.use24HourClock) {
+                    formatter.format(now)
+                } else {
+                    formatter.format(now).uppercase(Locale.getDefault())
+                }
                 _uiState.update {
                     it.copy(
-                        currentTime = timeFormat.format(now),
+                        currentTime = timeStr,
                         currentDate = dateFormat.format(now).uppercase(Locale.getDefault())
                     )
                 }
-                delay(15_000L)
+                // Update continuously every second so settings take effect instantly.
+                delay(1000L)
             }
         }
 
@@ -141,9 +159,25 @@ class MainUiViewModel(application: Application) : AndroidViewModel(application) 
                         appDrawerTextSizeScale = hsPrefs.appDrawerTextSizeScale,
                         appSpacingDp = hsPrefs.appSpacingDp,
                         enableGestures = hsPrefs.enableGestures,
-                        appFont = hsPrefs.appFont
+                        appFont = hsPrefs.appFont,
+                        use24HourClock = hsPrefs.use24HourClock,
+                        showSeconds = hsPrefs.showSeconds
                     )
                 }
+                // Re-format time immediately when format changes
+                val now = Date()
+                val formatter = when {
+                    hsPrefs.use24HourClock && hsPrefs.showSeconds -> timeFormat24Seconds
+                    hsPrefs.use24HourClock -> timeFormat24
+                    hsPrefs.showSeconds -> timeFormat12Seconds
+                    else -> timeFormat12
+                }
+                val timeStr = if (hsPrefs.use24HourClock) {
+                    formatter.format(now)
+                } else {
+                    formatter.format(now).uppercase(Locale.getDefault())
+                }
+                _uiState.update { it.copy(currentTime = timeStr) }
             }
         }
     }
@@ -192,6 +226,7 @@ class MainUiViewModel(application: Application) : AndroidViewModel(application) 
                 appDrawerTextSizeScale = prefs.appDrawerTextSizeScale,
                 appSpacingDp = prefs.appSpacingDp,
                 appFont = prefs.appFont,
+                use24HourClock = prefs.use24HourClock,
             )
         }
     }

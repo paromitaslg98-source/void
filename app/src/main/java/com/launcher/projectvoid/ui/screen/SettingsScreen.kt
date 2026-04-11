@@ -3,9 +3,13 @@ package com.launcher.projectvoid.ui.screen
 import android.view.Gravity
 import android.content.Intent
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,26 +19,36 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Card
 import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.PlainTooltip
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Apps
@@ -43,6 +57,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FactCheck
+import androidx.compose.material.icons.filled.FontDownload
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.LinearScale
@@ -82,9 +97,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.launcher.projectvoid.R
 import com.launcher.projectvoid.data.Prefs
 import com.launcher.projectvoid.data.Prefs.SwipeAction
+import com.launcher.projectvoid.ui.theme.availableFonts
+import com.launcher.projectvoid.ui.theme.resolveFontFamily
+import android.os.Build
+import android.content.pm.LauncherApps
+import android.os.UserManager
+import com.launcher.projectvoid.LocalFixedStatusBarHeight
+import androidx.compose.foundation.layout.padding
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
@@ -116,6 +139,22 @@ fun SettingsScreen(onBack: () -> Unit) {
     var showAppPicker by remember { mutableStateOf<String?>(null) }
     var showDeveloperInfo by remember { mutableStateOf(false) }
     var appFont by remember { mutableStateOf(prefs.appFont) }
+    var use24HourClock by remember { mutableStateOf(prefs.use24HourClock) }
+    var showSeconds by remember { mutableStateOf(prefs.showClockSeconds) }
+
+    // Check if Private Space is actually configured on the device
+    val isPrivateSpaceConfigured = remember {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            try {
+                val userManager = context.getSystemService(android.content.Context.USER_SERVICE) as UserManager
+                val launcherApps = context.getSystemService(android.content.Context.LAUNCHER_APPS_SERVICE) as LauncherApps
+                userManager.userProfiles.any { profile ->
+                    profile != android.os.Process.myUserHandle() &&
+                    try { launcherApps.getLauncherUserInfo(profile)?.userType == "android.os.usertype.profile.PRIVATE" } catch (_: Exception) { false }
+                }
+            } catch (_: Exception) { false }
+        } else false
+    }
 
     if (showDeveloperInfo) {
         AlertDialog(
@@ -124,26 +163,6 @@ fun SettingsScreen(onBack: () -> Unit) {
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Made with 💜 by Surajit Das.", style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        "GitHub: https://github.com/knownassurajit/void",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.clickable {
-                            try {
-                                context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/knownassurajit/void")))
-                            } catch (_: Exception) {}
-                        }
-                    )
-                    Text(
-                        "LinkedIn: https://www.linkedin.com/in/knownassurajit/",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.clickable {
-                            try {
-                                context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://www.linkedin.com/in/knownassurajit/")))
-                            } catch (_: Exception) {}
-                        }
-                    )
                 }
             },
             confirmButton = {
@@ -154,38 +173,62 @@ fun SettingsScreen(onBack: () -> Unit) {
         )
     }
 
+    Box(modifier = Modifier.padding(top = LocalFixedStatusBarHeight.current).navigationBarsPadding()) {
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.app_name) + " Settings") },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                actions = {
-                    IconButton(onClick = { showDeveloperInfo = true }) {
-                        Icon(Icons.Outlined.Info, contentDescription = "Credits")
-                    }
-                    IconButton(onClick = {
-                        try {
-                            context.startActivity(Intent(android.provider.Settings.ACTION_SETTINGS))
-                        } catch (_: Exception) {}
-                    }) {
-                        Icon(Icons.Outlined.Settings, contentDescription = "System Settings")
-                    }
-                }
-            )
-        },
+        contentWindowInsets = WindowInsets(0.dp),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(top = 48.dp, bottom = 24.dp)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // Modern Minimal Banner
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                     Text(
+                        text = "VOID", 
+                        style = MaterialTheme.typography.displaySmall, 
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Launcher Settings".uppercase(), 
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        letterSpacing = 2.sp
+                    )
+                }
+                Row {
+                    IconButton(onClick = { showDeveloperInfo = true }) {
+                        Icon(
+                            imageVector = Icons.Outlined.Info, 
+                            contentDescription = "Credits",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(onClick = {
+                        try {
+                            context.startActivity(Intent(android.provider.Settings.ACTION_SETTINGS))
+                        } catch (_: Exception) {}
+                    }) {
+                        Icon(
+                            imageVector = Icons.Outlined.Settings, 
+                            contentDescription = "System Settings",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
             
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             SettingActionItem(
                 title = stringResource(R.string.change_default_launcher),
                 subtitle = "Manage default home app settings",
@@ -203,17 +246,64 @@ fun SettingsScreen(onBack: () -> Unit) {
 
             // --- Aesthetics Section ---
             SettingsSectionHeader("Aesthetics")
-            SettingAlignmentItem(
+            var showFontPicker by remember { mutableStateOf(false) }
+            val currentFontName = availableFonts.firstOrNull { it.first == appFont }?.second ?: "Inter"
+            SettingActionItem(
                 title = "Launcher Font",
-                subtitle = "Select system default or minimalist Inter",
-                icon = { Icon(Icons.Default.TextFields, contentDescription = null) },
-                currentGravity = if (appFont == "inter") 1 else 0,
-                options = listOf(0 to "System", 1 to "Inter"),
-                onChanged = { 
-                    appFont = if (it == 1) "inter" else "google_sans"
-                    prefs.appFont = appFont
-                }
+                subtitle = currentFontName,
+                icon = { Icon(Icons.Default.FontDownload, contentDescription = null) },
+                onClick = { showFontPicker = true }
             )
+            if (showFontPicker) {
+                AlertDialog(
+                    onDismissRequest = { showFontPicker = false },
+                    title = { Text("Select Font") },
+                    text = {
+                        LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            items(availableFonts) { (key, displayName, family) ->
+                                val isSelected = appFont == key
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            appFont = key
+                                            prefs.appFont = key
+                                            showFontPicker = false
+                                        }
+                                        .padding(vertical = 10.dp, horizontal = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    RadioButton(
+                                        selected = isSelected,
+                                        onClick = {
+                                            appFont = key
+                                            prefs.appFont = key
+                                            showFontPicker = false
+                                        }
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        text = displayName,
+                                        style = MaterialTheme.typography.bodyLarge.copy(
+                                            fontFamily = family
+                                        ),
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                    )
+                                    if (key == "system") {
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(
+                                            text = "System",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {}
+                )
+            }
 
             // --- Clock & Date Section ---
             SettingsSectionHeader("Clock & Date")
@@ -222,7 +312,8 @@ fun SettingsScreen(onBack: () -> Unit) {
                 subtitle = "Top-level time display",
                 icon = { Icon(Icons.Default.AccessTime, contentDescription = null) },
                 checked = showClock,
-                onCheckedChange = { showClock = it; prefs.showClockWidget = it }
+                onCheckedChange = { showClock = it; prefs.showClockWidget = it },
+                tooltipText = "Toggle clock visibility on the home screen. Tap the clock to open your alarms app."
             )
             SettingToggleItem(
                 title = stringResource(R.string.show_date_time),
@@ -236,6 +327,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 subtitle = "Device usage metrics",
                 icon = { Icon(Icons.Default.Timer, contentDescription = null) },
                 checked = showScreenTime,
+                tooltipText = "Shows daily screen time from Digital Wellbeing. Requires Usage Access permission.",
                 onInfoClick = {
                     // Show standard info or we can rely on Snackbar for usage stats logic
                 },
@@ -262,20 +354,38 @@ fun SettingsScreen(onBack: () -> Unit) {
                     }
                 }
             )
+            SettingToggleItem(
+                title = "24-Hour Format",
+                subtitle = "Use military time notation",
+                icon = { Icon(Icons.Default.AccessTime, contentDescription = null) },
+                checked = use24HourClock,
+                onCheckedChange = { use24HourClock = it; prefs.use24HourClock = it },
+                tooltipText = "Switch between 12h (AM/PM) and 24h format for the home screen clock."
+            )
+            SettingToggleItem(
+                title = "Show Seconds",
+                subtitle = "Display seconds on the home screen clock",
+                icon = { Icon(Icons.Default.AccessTime, contentDescription = null) },
+                checked = showSeconds,
+                onCheckedChange = { showSeconds = it; prefs.showClockSeconds = it },
+                tooltipText = "Enabling seconds will cause the clock to update every second, which may have a minor impact on battery life."
+            )
             SettingAlignmentItem(
                 title = "Clock Horizontal Alignment",
                 subtitle = "Left, Center, or Right",
                 icon = { Icon(Icons.Default.LinearScale, contentDescription = null) },
                 currentGravity = clockHorizontalAlignment,
                 options = listOf(Gravity.START to "Left", Gravity.CENTER_HORIZONTAL to "Center", Gravity.END to "Right"),
+                tooltipText = "Tap and hold this to align your time horizontally relative to the clock section.",
                 onChanged = { clockHorizontalAlignment = it; prefs.clockAlignment = it }
             )
             SettingAlignmentItem(
                 title = "Clock Vertical Alignment",
-                subtitle = "Top, Center, or Bottom",
+                subtitle = "Top, Middle, or Bottom",
                 icon = { Icon(Icons.Default.Transform, contentDescription = null) },
                 currentGravity = clockVerticalAlignment,
-                options = listOf(Gravity.TOP to "Top", Gravity.CENTER_VERTICAL to "Center", Gravity.BOTTOM to "Bottom"),
+                options = listOf(Gravity.TOP to "Top", Gravity.CENTER_VERTICAL to "Middle", Gravity.BOTTOM to "Bottom"),
+                tooltipText = "Change how your clock is placed vertically on the home screen UI.",
                 onChanged = { clockVerticalAlignment = it; prefs.clockVerticalAlignment = it }
             )
             SettingSliderItem(
@@ -283,8 +393,14 @@ fun SettingsScreen(onBack: () -> Unit) {
                 subtitle = "Adjust clock scale",
                 icon = { Icon(Icons.Default.ViewDay, contentDescription = null) },
                 value = if (clockSectionWeight < 0.5f) 1.0f else clockSectionWeight,
-                range = 0.5f..3.0f,
+                range = 0.5f..1.5f,
+                tooltipText = "Scale your clock font up or down. A smaller max value ensures 24h+seconds configurations fit without clipping.",
                 onChanged = { clockSectionWeight = it; prefs.clockSectionWeight = it }
+            )
+            
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 16.dp),
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
             )
 
             // --- Home Apps Section ---
@@ -294,8 +410,9 @@ fun SettingsScreen(onBack: () -> Unit) {
                 subtitle = "Limit applications shown",
                 icon = { Icon(Icons.Default.Apps, contentDescription = null) },
                 value = maxHomeApps,
+                tooltipText = "Specify how many priority apps (up to 10) you want available directly from the home screen.",
                 onDecrease = { if (maxHomeApps > 1) { maxHomeApps--; prefs.maxHomeApps = maxHomeApps } },
-                onIncrease = { if (maxHomeApps < 15) { maxHomeApps++; prefs.maxHomeApps = maxHomeApps } }
+                onIncrease = { if (maxHomeApps < 10) { maxHomeApps++; prefs.maxHomeApps = maxHomeApps } }
             )
             SettingAlignmentItem(
                 title = "Apps Horizontal Alignment",
@@ -303,14 +420,16 @@ fun SettingsScreen(onBack: () -> Unit) {
                 icon = { Icon(Icons.Default.LinearScale, contentDescription = null) },
                 currentGravity = appHorizontalAlignment,
                 options = listOf(Gravity.START to "Left", Gravity.CENTER_HORIZONTAL to "Center", Gravity.END to "Right"),
+                tooltipText = "Align your minimalist home apps array on the X-axis.",
                 onChanged = { appHorizontalAlignment = it; prefs.homeAlignment = it }
             )
             SettingAlignmentItem(
                 title = "Apps Vertical Alignment",
-                subtitle = "Top, Center, or Bottom",
+                subtitle = "Top, Middle, or Bottom",
                 icon = { Icon(Icons.Default.Transform, contentDescription = null) },
                 currentGravity = appVerticalAlignment,
-                options = listOf(Gravity.TOP to "Top", Gravity.CENTER_VERTICAL to "Center", Gravity.BOTTOM to "Bottom"),
+                options = listOf(Gravity.TOP to "Top", Gravity.CENTER_VERTICAL to "Middle", Gravity.BOTTOM to "Bottom"),
+                tooltipText = "Align your minimalist home apps array on the Y-axis.",
                 onChanged = { appVerticalAlignment = it; prefs.homeVerticalAlignment = it }
             )
             SettingSliderItem(
@@ -319,6 +438,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 icon = { Icon(Icons.Default.SortByAlpha, contentDescription = null) }, // SortByAlpha is just a placeholder icon
                 value = appSpacing,
                 range = 0f..48f,
+                tooltipText = "Increase or decrease the dynamic visual gap separating each pinned tool.",
                 onChanged = { appSpacing = it; prefs.appSpacingDp = it }
             )
 
@@ -348,17 +468,23 @@ fun SettingsScreen(onBack: () -> Unit) {
                 subtitle = "Group by starting letter",
                 icon = { Icon(Icons.Default.SortByAlpha, contentDescription = null) },
                 checked = showAlphabetCategories,
-                onCheckedChange = { showAlphabetCategories = it; prefs.showAlphabetCategories = it }
+                onCheckedChange = { showAlphabetCategories = it; prefs.showAlphabetCategories = it },
+                tooltipText = "Groups apps A–Z in the app drawer for quick alphabetical navigation."
             )
             SettingToggleItem(
                 title = "Enable Private Space",
-                subtitle = "Unlock OS hidden profiles",
+                subtitle = if (isPrivateSpaceConfigured) "Unlock OS hidden profiles" else "Not configured in system settings",
                 icon = { Icon(Icons.Default.Security, contentDescription = null) },
-                checked = privateSpaceEnabled,
-                onCheckedChange = { 
-                    privateSpaceEnabled = it; prefs.privateSpaceEnabled = it
-                    scope.launch { snackbarHostState.showSnackbar(if (it) "Private Space Enabled" else "Private Space Disabled") }
-                }
+                checked = privateSpaceEnabled && isPrivateSpaceConfigured,
+                onCheckedChange = {
+                    if (!isPrivateSpaceConfigured) {
+                        scope.launch { snackbarHostState.showSnackbar("Private Space is not configured.") }
+                    } else {
+                        privateSpaceEnabled = it; prefs.privateSpaceEnabled = it
+                        scope.launch { snackbarHostState.showSnackbar(if (it) "Private Space Enabled" else "Private Space Disabled") }
+                    }
+                },
+                tooltipText = "Private Space isolates sensitive apps behind a separate authentication layer. Must be configured in system settings first."
             )
 
             // --- Appearance Section ---
@@ -368,14 +494,16 @@ fun SettingsScreen(onBack: () -> Unit) {
                 subtitle = "Show system status icons",
                 icon = { Icon(Icons.Default.SpaceBar, contentDescription = null) },
                 checked = showStatusBar,
-                onCheckedChange = { showStatusBar = it; prefs.showStatusBar = it }
+                onCheckedChange = { showStatusBar = it; prefs.showStatusBar = it },
+                tooltipText = "When disabled, the system status bar hides but can be revealed by swiping down from the top edge."
             )
             SettingToggleItem(
                 title = stringResource(R.string.auto_show_keyboard),
                 subtitle = "Pop up keyboard on search",
                 icon = { Icon(Icons.Default.Keyboard, contentDescription = null) },
                 checked = autoShowKeyboard,
-                onCheckedChange = { autoShowKeyboard = it; prefs.autoShowKeyboard = it }
+                onCheckedChange = { autoShowKeyboard = it; prefs.autoShowKeyboard = it },
+                tooltipText = "Automatically pops up the keyboard when you enter the app drawer for faster search."
             )
 
             // --- Gestures Section ---
@@ -393,45 +521,74 @@ fun SettingsScreen(onBack: () -> Unit) {
                 onCheckedChange = { enableGestures = it; prefs.enableGestures = it }
             )
             if (enableGestures) {
-                SettingToggleItem(
-                    title = "Enable Notification Summary",
-                    subtitle = "AI curated updates",
-                    icon = { Icon(Icons.Default.Notifications, contentDescription = null) },
-                    checked = enableSummary,
-                    onCheckedChange = { 
-                        enableSummary = it; prefs.enableNotificationSummary = it
-                        if (!it) {
-                            if (leftSwipeAction == SwipeAction.NOTIFICATION_SUMMARY) { leftSwipeAction = SwipeAction.NONE; prefs.leftSwipeAction = SwipeAction.NONE }
-                            if (rightSwipeAction == SwipeAction.NOTIFICATION_SUMMARY) { rightSwipeAction = SwipeAction.NONE; prefs.rightSwipeAction = SwipeAction.NONE }
-                        }
-                    }
-                )
-                SettingToggleItem(
-                    title = "Enable Widgets Screen",
-                    subtitle = "Swipe to native widgets",
-                    icon = { Icon(Icons.Default.Widgets, contentDescription = null) },
-                    checked = enableWidgets,
-                    onCheckedChange = { 
-                        enableWidgets = it; prefs.enableWidgets = it
-                        if (!it) {
-                            if (leftSwipeAction == SwipeAction.WIDGETS) { leftSwipeAction = SwipeAction.NONE; prefs.leftSwipeAction = SwipeAction.NONE }
-                            if (rightSwipeAction == SwipeAction.WIDGETS) { rightSwipeAction = SwipeAction.NONE; prefs.rightSwipeAction = SwipeAction.NONE }
-                        }
-                    }
-                )
-                SettingToggleItem(
-                    title = "Enable Notes Screen",
-                    subtitle = "Quick scratchpad area",
-                    icon = { Icon(Icons.Default.Edit, contentDescription = null) },
-                    checked = enableNotes,
-                    onCheckedChange = { 
-                        enableNotes = it; prefs.enableNotes = it
-                        if (!it) {
-                            if (leftSwipeAction == SwipeAction.NOTES) { leftSwipeAction = SwipeAction.NONE; prefs.leftSwipeAction = SwipeAction.NONE }
-                            if (rightSwipeAction == SwipeAction.NOTES) { rightSwipeAction = SwipeAction.NONE; prefs.rightSwipeAction = SwipeAction.NONE }
-                        }
-                    }
-                )
+                @OptIn(ExperimentalLayoutApi::class)
+                FlowRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    // Notification Summary chip
+                    FilterChip(
+                        selected = enableSummary,
+                        onClick = {
+                            val newState = !enableSummary
+                            if (newState) {
+                                val enabledListeners = android.provider.Settings.Secure.getString(
+                                    context.contentResolver, "enabled_notification_listeners"
+                                ) ?: ""
+                                val hasPermission = enabledListeners.contains(context.packageName)
+                                if (!hasPermission) {
+                                    try {
+                                        context.startActivity(Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                                        scope.launch { snackbarHostState.showSnackbar("Grant notification access to enable summaries") }
+                                    } catch (_: Exception) {
+                                        scope.launch { snackbarHostState.showSnackbar("Could not open notification settings") }
+                                    }
+                                    return@FilterChip
+                                }
+                            }
+                            enableSummary = newState; prefs.enableNotificationSummary = newState
+                            if (!newState) {
+                                if (leftSwipeAction == SwipeAction.NOTIFICATION_SUMMARY) { leftSwipeAction = SwipeAction.NONE; prefs.leftSwipeAction = SwipeAction.NONE }
+                                if (rightSwipeAction == SwipeAction.NOTIFICATION_SUMMARY) { rightSwipeAction = SwipeAction.NONE; prefs.rightSwipeAction = SwipeAction.NONE }
+                            }
+                        },
+                        label = { Text("Notification Summary") },
+                        leadingIcon = if (enableSummary) { { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) } } else null
+                    )
+
+                    // Widgets chip
+                    FilterChip(
+                        selected = enableWidgets,
+                        onClick = {
+                            val newState = !enableWidgets
+                            enableWidgets = newState; prefs.enableWidgets = newState
+                            if (!newState) {
+                                if (leftSwipeAction == SwipeAction.WIDGETS) { leftSwipeAction = SwipeAction.NONE; prefs.leftSwipeAction = SwipeAction.NONE }
+                                if (rightSwipeAction == SwipeAction.WIDGETS) { rightSwipeAction = SwipeAction.NONE; prefs.rightSwipeAction = SwipeAction.NONE }
+                            }
+                        },
+                        label = { Text("Widgets") },
+                        leadingIcon = if (enableWidgets) { { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) } } else null
+                    )
+
+                    // Notes chip
+                    FilterChip(
+                        selected = enableNotes,
+                        onClick = {
+                            val newState = !enableNotes
+                            enableNotes = newState; prefs.enableNotes = newState
+                            if (!newState) {
+                                if (leftSwipeAction == SwipeAction.NOTES) { leftSwipeAction = SwipeAction.NONE; prefs.leftSwipeAction = SwipeAction.NONE }
+                                if (rightSwipeAction == SwipeAction.NOTES) { rightSwipeAction = SwipeAction.NONE; prefs.rightSwipeAction = SwipeAction.NONE }
+                            }
+                        },
+                        label = { Text("Notes") },
+                        leadingIcon = if (enableNotes) { { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) } } else null
+                    )
+                }
                 
                 SwipeActionSelector(
                     label = stringResource(R.string.left_swipe_action),
@@ -464,6 +621,7 @@ fun SettingsScreen(onBack: () -> Unit) {
 
             Spacer(modifier = Modifier.height(32.dp))
         }
+    } // end Box with statusBarsPadding
 
         if (showAppPicker != null) {
             SettingsAppPickerSheet(
@@ -490,18 +648,21 @@ private fun SettingsSectionHeader(title: String) {
 
 // ── Reusable Component Logic ──
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun SettingActionItem(
     title: String,
     subtitle: String,
     icon: @Composable () -> Unit,
+    tooltipText: String? = null,
     onClick: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-    ) {
+    val content: @Composable () -> Unit = {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+        ) {
         Row(
             modifier = Modifier.padding(16.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -521,9 +682,21 @@ fun SettingActionItem(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+        }
+    }
+    
+    if (tooltipText != null) {
+        TooltipBox(
+            positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+            tooltip = { PlainTooltip { Text(tooltipText) } },
+            state = rememberTooltipState()
+        ) { content() }
+    } else {
+        content()
     }
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun SettingToggleItem(
     title: String,
@@ -531,43 +704,57 @@ fun SettingToggleItem(
     icon: @Composable () -> Unit,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    onInfoClick: (() -> Unit)? = null
+    onInfoClick: (() -> Unit)? = null,
+    tooltipText: String? = null
 ) {
-    Column(
-        modifier = Modifier.fillMaxWidth().clickable { onCheckedChange(!checked) }
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp).fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+    val content: @Composable () -> Unit = {
+        Column(
+            modifier = Modifier.fillMaxWidth().clickable { onCheckedChange(!checked) }
         ) {
-            icon()
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = title, style = MaterialTheme.typography.bodyLarge)
-                    if (onInfoClick != null) {
-                        Spacer(modifier = Modifier.width(4.dp))
-                        IconButton(onClick = onInfoClick, modifier = Modifier.size(24.dp)) {
-                            Icon(Icons.Outlined.Info, contentDescription = "Info", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+            Row(
+                modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                icon()
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = title, style = MaterialTheme.typography.bodyLarge)
+                        if (onInfoClick != null) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            IconButton(onClick = onInfoClick, modifier = Modifier.size(24.dp)) {
+                                Icon(Icons.Outlined.Info, contentDescription = "Info", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                            }
                         }
                     }
+                    if (subtitle.isNotEmpty()) {
+                        Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
-                if (subtitle.isNotEmpty()) {
-                    Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.primary,
-                    checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                Switch(
+                    checked = checked,
+                    onCheckedChange = onCheckedChange,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.primary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                    )
                 )
-            )
+            }
         }
+    }
+
+    if (tooltipText != null) {
+        TooltipBox(
+            positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+            tooltip = { PlainTooltip { Text(tooltipText) } },
+            state = rememberTooltipState()
+        ) { content() }
+    } else {
+        content()
     }
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun SettingSliderItem(
     title: String,
@@ -575,11 +762,13 @@ fun SettingSliderItem(
     icon: @Composable () -> Unit,
     value: Float,
     range: ClosedFloatingPointRange<Float>,
+    tooltipText: String? = null,
     onChanged: (Float) -> Unit
 ) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-    ) {
+    val content: @Composable () -> Unit = {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+        ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 icon()
@@ -600,7 +789,6 @@ fun SettingSliderItem(
                 value = value,
                 onValueChange = onChanged,
                 valueRange = range,
-                steps = 5,
                 colors = SliderDefaults.colors(
                     thumbColor = MaterialTheme.colorScheme.primary,
                     activeTrackColor = MaterialTheme.colorScheme.primary
@@ -608,8 +796,19 @@ fun SettingSliderItem(
             )
         }
     }
+    }
+    if (tooltipText != null) {
+        TooltipBox(
+            positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+            tooltip = { PlainTooltip { Text(tooltipText) } },
+            state = rememberTooltipState()
+        ) { content() }
+    } else {
+        content()
+    }
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun SettingAlignmentItem(
     title: String,
@@ -617,11 +816,13 @@ fun SettingAlignmentItem(
     icon: @Composable () -> Unit,
     currentGravity: Int,
     options: List<Pair<Int, String>>,
+    tooltipText: String? = null,
     onChanged: (Int) -> Unit
 ) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
-    ) {
+    val content: @Composable () -> Unit = {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+        ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 icon()
@@ -656,20 +857,33 @@ fun SettingAlignmentItem(
             }
         }
     }
+    }
+    if (tooltipText != null) {
+        TooltipBox(
+            positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+            tooltip = { PlainTooltip { Text(tooltipText) } },
+            state = rememberTooltipState()
+        ) { content() }
+    } else {
+        content()
+    }
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun SettingCounterItem(
     title: String,
     subtitle: String,
     icon: @Composable () -> Unit,
     value: Int,
+    tooltipText: String? = null,
     onDecrease: () -> Unit,
     onIncrease: () -> Unit
 ) {
-    Column(
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    val content: @Composable () -> Unit = {
+        Column(
+            modifier = Modifier.fillMaxWidth()
+        ) {
         Row(
             modifier = Modifier.padding(16.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -692,6 +906,16 @@ fun SettingCounterItem(
                 }
             }
         }
+    }
+    }
+    if (tooltipText != null) {
+        TooltipBox(
+            positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+            tooltip = { PlainTooltip { Text(tooltipText) } },
+            state = rememberTooltipState()
+        ) { content() }
+    } else {
+        content()
     }
 }
 
@@ -728,7 +952,8 @@ private fun SwipeActionSelector(
             title = { Text("Select Action") },
             text = {
                 Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                    available.forEach { (actionKey, label) ->
+                    available.forEach { (actionKey, actionLabel) ->
+                        val isSelected = actionKey == currentAction
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -736,9 +961,22 @@ private fun SwipeActionSelector(
                                     onChanged(actionKey)
                                     showDialog = false
                                 }
-                                .padding(vertical = 12.dp, horizontal = 16.dp)
+                                .padding(vertical = 8.dp, horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(text = label, style = MaterialTheme.typography.bodyLarge)
+                            RadioButton(
+                                selected = isSelected,
+                                onClick = {
+                                    onChanged(actionKey)
+                                    showDialog = false
+                                }
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = actionLabel,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            )
                         }
                     }
                 }
