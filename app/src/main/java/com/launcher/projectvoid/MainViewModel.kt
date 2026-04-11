@@ -14,7 +14,6 @@ import com.launcher.projectvoid.data.AppModel
 import com.launcher.projectvoid.data.Constants
 import com.launcher.projectvoid.data.Prefs
 import com.launcher.projectvoid.helper.SingleLiveEvent
-import com.launcher.projectvoid.helper.WallpaperWorker
 import com.launcher.projectvoid.helper.formattedTimeSpent
 import com.launcher.projectvoid.helper.getAppsList
 import com.launcher.projectvoid.helper.hasBeenMinutes
@@ -430,23 +429,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun isVoidDefault() {
         isVoidDefault.value = isVoidDefault(appContext)
-    }
-
-    /**
-     * Daily wallpaper scheduling is DISABLED.
-     * VOID Launcher uses a solid system-adaptive background (black/white).
-     * Any pending wallpaper workers are cancelled instead of scheduled.
-     */
-    fun setWallpaperWorker() {
-        // No-op: cancel any existing wallpaper work
-        WorkManager.getInstance(appContext).cancelUniqueWork(Constants.WALLPAPER_WORKER_NAME)
-        prefs.dailyWallpaper = false
-    }
-
-    fun cancelWallpaperWorker() {
-        WorkManager.getInstance(appContext).cancelUniqueWork(Constants.WALLPAPER_WORKER_NAME)
-        prefs.dailyWallpaperUrl = ""
-        prefs.dailyWallpaper = false
     }
 
     fun updateHomeAlignment(gravity: Int) {

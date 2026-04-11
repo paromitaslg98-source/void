@@ -2,21 +2,7 @@ package com.launcher.projectvoid.data
 
 object Constants {
 
-    object Key {
-        const val FLAG = "flag"
-        const val RENAME = "rename"
-    }
 
-    object Dialog {
-        const val ABOUT = "ABOUT"
-        const val WALLPAPER = "WALLPAPER"
-        const val REVIEW = "REVIEW"
-        const val RATE = "RATE"
-        const val SHARE = "SHARE"
-        const val HIDDEN = "HIDDEN"
-        const val KEYBOARD = "KEYBOARD"
-        const val DIGITAL_WELLBEING = "DIGITAL_WELLBEING"
-    }
 
     object UserState {
         const val START = "START"
@@ -78,25 +64,17 @@ object Constants {
     const val FLAG_SET_CLOCK_APP = 13
     const val FLAG_SET_CALENDAR_APP = 14
 
-    const val REQUEST_CODE_ENABLE_ADMIN = 666
-    const val REQUEST_CODE_LAUNCHER_SELECTOR = 678
 
-    const val LONG_PRESS_DELAY_MS = 500L
     const val ONE_DAY_IN_MILLIS = 86400000L
     const val ONE_HOUR_IN_MILLIS = 3600000L
     const val ONE_MINUTE_IN_MILLIS = 60000L
 
     const val MIN_ANIM_REFRESH_RATE = 10f
 
-    const val URL_VOID_PLAY_STORE = "https://play.google.com/store/apps/details?id=app.voidlauncher"
-    const val URL_WALLPAPERS = "https://gist.githubusercontent.com/knownassurajit/85e2d0343ace71e76615ac346fbff82b/raw"
-    const val URL_DEFAULT_DARK_WALLPAPER = "https://images.unsplash.com/photo-1512551980832-13df02babc9e"
-    const val URL_DEFAULT_LIGHT_WALLPAPER = "https://images.unsplash.com/photo-1515549832467-8783363e19b6"
-    const val URL_DUCK_SEARCH = "https://duck.co/?q="
+    const val URL_VOID_PLAY_STORE = "https://play.google.com/store/apps/details?id=com.voidlauncher.app"
 
     const val DIGITAL_WELLBEING_PACKAGE_NAME = "com.google.android.apps.wellbeing"
     const val DIGITAL_WELLBEING_ACTIVITY = "com.google.android.apps.wellbeing.settings.TopLevelSettingsActivity"
     const val DIGITAL_WELLBEING_SAMSUNG_PACKAGE_NAME = "com.samsung.android.forest"
     const val DIGITAL_WELLBEING_SAMSUNG_ACTIVITY = "com.samsung.android.forest.launcher.LauncherActivity"
-    const val WALLPAPER_WORKER_NAME = "WALLPAPER_WORKER_NAME"
 }

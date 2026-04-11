@@ -84,7 +84,8 @@ dependencies {
     implementation "androidx.profileinstaller:profileinstaller:1.4.1"
 
     // On-device AI — Gemini Nano via ML Kit GenAI (AICore)
-    implementation 'com.google.mlkit:genai-summarization:1.0.0-beta1'
+    implementation 'com.google.mlkit:genai-summarization:1.0.0-beta1'  // Tier 2: older AICore devices
+    implementation 'com.google.mlkit:genai-prompt:1.0.0-beta2'         // Tier 1: latest AICore devices
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1'
 
     testImplementation 'junit:junit:4.13.2'

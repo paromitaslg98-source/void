@@ -355,9 +355,10 @@ fun HomeScreen(
                             text = state.currentTime,
                             style = MaterialTheme.typography.displayLarge.copy(
                                 fontWeight = FontWeight.Bold,
-                                fontSize = MaterialTheme.typography.displayLarge.fontSize * state.homeTextSizeScale * (if (state.clockSectionWeight < 0.5f) 1.0f else state.clockSectionWeight),
+                                fontSize = MaterialTheme.typography.displayLarge.fontSize * state.homeTextSizeScale * (if (state.clockSectionWeight < 0.5f) 1.0f else state.clockSectionWeight) * (if (state.showSeconds) 0.7f else 1.0f),
                                 letterSpacing = (-1.5).sp
                             ),
+                            maxLines = 1,
                             color = MaterialTheme.colorScheme.onBackground,
                             textAlign = clockTextAlign,
                             modifier = Modifier

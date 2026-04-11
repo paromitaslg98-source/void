@@ -3,6 +3,7 @@ package com.launcher.projectvoid.ui.screen
 import android.app.Application
 import android.app.Notification
 import android.os.Bundle
+import androidx.core.app.NotificationCompat
 import android.text.format.DateUtils
 import android.util.Log
 import androidx.compose.animation.animateContentSize
@@ -143,7 +144,35 @@ class NotificationSummaryViewModel(application: Application) : AndroidViewModel(
 
     private fun extractNotificationTexts(notifications: List<android.service.notification.StatusBarNotification>): List<String> {
         return notifications.mapNotNull { sbn ->
-            val extras = sbn.notification.extras
+            val notification = sbn.notification
+            val extras = notification.extras
+
+            // ── Tier 1: Try MessagingStyle extraction for conversation reconstruction ──
+            val messagingText = try {
+                val style = NotificationCompat.MessagingStyle.extractMessagingStyleFromNotification(notification)
+                if (style != null) {
+                    val messages = style.messages
+                    if (messages.isNotEmpty()) {
+                        messages.joinToString(" | ") { msg: NotificationCompat.MessagingStyle.Message ->
+                            val sender = msg.person?.name ?: style.conversationTitle ?: ""
+                            val text = msg.text?.toString()?.trim().orEmpty()
+                            val mimeType = msg.dataMimeType
+                            val mediaTag = when {
+                                mimeType == null -> ""
+                                mimeType.startsWith("image/") -> " [Image attached]"
+                                mimeType.startsWith("video/") -> " [Video attached]"
+                                mimeType.startsWith("audio/") -> " [Audio attached]"
+                                else -> " [Media attached]"
+                            }
+                            if (sender.isNotBlank()) "$sender: $text$mediaTag" else "$text$mediaTag"
+                        }
+                    } else null
+                } else null
+            } catch (_: Exception) { null }
+
+            if (!messagingText.isNullOrBlank()) return@mapNotNull messagingText
+
+            // ── Tier 2: Standard notification fields ──
             val title = extras.getCharSequence("android.title")?.toString()?.trim().orEmpty()
             val text = extras.getCharSequence("android.text")?.toString()?.trim().orEmpty()
             val bigText = extras.getCharSequence("android.bigText")?.toString()?.trim().orEmpty()
@@ -152,13 +181,18 @@ class NotificationSummaryViewModel(application: Application) : AndroidViewModel(
                 ?.filter { it.isNotBlank() }
                 .orEmpty()
 
+            // Detect media metadata from extras — no binary processing
+            val hasImage = extras.containsKey(Notification.EXTRA_PICTURE) ||
+                           extras.containsKey(Notification.EXTRA_LARGE_ICON)
+            val mediaTag = if (hasImage) " [Image attached]" else ""
+
             when {
-                title.isNotBlank() && bigText.isNotBlank() -> "$title: $bigText"
-                title.isNotBlank() && text.isNotBlank() -> "$title: $text"
-                bigText.isNotBlank() -> bigText
-                text.isNotBlank() -> text
-                lines.isNotEmpty() -> lines.joinToString(" • ")
-                title.isNotBlank() -> title
+                title.isNotBlank() && bigText.isNotBlank() -> "$title: $bigText$mediaTag"
+                title.isNotBlank() && text.isNotBlank() -> "$title: $text$mediaTag"
+                bigText.isNotBlank() -> "$bigText$mediaTag"
+                text.isNotBlank() -> "$text$mediaTag"
+                lines.isNotEmpty() -> lines.joinToString(" • ") + mediaTag
+                title.isNotBlank() -> "$title$mediaTag"
                 else -> null
             }
         }
@@ -371,13 +405,34 @@ private fun SummaryCard(summary: AppNotificationSummary) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                 )
             } else {
-                Text(
-                    text = summary.aiSummary ?: "No summary available",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 4,
-                    overflow = TextOverflow.Ellipsis
-                )
+                val summaryText = summary.aiSummary ?: "No summary available"
+                // Parse bullets: split on "• " or "* " line markers
+                val bullets = summaryText
+                    .split("\n")
+                    .map { it.trim() }
+                    .filter { it.isNotBlank() }
+                    .map { line ->
+                        line.removePrefix("• ").removePrefix("* ").removePrefix("- ").trim()
+                    }
+                    .filter { it.isNotBlank() }
+
+                if (bullets.size > 1) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        bullets.forEach { bullet ->
+                            Text(
+                                text = "• $bullet",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                } else {
+                    Text(
+                        text = summaryText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
             }
         }
     }
