@@ -132,7 +132,7 @@ STRICT RULES:
         // Tier 1 probe (Prompt API).
         val promptStatus = try {
             val client = com.google.mlkit.genai.prompt.Generation.getClient()
-            val status = kotlinx.coroutines.runBlocking { client.checkStatus() }
+            val status = client.checkStatus().await()
             promptClient = client
             status as? Int
         } catch (e: Exception) {
