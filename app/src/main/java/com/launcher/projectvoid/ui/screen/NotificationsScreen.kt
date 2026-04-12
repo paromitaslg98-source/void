@@ -3,7 +3,6 @@ package com.launcher.projectvoid.ui.screen
 import android.text.format.DateUtils
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,7 +47,6 @@ import kotlin.math.abs
 
 @Composable
 fun NotificationsScreen(
-    onBack: () -> Unit,
     notifications: List<NotificationGroup> = emptyList()
 ) {
     // A lightweight vertical swipe affordance lets users return without an explicit back button.
