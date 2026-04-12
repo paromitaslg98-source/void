@@ -108,7 +108,7 @@ STRICT RULES:
                 client.checkStatus()
             }
             val tierDecision = mapPromptStatusToTier(status)
-            Log.d(TAG, "Prompt API status=$status, mappedTier=${tierDecision ?: 3}")
+            Log.d(TAG, "Prompt API status=$status, mappedTier=$tierDecision")
             if (tierDecision == 1) {
                 promptClient = client
                 detectedTier = 1
