@@ -304,7 +304,7 @@ STRICT RULES:
 
         // Preferred path: direct typed API usage for compile-time safety.
         try {
-            val summarizer = summarizerClient ?: Summarization.getClient().also { summarizerClient = it }
+            val summarizer = summarizerClient ?: Summarization.getClient(context).also { summarizerClient = it }
             val request = SummarizationRequest.builder(inputText).build()
             val result = summarizer.runInference(request).await()
             if (!result.isNullOrBlank()) return result
