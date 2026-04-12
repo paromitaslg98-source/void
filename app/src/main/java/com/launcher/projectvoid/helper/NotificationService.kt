@@ -26,7 +26,6 @@ class NotificationService : NotificationListenerService() {
         fun dismissNotification(key: String) {
             try {
                 instance?.cancelNotification(key)
-                instance?.updateNotifications()
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to dismiss notification: ${e.message}")
             }
