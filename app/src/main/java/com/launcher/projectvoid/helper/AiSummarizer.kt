@@ -167,7 +167,7 @@ STRICT RULES:
             val payload = buildString {
                 appendLine(SYSTEM_PROMPT)
                 appendLine()
-                appendLine("<notifications app=\"$appName\">")
+                appendLine("<notifications app=\"${escapeXmlAttribute(appName)}\">")
                 // Token budget: ~3000 words max. Truncate oldest if too long.
                 val truncated = truncateForTokenBudget(texts)
                 truncated.forEachIndexed { i, text ->
@@ -259,7 +259,10 @@ STRICT RULES:
      * No AI involved — works on every device.
      */
     private fun fallbackSummarize(texts: List<String>): String {
-        return texts.joinToString("\n") { "• $it" }
+        return texts
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .joinToString("\n") { "• $it" }
     }
 
     // ── Utilities ───────────────────────────────────────────────────────
@@ -279,6 +282,14 @@ STRICT RULES:
             totalWords += wordCount
         }
         return result
+    }
+
+    private fun escapeXmlAttribute(value: String): String {
+        return value
+            .replace("&", "&amp;")
+            .replace("\"", "&quot;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
     }
 
     @Suppress("UNCHECKED_CAST")
