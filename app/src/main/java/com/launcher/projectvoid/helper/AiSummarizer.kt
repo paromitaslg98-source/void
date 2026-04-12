@@ -218,9 +218,9 @@ STRICT RULES:
         return manufacturerDenied || modelDenied
     }
 
-    private fun tryTypedSummarizationStatus(): Int? {
+    private suspend fun tryTypedSummarizationStatus(): Int? {
         return try {
-            val summarizer = summarizerClient ?: Summarization.getClient().also { summarizerClient = it }
+            val summarizer = summarizerClient ?: Summarization.getClient(context).also { summarizerClient = it }
             summarizer.checkFeatureStatus().await()
         } catch (e: Exception) {
             Log.d(TAG, "Typed summarization probe failed: ${e.message}")
