@@ -8,7 +8,6 @@ import org.junit.Test
 class AiSummarizerTest {
 
     @Test
-    @Test
     fun mapPromptStatusToTier_availableStatus_selectTierOne() {
         // Only AVAILABLE represents a usable Prompt API path.
         assertEquals(1, AiSummarizer.mapPromptStatusToTier(FeatureStatus.AVAILABLE))

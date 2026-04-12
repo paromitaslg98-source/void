@@ -89,16 +89,20 @@ private fun gravityToAlignment(gravity: Int): Alignment.Horizontal = when (gravi
     else -> Alignment.Start
 }
 
-fun gravityToVerticalArrangement(gravity: Int): Arrangement.Vertical = when (gravity) {
-    Gravity.TOP -> Arrangement.Top
-    Gravity.BOTTOM -> Arrangement.Bottom
-    else -> Arrangement.Center
+fun gravityToVerticalArrangement(gravity: Int): Arrangement.Vertical {
+    return when (gravity) {
+        Gravity.TOP -> Arrangement.Top
+        Gravity.BOTTOM -> Arrangement.Bottom
+        else -> Arrangement.Center
+    }
 }
 
-private fun gravityToVerticalContentAlignment(gravity: Int): Alignment.Vertical = when (gravity) {
-    Gravity.TOP -> Alignment.Top
-    Gravity.BOTTOM -> Alignment.Bottom
-    else -> Alignment.CenterVertically
+private fun gravityToVerticalContentAlignment(gravity: Int): Alignment.Vertical {
+    return when (gravity) {
+        Gravity.TOP -> Alignment.Top
+        Gravity.BOTTOM -> Alignment.Bottom
+        else -> Alignment.CenterVertically
+    }
 }
 
 private fun gravityToTextAlign(gravity: Int): TextAlign = when (gravity) {
@@ -199,13 +203,13 @@ fun HomeScreen(
     val context = LocalContext.current
     val prefs = remember { Prefs(context) }
     val haptic = LocalHapticFeedback.current
-    val clockAlign = gravityToAlignment(state.clockHorizontalAlignment)
-    val appAlign = gravityToAlignment(state.appHorizontalAlignment)
-    val clockVertical = gravityToVerticalArrangement(state.clockVerticalAlignment)
-    val appVerticalAlignment = gravityToVerticalContentAlignment(state.appVerticalAlignment)
+    val clockAlign = remember(state.clockHorizontalAlignment) { gravityToAlignment(state.clockHorizontalAlignment) }
+    val appAlign = remember(state.appHorizontalAlignment) { gravityToAlignment(state.appHorizontalAlignment) }
+    val clockVertical = remember(state.clockVerticalAlignment) { gravityToVerticalArrangement(state.clockVerticalAlignment) }
+    val appVertical = remember(state.appVerticalAlignment) { gravityToVerticalContentAlignment(state.appVerticalAlignment) }
 
-    val clockTextAlign = gravityToTextAlign(state.clockHorizontalAlignment)
-    val appTextAlign = gravityToTextAlign(state.appHorizontalAlignment)
+    val clockTextAlign = remember(state.clockHorizontalAlignment) { gravityToTextAlign(state.clockHorizontalAlignment) }
+    val appTextAlign = remember(state.appHorizontalAlignment) { gravityToTextAlign(state.appHorizontalAlignment) }
 
     // ── Swipe gesture state ──
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
@@ -445,12 +449,16 @@ fun HomeScreen(
                 ) {
                     val displayApps = if (isDragging) reorderList else state.homeApps
 
+                    val appArrangement = remember(computedSpacing, appVertical) {
+                        Arrangement.spacedBy(computedSpacing.dp, appVertical)
+                    }
+
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(top = 8.dp, bottom = 12.dp),
                         horizontalAlignment = appAlign,
-                        verticalArrangement = Arrangement.spacedBy(computedSpacing.dp, appVerticalAlignment)
+                        verticalArrangement = appArrangement
                     ) {
                         // Keep itemHeights list in sync with displayApps count.
                         while (itemHeights.size < displayApps.size) itemHeights.add(0f)
