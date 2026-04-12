@@ -48,7 +48,6 @@ class NotificationService : NotificationListenerService() {
         fun dismissAll() {
             try {
                 instance?.cancelAllNotifications()
-                instance?.updateNotifications()
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to dismiss all notifications: ${e.message}")
             }
