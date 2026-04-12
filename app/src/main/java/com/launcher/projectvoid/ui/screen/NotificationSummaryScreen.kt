@@ -2,10 +2,8 @@ package com.launcher.projectvoid.ui.screen
 
 import android.app.Application
 import android.app.Notification
-import android.os.Bundle
 import androidx.core.app.NotificationCompat
 import android.text.format.DateUtils
-import android.util.Log
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -37,9 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -51,12 +47,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.statusBarsPadding
 import com.launcher.projectvoid.LocalFixedStatusBarHeight
 
 // ── ViewModel ──
@@ -208,6 +201,20 @@ fun NotificationSummaryScreen(
             .fillMaxSize()
             .padding(top = LocalFixedStatusBarHeight.current)
             .navigationBarsPadding()
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDragEnd = {
+                        if (dragOffset.y < -180f && abs(dragOffset.y) > abs(dragOffset.x)) {
+                            onBack()
+                        }
+                        dragOffset = Offset.Zero
+                    },
+                    onDragCancel = { dragOffset = Offset.Zero },
+                    onDrag = { _, dragAmount ->
+                        dragOffset += dragAmount
+                    }
+                )
+            }
     ) {
     Column(
         modifier = Modifier

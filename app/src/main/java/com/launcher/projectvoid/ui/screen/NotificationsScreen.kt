@@ -12,9 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.statusBarsPadding
 import com.launcher.projectvoid.LocalFixedStatusBarHeight
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,6 +28,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -39,16 +41,36 @@ import androidx.compose.ui.unit.dp
 import com.launcher.projectvoid.R
 import com.launcher.projectvoid.data.NotificationGroup
 import com.launcher.projectvoid.helper.NotificationService
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
+import kotlin.math.abs
 
 @Composable
 fun NotificationsScreen(
     notifications: List<NotificationGroup> = emptyList()
 ) {
+    // A lightweight vertical swipe affordance lets users return without an explicit back button.
+    var dragOffset by remember { mutableStateOf(Offset.Zero) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(top = LocalFixedStatusBarHeight.current)
             .navigationBarsPadding()
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDragEnd = {
+                        if (dragOffset.y < -180f && abs(dragOffset.y) > abs(dragOffset.x)) {
+                            onBack()
+                        }
+                        dragOffset = Offset.Zero
+                    },
+                    onDragCancel = { dragOffset = Offset.Zero },
+                    onDrag = { _, dragAmount ->
+                        dragOffset += dragAmount
+                    }
+                )
+            }
     ) {
     Column(
         modifier = Modifier
