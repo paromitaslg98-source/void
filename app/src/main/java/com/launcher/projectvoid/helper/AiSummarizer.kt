@@ -185,7 +185,7 @@ STRICT RULES:
         )
     }
 
-    private fun detectTierAndPersistDiagnostic(): CapabilityDiagnostic {
+    private suspend fun detectTierAndPersistDiagnostic(): CapabilityDiagnostic {
         val diagnostic = decideBestTier()
         detectedTier = diagnostic.tier
         lastCapabilityDiagnostic = diagnostic
