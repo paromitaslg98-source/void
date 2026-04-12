@@ -8,13 +8,18 @@ import org.junit.Test
 class AiSummarizerTest {
 
     @Test
-    fun mapPromptStatusToTier_availableStatuses_selectTierOne() {
-        // These statuses all represent a usable Prompt API path, so we should keep Tier 1 selected.
+    @Test
+    fun mapPromptStatusToTier_availableStatus_selectTierOne() {
+        // Only AVAILABLE represents a usable Prompt API path.
         assertEquals(1, AiSummarizer.mapPromptStatusToTier(FeatureStatus.AVAILABLE))
-        assertEquals(1, AiSummarizer.mapPromptStatusToTier(FeatureStatus.DOWNLOADABLE))
-        assertEquals(1, AiSummarizer.mapPromptStatusToTier(FeatureStatus.DOWNLOADING))
     }
 
+    @Test
+    fun mapPromptStatusToTier_pendingStatuses_fallsBack() {
+        // DOWNLOADABLE and DOWNLOADING are not yet ready for inference.
+        assertNull(AiSummarizer.mapPromptStatusToTier(FeatureStatus.DOWNLOADABLE))
+        assertNull(AiSummarizer.mapPromptStatusToTier(FeatureStatus.DOWNLOADING))
+    }
     @Test
     fun mapPromptStatusToTier_unavailableStatus_fallsBack() {
         // Explicitly unavailable should not claim AI availability.
