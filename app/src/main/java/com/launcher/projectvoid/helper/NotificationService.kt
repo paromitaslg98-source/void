@@ -26,6 +26,7 @@ class NotificationService : NotificationListenerService() {
         fun dismissNotification(key: String) {
             try {
                 instance?.cancelNotification(key)
+                instance?.updateNotifications()
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to dismiss notification: ${e.message}")
             }
@@ -38,6 +39,7 @@ class NotificationService : NotificationListenerService() {
                     service.activeNotifications
                         ?.filter { it.packageName == packageName }
                         ?.forEach { sbn -> service.cancelNotification(sbn.key) }
+                    service.updateNotifications()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to dismiss package notifications: ${e.message}")
@@ -48,6 +50,7 @@ class NotificationService : NotificationListenerService() {
         fun dismissAll() {
             try {
                 instance?.cancelAllNotifications()
+                instance?.updateNotifications()
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to dismiss all notifications: ${e.message}")
             }
