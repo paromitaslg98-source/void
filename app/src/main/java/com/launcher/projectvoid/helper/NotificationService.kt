@@ -38,7 +38,6 @@ class NotificationService : NotificationListenerService() {
                     service.activeNotifications
                         ?.filter { it.packageName == packageName }
                         ?.forEach { sbn -> service.cancelNotification(sbn.key) }
-                    service.updateNotifications()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to dismiss package notifications: ${e.message}")
