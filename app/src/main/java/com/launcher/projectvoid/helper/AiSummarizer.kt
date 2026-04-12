@@ -228,7 +228,7 @@ STRICT RULES:
         }
     }
 
-    private fun tryReflectedSummarizationStatus(): Int? {
+    private suspend fun tryReflectedSummarizationStatus(): Int? {
         return try {
             val summClass = Class.forName("com.google.mlkit.genai.summarization.Summarization")
             val getClient = summClass.methods.firstOrNull { it.name == "getClient" } ?: return null
