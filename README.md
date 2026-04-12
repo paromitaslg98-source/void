@@ -66,12 +66,26 @@ app/src/main/java/com/launcher/projectvoid
 │   │   ├── AppDrawerScreen.kt
 │   │   ├── SettingsScreen.kt
 │   │   ├── NotificationsScreen.kt
+│   │   ├── NotificationSummaryScreen.kt
 │   │   └── NotesScreen.kt
 │   └── FakeHomeScreen.kt
 ├── data/
 ├── helper/
+│   ├── NotificationService.kt
+│   └── AiSummarizer.kt
 └── listener/
 ```
+
+## Notification UI + AI summary implementation map
+
+- The notifications UX is Compose-first and implemented in:
+  - `ui/screen/NotificationsScreen.kt`
+  - `ui/screen/NotificationSummaryScreen.kt`
+- Notification collection + dismissal lives in:
+  - `helper/NotificationService.kt`
+- On-device AI/fallback summarization lives in:
+  - `helper/AiSummarizer.kt`
+- There is no active Fragment-based notifications screen in the app flow; stale references to `com/voidlauncher/app/ui/NotificationsFragment.kt` should remain removed.
 
 ## Build and validation
 
