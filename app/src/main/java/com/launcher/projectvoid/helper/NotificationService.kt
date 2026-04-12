@@ -1,6 +1,8 @@
 package com.launcher.projectvoid.helper
 
 import android.app.Notification
+import android.app.NotificationManager
+import android.os.Build
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
@@ -93,8 +95,10 @@ class NotificationService : NotificationListenerService() {
                 list.sortByDescending { it.postTime }
                 val latestSbn = list.first()
 
-                @Suppress("DEPRECATION")
-                val highestImportance = list.maxOfOrNull { it.notification.priority } ?: 0
+                // Keep highestImportance as "most interruptive notification in the group".
+                // On Android O+ this is channel importance (system-truth); when unavailable we
+                // gracefully fall back to legacy notification priority semantics.
+                val highestImportance = list.maxOfOrNull { resolveNotificationImportance(it) } ?: 0
 
                 val appLabel = try {
                     packageManager.getApplicationLabel(
@@ -118,5 +122,33 @@ class NotificationService : NotificationListenerService() {
         } catch (e: Exception) {
             Log.e(TAG, "Error updating notifications: ${e.message}")
         }
+    }
+
+    private fun resolveNotificationImportance(sbn: StatusBarNotification): Int {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channelId = sbn.notification.channelId
+            if (!channelId.isNullOrBlank()) {
+                // NotificationManager is queried first so we reflect the *actual* runtime
+                // channel configuration (including user changes), not just the posted payload.
+                val notificationManager = getSystemService(NotificationManager::class.java)
+                val channel = notificationManager?.getNotificationChannel(channelId)
+                if (channel != null) return channel.importance
+            }
+        }
+
+        // Older devices (or missing channel metadata) still need a stable score. We map
+        // legacy priority levels onto NotificationManager IMPORTANCE constants so
+        // NotificationGroup.highestImportance stays on one consistent scale.
+        @Suppress("DEPRECATION")
+        return legacyPriorityToImportance(sbn.notification.priority)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun legacyPriorityToImportance(priority: Int): Int = when (priority) {
+        Notification.PRIORITY_MAX -> NotificationManager.IMPORTANCE_HIGH
+        Notification.PRIORITY_HIGH -> NotificationManager.IMPORTANCE_DEFAULT
+        Notification.PRIORITY_LOW -> NotificationManager.IMPORTANCE_LOW
+        Notification.PRIORITY_MIN -> NotificationManager.IMPORTANCE_MIN
+        else -> NotificationManager.IMPORTANCE_DEFAULT
     }
 }
