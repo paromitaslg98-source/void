@@ -8,7 +8,6 @@ import android.text.format.DateUtils
 import android.util.Log
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -56,10 +55,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.pointer.pointerInput
-import kotlin.math.abs
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import com.launcher.projectvoid.LocalFixedStatusBarHeight
@@ -203,12 +198,10 @@ class NotificationSummaryViewModel(application: Application) : AndroidViewModel(
 
 @Composable
 fun NotificationSummaryScreen(
-    onBack: () -> Unit,
     viewModel: NotificationSummaryViewModel = viewModel()
 ) {
     val summaries by viewModel.summaries.collectAsState()
     val aiAvailable by viewModel.isAiAvailable.collectAsState()
-    var dragOffset by remember { mutableStateOf(Offset.Zero) }
 
     Box(
         modifier = Modifier

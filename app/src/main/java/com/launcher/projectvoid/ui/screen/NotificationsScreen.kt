@@ -3,7 +3,6 @@ package com.launcher.projectvoid.ui.screen
 import android.text.format.DateUtils
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,11 +30,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -45,20 +39,11 @@ import androidx.compose.ui.unit.dp
 import com.launcher.projectvoid.R
 import com.launcher.projectvoid.data.NotificationGroup
 import com.launcher.projectvoid.helper.NotificationService
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.pointer.pointerInput
-import kotlin.math.abs
 
 @Composable
 fun NotificationsScreen(
-    onBack: () -> Unit,
     notifications: List<NotificationGroup> = emptyList()
 ) {
-    // Swipe-up to go back to home
-    var dragOffset by remember { mutableStateOf(Offset.Zero) }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
