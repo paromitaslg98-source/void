@@ -1,109 +1,102 @@
-# VOID Launcher (Compose Edition)
+# VOID Launcher
 
-VOID Launcher is a minimalist launcher refactored to a Compose-first architecture.
+VOID Launcher is a high-performance, minimalist Android launcher built from the ground up using **Jetpack Compose** and **Material 3**. It is designed to reduce digital clutter while providing advanced modern features like on-device AI summarization and deep Android 15 integration.
 
-## Migration Review (Final)
+---
 
-As part of the final Compose migration review, the project was audited for:
-- **Security** risks in manifest/configuration
-- **Performance** and unnecessary legacy UI artifacts
-- **UI/UX** consistency with Material 3 patterns
-- **Project hygiene** after XML/Fragment → Compose migration
+## 📱 Screen Flow & Navigation
 
-## What was cleaned up
+The application follows a intuitive gesture-based mental model for navigation:
 
-### 1) Package rename (requested)
-- Application package/namespace changed to:
-  - `com.launcher.projectvoid`
-- Updated across Gradle and Kotlin sources.
-
-### 2) Compose navigation + transition polish
-- Compose `NavHost` remains the main UI entry.
-- Added direction-aware transitions for Notes/Notifications flows to preserve gesture mental model with Material motion.
-
-### 3) Security hardening
-- Removed privileged/inapplicable permission:
-  - `android.permission.EXPAND_STATUS_BAR`
-- Added cleartext network hardening:
-  - `android:usesCleartextTraffic="false"`
-
-### 4) Legacy cleanup
-- Removed stale menu resource not used after Compose migration:
-  - `res/menu/menu_note_options.xml`
-
-## Feature Refinements (Interactive UI Update)
-
-### 1) Widget Dimensional Rescaling
-- Integrated adaptive dimensional rescaling on the **Widgets Screen**.
-- Converted primary bounds to a scalable `GridCells.Fixed(4)` matrix.
-- Enabled long-press context interface on pinned widgets rendering (2x1, 2x2, 4x2) span overrides dynamically propagating through SharedPreferences.
-
-### 2) Advanced Private Space Integration (Android 15+)
-- **Automated Profile Detection**: Engineered a dual-layer profile detection system using `UserManager.userProfiles` and `LauncherApps.getLauncherUserInfo` to reliably identify Hidden Profiles (Private Space) on Android 15.
-- **Dynamic Sectioning**: Implemented a dedicated Private Space section at the end of the app library, separated by a visual divider, ensuring clear isolation of sensitive applications.
-- **Biometric Synchronization**: Fully synchronized with native OS states using intensified broadcast monitoring for `ACTION_PROFILE_ACCESSIBLE`, `ACTION_MANAGED_PROFILE_UNLOCKED`, and `ACTION_PROFILE_INACCESSIBLE`.
-- **Permission & Role Requirements**: Optimized for the `ACCESS_HIDDEN_PROFILES` signature permission; requires VOID to be set as the **Default Launcher** for full kernel-level access to the private profile sandbox.
-
-### 3) Core Dimensional Lockdown
-- Removed reactive bounding instructions (`.systemBarsPadding()`) preventing unpredictable resolution stretch or layout fracturing during OS visibility interruptions.
-- Engineered solid rigid bounding metrics natively fixing component scales.
-
-### 4) Notes UI Refinement
-- Obsoleted legacy dropdown interaction hierarchies and `Delete Note` textural placeholders on swipe.
-- Surfaced instant Native Trashcan iconography optimizing interactions seamlessly within layout parameters.
-
-## Current architecture
-
-```text
-app/src/main/java/com/launcher/projectvoid
-├── MainActivity.kt                # Compose app shell + animated NavHost
-├── AppRoutes.kt                   # @Serializable route objects
-├── MainUiViewModel.kt             # StateFlow-based UI state
-├── ui/
-│   ├── theme/Theme.kt             # Material3 theme
-│   ├── screen/
-│   │   ├── HomeScreen.kt
-│   │   ├── AppDrawerScreen.kt
-│   │   ├── SettingsScreen.kt
-│   │   ├── NotificationsScreen.kt
-│   │   ├── NotificationSummaryScreen.kt
-│   │   └── NotesScreen.kt
-│   └── FakeHomeScreen.kt
-├── data/
-├── helper/
-│   ├── NotificationService.kt
-│   └── AiSummarizer.kt
-└── listener/
+```mermaid
+graph TD
+    A[Home Screen] -- Swipe Up --> B[App Drawer]
+    A -- Long Press --> C[Settings]
+    A -- Swipe Left --> D[Custom Action: Notes/Widgets]
+    A -- Swipe Right --> E[Custom Action: Summary/Notes]
+    A -- Double Tap --> F[Lock Screen]
+    C -- Back --> A
+    B -- Click App --> G[Launch App]
+    B -- Back --> A
 ```
 
-## Notification UI + AI summary implementation map
+- **Home Screen**: Your minimalist workspace. It displays the clock, date, and your pinned favorite apps.
+- **App Drawer**: A searchable list of all installed applications. Features instant keyboard launch for power users.
+- **Settings**: Comprehensive customization including theme modes, font selection, and gesture mapping.
+- **Utility Screens**: Configurable screens for **Notes**, **Widgets**, and **AI Notification Summary**.
 
-- The notifications UX is Compose-first and implemented in:
-  - `ui/screen/NotificationsScreen.kt`
-  - `ui/screen/NotificationSummaryScreen.kt`
-- Notification collection + dismissal lives in:
-  - `helper/NotificationService.kt`
-- On-device AI/fallback summarization lives in:
-  - `helper/AiSummarizer.kt`
-- There is no active Fragment-based notifications screen in the app flow; stale references to `com/voidlauncher/app/ui/NotificationsFragment.kt` should remain removed.
+---
 
-## Build and validation
+## 🛠 Project Structure
 
-### Requirements
-- Android SDK 35
-- JDK 21 (project toolchain requirement)
+The project follows a clean, modular architecture organized by functional layer:
 
-### Commands
+- **`com.knownassurajit.app.launcher.voidlauncher`**
+    - `MainActivity.kt`: The single-activity entry point hosting the Compose NavHost.
+    - `AppRoutes.kt`: Type-safe navigation routes using Kotlin Serialization.
+    - `MainViewModel.kt` / `MainUiViewModel.kt`: Hoisting UI state and business logic.
+- **`ui/`**
+    - `screen/`: Implementation of all Jetpack Compose screens.
+    - `theme/`: Material 3 design system tokens (Color, Type, Theme).
+- **`data/`**
+    - Repositories and models for Notes, Apps, and Preferences.
+- **`helper/`**
+    - `AiSummarizer.kt`: Integration with ML Kit GenAI for on-device summaries.
+    - `NotificationService.kt`: Background listener for processing incoming notifications.
+    - `AppCacheManager.kt`: Efficient caching of app metadata and icons.
+- **`listener/`**
+    - Hardware and OS listeners for device administration and profile changes.
+
+---
+
+## 📖 User Manual
+
+### Gestures & Interaction
+- **Launch Apps**: Tap an app name on the home screen or search in the app drawer.
+- **Access Settings**: Long-press any empty area on the Home Screen.
+- **Quick Lock**: Double-tap on the Home Screen (requires Accessibility Service or Device Admin permission).
+- **Setup Gestures**: Go to `Settings > Gestures` to map left and right swipes to your preferred tools (Notes, Widgets, or AI Summary).
+
+### AI Notification Summary
+VOID uses Gemini Nano (via ML Kit) to summarize your notifications locally on your device. 
+- Enable the feature in Settings.
+- Swipe to the Notification Summary screen to see a distilled view of your recent alerts.
+- *Note: Requires a device with AICore support (e.g., Pixel 8+, Galaxy S24+).*
+
+### Private Space (Android 15+)
+- VOID automatically detects and isolates Private Space profiles.
+- Hidden apps appear in a dedicated section at the bottom of the App Drawer.
+- Profile locking/unlocking is synchronized with system biometric states.
+
+---
+
+## 🚀 Build & Development
+
+### Prerequisite Environment
+- **JDK 21** (Required for current build toolchain)
+- **Android SDK 35**
+- **Gradle 8.7+**
+
+### Standard Commands
 ```bash
+# Clean and Build Debug APK
 ./gradlew clean :app:assembleDebug
+
+# Run Unit Tests
 ./gradlew :app:testDebugUnitTest
-./gradlew :app:connectedDebugAndroidTest
+
+# Run Lint Analysis
+./gradlew lintDebug
 ```
 
-## Known environment limitation
+---
 
-In restricted CI/container environments where JDK 21 cannot be installed, Gradle tasks will fail before compilation. In that case, run the commands locally with JDK 21 for full validation.
+## ⚖️ License & Credits
 
-## License
+- **License**: GPL-3.0
+- **Typography**: Inter (RSMS), Google Sans.
+- **Icons**: Material Symbols (Google).
 
-GPL-3.0
+---
+
+*“Are you using your phone, or is your phone using you?”* — VOID Launcher
