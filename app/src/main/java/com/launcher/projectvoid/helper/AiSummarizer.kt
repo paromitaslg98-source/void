@@ -1,9 +1,15 @@
 package com.launcher.projectvoid.helper
 
 import android.content.Context
+import android.os.Build
 import android.util.Log
+import com.google.mlkit.genai.summarization.FeatureStatus
+import com.google.mlkit.genai.summarization.Summarization
+import com.google.mlkit.genai.summarization.SummarizationRequest
+import com.google.mlkit.genai.summarization.Summarizer
 import com.google.mlkit.genai.common.FeatureStatus
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.resumeWithException
 
@@ -11,25 +17,22 @@ import kotlin.coroutines.resumeWithException
  * On-device notification summarization with tiered AI engine selection.
  *
  * Tier 1 — ML Kit GenAI Prompt API (genai-prompt:1.0.0-beta2)
- *   Full contextual summarization with custom prompt engineering.
- *   Supported on: Pixel 9+, Galaxy S24+, Xiaomi 14T Pro+, etc.
- *
  * Tier 2 — ML Kit GenAI Summarization API (genai-summarization:1.0.0-beta1)
- *   Basic AI summarization with LoRA adapter.
- *   Supported on: Pixel 8a and older AICore devices.
- *
  * Tier 3 — Structured fallback (no AI)
- *   Clean bullet-point formatting of raw notification text.
- *   Works on all devices regardless of hardware.
- *
- * The engine probes Tier 1 first, falls back to Tier 2, then Tier 3.
- * All inference is on-device via Android AICore — zero cloud calls.
  */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class AiSummarizer(private val context: Context) {
 
     companion object {
         private const val TAG = "AiSummarizer"
+        private const val AICORE_PACKAGE = "com.google.android.aicore"
+
+        /**
+         * This list intentionally errs on the side of safety for known-bad device/model combos.
+         * We can expand this as we collect diagnostics from the field.
+         */
+        private val MODEL_DENYLIST_SUBSTRINGS = setOf<String>()
+        private val MANUFACTURER_DENYLIST = setOf<String>()
 
         /**
          * Maps Prompt API feature status to a tier decision.
@@ -60,8 +63,36 @@ STRICT RULES:
     @Volatile
     private var detectedTier: Int? = null
 
+    /** Last structured diagnostic captured during capability detection. */
+    @Volatile
+    private var lastCapabilityDiagnostic: CapabilityDiagnostic? = null
+
     // Tier 1: Prompt API client (lazy, nullable)
     private var promptClient: com.google.mlkit.genai.prompt.GenerativeModel? = null
+
+    // Tier 2: typed summarizer client (preferred at compile/runtime)
+    private var summarizerClient: Summarizer? = null
+
+    data class CapabilityMetadata(
+        val sdkInt: Int,
+        val device: String,
+        val model: String,
+        val manufacturer: String,
+        val hasAiCore: Boolean,
+        val promptStatus: Int? = null,
+        val summarizationStatus: Int? = null
+    )
+
+    data class CapabilityDiagnostic(
+        val tier: Int,
+        val reason: String,
+        val metadata: CapabilityMetadata
+    )
+
+    /**
+     * Public accessor so callers can persist/emit diagnostics externally if needed.
+     */
+    fun getLastCapabilityDiagnostic(): CapabilityDiagnostic? = lastCapabilityDiagnostic
 
     /**
      * Check if any on-device AI is available and determine the engine tier.
@@ -70,7 +101,7 @@ STRICT RULES:
     suspend fun isAvailable(): Boolean {
         detectedTier?.let { return it <= 2 }
         return withContext(Dispatchers.IO) {
-            detectTier() <= 2
+            detectTierAndPersistDiagnostic().tier <= 2
         }
     }
 
@@ -79,28 +110,133 @@ STRICT RULES:
      */
     suspend fun getTier(): Int {
         detectedTier?.let { return it }
-        return withContext(Dispatchers.IO) { detectTier() }
+        return withContext(Dispatchers.IO) { detectTierAndPersistDiagnostic().tier }
     }
 
     /**
-     * Probe device capabilities and select the best engine tier.
-     * Must be called on a background thread.
+     * Unified decision function for capabilities that includes:
+     * - AICore package presence
+     * - API feature status for prompt + summarization
+     * - Device/API metadata and allow/deny checks
      */
-    private fun detectTier(): Int {
-        // First, check if AICore is even installed
-        val hasAiCore = try {
-            context.packageManager.getPackageInfo("com.google.android.aicore", 0)
+    private suspend fun decideBestTier(): CapabilityDiagnostic {
+        val baseMetadata = CapabilityMetadata(
+            sdkInt = Build.VERSION.SDK_INT,
+            device = Build.DEVICE.orEmpty(),
+            model = Build.MODEL.orEmpty(),
+            manufacturer = Build.MANUFACTURER.orEmpty(),
+            hasAiCore = hasAiCoreInstalled()
+        )
+
+        if (!baseMetadata.hasAiCore) {
+            return CapabilityDiagnostic(
+                tier = 3,
+                reason = "aicore_missing",
+                metadata = baseMetadata
+            )
+        }
+
+        if (isDeviceDenied(baseMetadata)) {
+            return CapabilityDiagnostic(
+                tier = 3,
+                reason = "device_denylist",
+                metadata = baseMetadata
+            )
+        }
+
+        // Tier 1 probe (Prompt API).
+        val promptStatus = try {
+            val client = com.google.mlkit.genai.prompt.Generation.getClient()
+            val status = client.checkStatus().await()
+            promptClient = client
+            status as? Int
+        } catch (e: Exception) {
+            Log.d(TAG, "Prompt API probe failed: ${e.message}")
+            null
+        }
+
+        if (promptStatus == 0 || promptStatus == 1) {
+            return CapabilityDiagnostic(
+                tier = 1,
+                reason = "prompt_available_or_downloadable",
+                metadata = baseMetadata.copy(promptStatus = promptStatus)
+            )
+        }
+
+        // Tier 2 probe (typed API first, reflection fallback only if needed).
+        val summarizationTypedStatus = tryTypedSummarizationStatus()
+        if (summarizationTypedStatus != null &&
+            (summarizationTypedStatus == FeatureStatus.AVAILABLE || summarizationTypedStatus == FeatureStatus.DOWNLOADABLE)
+        ) {
+            return CapabilityDiagnostic(
+                tier = 2,
+                reason = "summarization_typed_available_or_downloadable",
+                metadata = baseMetadata.copy(
+                    promptStatus = promptStatus,
+                    summarizationStatus = summarizationTypedStatus
+                )
+            )
+        }
+
+        val summarizationReflectedStatus = tryReflectedSummarizationStatus()
+        if (summarizationReflectedStatus == 0 || summarizationReflectedStatus == 1) {
+            return CapabilityDiagnostic(
+                tier = 2,
+                reason = "summarization_reflection_available_or_downloadable",
+                metadata = baseMetadata.copy(
+                    promptStatus = promptStatus,
+                    summarizationStatus = summarizationReflectedStatus
+                )
+            )
+        }
+
+        return CapabilityDiagnostic(
+            tier = 3,
+            reason = "no_ai_feature_available",
+            metadata = baseMetadata.copy(
+                promptStatus = promptStatus,
+                summarizationStatus = summarizationTypedStatus ?: summarizationReflectedStatus
+            )
+        )
+    }
+
+    private suspend fun detectTierAndPersistDiagnostic(): CapabilityDiagnostic {
+        val diagnostic = decideBestTier()
+        detectedTier = diagnostic.tier
+        lastCapabilityDiagnostic = diagnostic
+
+        Log.d(
+            TAG,
+            "Capability decision -> tier=${diagnostic.tier}, reason=${diagnostic.reason}, metadata=${diagnostic.metadata}"
+        )
+        return diagnostic
+    }
+
+    private fun hasAiCoreInstalled(): Boolean {
+        return try {
+            context.packageManager.getPackageInfo(AICORE_PACKAGE, 0)
             true
         } catch (_: Exception) {
             false
         }
+    }
 
-        if (!hasAiCore) {
-            Log.d(TAG, "AICore not installed → Tier 3 (fallback)")
-            detectedTier = 3
-            return 3
+    private fun isDeviceDenied(metadata: CapabilityMetadata): Boolean {
+        val manufacturerDenied = MANUFACTURER_DENYLIST.any {
+            metadata.manufacturer.equals(it, ignoreCase = true)
+        }
+        val modelDenied = MODEL_DENYLIST_SUBSTRINGS.any {
+            metadata.model.contains(it, ignoreCase = true)
         }
 
+        // Keep this explicit so we can evolve policy without touching probe flow.
+        return manufacturerDenied || modelDenied
+    }
+
+    private suspend fun tryTypedSummarizationStatus(): Int? {
+        return try {
+            val summarizer = summarizerClient ?: Summarization.getClient(context).also { summarizerClient = it }
+            summarizer.checkFeatureStatus().await()
         // Try Tier 1: Prompt API
         try {
             val client = com.google.mlkit.genai.prompt.Generation.getClient()
@@ -116,47 +252,28 @@ STRICT RULES:
                 return 1
             }
         } catch (e: Exception) {
-            Log.d(TAG, "Prompt API probe failed: ${e.message}")
+            Log.d(TAG, "Typed summarization probe failed: ${e.message}")
+            null
         }
+    }
 
-        // Try Tier 2: Summarization API
-        try {
+    private suspend fun tryReflectedSummarizationStatus(): Int? {
+        return try {
             val summClass = Class.forName("com.google.mlkit.genai.summarization.Summarization")
-            val getClient = summClass.methods.firstOrNull { it.name == "getClient" }
-            if (getClient != null) {
-                val client = if (getClient.parameterCount == 0) {
-                    getClient.invoke(null)
-                } else {
-                    getClient.invoke(null, context)
-                }
-                if (client != null) {
-                    val checkMethod = client.javaClass.methods.firstOrNull { it.name == "checkFeatureStatus" }
-                    if (checkMethod != null) {
-                        val statusTask = checkMethod.invoke(client)
-                        val statusResult = awaitGmsTask<Any>(statusTask)
-                        if (statusResult is Int && statusResult <= 1) {
-                            detectedTier = 2
-                            Log.d(TAG, "Summarization API available → Tier 2 (basic)")
-                            return 2
-                        }
-                    }
-                }
-            }
+            val getClient = summClass.methods.firstOrNull { it.name == "getClient" } ?: return null
+            val client = if (getClient.parameterCount == 0) getClient.invoke(null) else getClient.invoke(null, context)
+                ?: return null
+            val checkMethod = client.javaClass.methods.firstOrNull { it.name == "checkFeatureStatus" } ?: return null
+            val statusTask = checkMethod.invoke(client)
+            awaitGmsTask<Int>(statusTask)
         } catch (e: Exception) {
-            Log.d(TAG, "Summarization API probe failed: ${e.message}")
+            Log.d(TAG, "Reflected summarization probe failed: ${e.message}")
+            null
         }
-
-        Log.d(TAG, "No AI engine available → Tier 3 (fallback)")
-        detectedTier = 3
-        return 3
     }
 
     /**
      * Summarize notifications from a single application.
-     *
-     * @param appName Display name of the originating application.
-     * @param notificationTexts List of extracted notification strings (may include media metadata markers).
-     * @return Bulleted summary string, or null if summarization failed entirely.
      */
     suspend fun summarize(appName: String, notificationTexts: List<String>): String? {
         if (notificationTexts.isEmpty()) return null
@@ -178,22 +295,18 @@ STRICT RULES:
             val client = promptClient ?: com.google.mlkit.genai.prompt.Generation.getClient()
             promptClient = client
 
-            // Build the notification payload with XML delimiters for prompt injection safety
             val payload = buildString {
                 appendLine(SYSTEM_PROMPT)
                 appendLine()
                 appendLine("<notifications app=\"${escapeXmlAttribute(appName)}\">")
                 // Token budget: ~3000 words max. Truncate oldest if too long.
                 val truncated = truncateForTokenBudget(texts)
-                truncated.forEachIndexed { i, text ->
-                    appendLine("[${i + 1}] $text")
-                }
+                truncated.forEachIndexed { i, text -> appendLine("[${i + 1}] $text") }
                 appendLine("</notifications>")
                 appendLine()
                 appendLine("SUMMARY:")
             }
 
-            // Build request with deterministic parameters
             val request = com.google.mlkit.genai.prompt.generateContentRequest(
                 com.google.mlkit.genai.prompt.TextPart(payload)
             ) {
@@ -204,19 +317,32 @@ STRICT RULES:
 
             val response = client.generateContent(request)
             val result = response.candidates.firstOrNull()?.text
-            if (!result.isNullOrBlank()) {
-                return result.trim()
-            }
+            if (!result.isNullOrBlank()) return result.trim()
         } catch (e: Exception) {
             Log.e(TAG, "Prompt API inference failed: ${e.message}")
         }
-        // Fallback if Prompt API fails at runtime
         return fallbackSummarize(texts)
     }
 
     // ── Tier 2: Summarization API ───────────────────────────────────────
 
     private suspend fun summarizeWithSummarizationApi(appName: String, texts: List<String>): String {
+        val inputText = buildString {
+            appendLine("Notifications from $appName:")
+            texts.forEach { line -> appendLine("- $line") }
+        }
+
+        // Preferred path: direct typed API usage for compile-time safety.
+        try {
+            val summarizer = summarizerClient ?: Summarization.getClient(context).also { summarizerClient = it }
+            val request = SummarizationRequest.builder(inputText).build()
+            val result = summarizer.runInference(request).await()
+            if (!result.isNullOrBlank()) return result
+        } catch (e: Exception) {
+            Log.e(TAG, "Typed summarization inference failed: ${e.message}")
+        }
+
+        // Guarded fallback path: reflection only if typed path fails at runtime.
         try {
             val summClass = Class.forName("com.google.mlkit.genai.summarization.Summarization")
             val getClient = summClass.methods.firstOrNull { it.name == "getClient" }
@@ -227,13 +353,6 @@ STRICT RULES:
             } else {
                 getClient.invoke(null, context)
             } ?: return fallbackSummarize(texts)
-
-            val inputText = buildString {
-                appendLine("Notifications from $appName:")
-                texts.forEach { line ->
-                    appendLine("- $line")
-                }
-            }
 
             val inferMethod = client.javaClass.methods.firstOrNull {
                 it.name == "runInference" && it.parameterCount == 1
@@ -257,22 +376,17 @@ STRICT RULES:
 
                 val inferTask = inferMethod.invoke(client, param)
                 val result = awaitGmsTask<Any>(inferTask)
-                result?.toString()?.let { summary ->
-                    if (summary.isNotBlank()) return summary
-                }
+                result?.toString()?.takeIf { it.isNotBlank() }?.let { return it }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Summarization API inference failed: ${e.message}")
+            Log.e(TAG, "Reflection summarization inference failed: ${e.message}")
         }
+
         return fallbackSummarize(texts)
     }
 
     // ── Tier 3: Structured Fallback ─────────────────────────────────────
 
-    /**
-     * Structured bullet-point formatting of raw notification text.
-     * No AI involved — works on every device.
-     */
     private fun fallbackSummarize(texts: List<String>): String {
         return texts
             .map { it.trim() }
@@ -282,14 +396,9 @@ STRICT RULES:
 
     // ── Utilities ───────────────────────────────────────────────────────
 
-    /**
-     * Truncate notification list to fit within ~3000 word token budget.
-     * Drops oldest (first) entries, retaining the most recent.
-     */
     private fun truncateForTokenBudget(texts: List<String>, maxWords: Int = 2800): List<String> {
         var totalWords = 0
         val result = mutableListOf<String>()
-        // Iterate from newest (last) to oldest (first)
         for (text in texts.reversed()) {
             val wordCount = text.split("\\s+".toRegex()).size
             if (totalWords + wordCount > maxWords && result.isNotEmpty()) break
