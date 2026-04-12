@@ -2,6 +2,7 @@ package com.launcher.projectvoid.helper
 
 import android.content.Context
 import android.util.Log
+import com.google.mlkit.genai.common.FeatureStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.resumeWithException
@@ -29,6 +30,20 @@ class AiSummarizer(private val context: Context) {
 
     companion object {
         private const val TAG = "AiSummarizer"
+
+        /**
+         * Maps Prompt API feature status to a tier decision.
+         *
+         * Returning null keeps the caller in control of fallback behavior, which makes this helper easy to
+         * unit test and safer if ML Kit introduces new status values in future releases.
+         */
+        internal fun mapPromptStatusToTier(@FeatureStatus status: Int): Int? = when (status) {
+            FeatureStatus.AVAILABLE,
+            FeatureStatus.DOWNLOADABLE,
+            FeatureStatus.DOWNLOADING -> 1
+            FeatureStatus.UNAVAILABLE -> null
+            else -> null
+        }
 
         /** Deterministic prompt for Gemini Nano via Prompt API. */
         private const val SYSTEM_PROMPT = """ROLE: You are a concise notification summarizer.
@@ -92,12 +107,12 @@ STRICT RULES:
             val status = kotlinx.coroutines.runBlocking {
                 client.checkStatus()
             }
-            val statusValue = status as? Int ?: -1
-            // FeatureStatus.AVAILABLE = 0, DOWNLOADABLE = 1
-            if (statusValue == 0 || statusValue == 1) {
+            val tierDecision = mapPromptStatusToTier(status)
+            Log.d(TAG, "Prompt API status=$status, mappedTier=${tierDecision ?: 3}")
+            if (tierDecision == 1) {
                 promptClient = client
                 detectedTier = 1
-                Log.d(TAG, "Prompt API available → Tier 1 (contextual)")
+                Log.d(TAG, "Prompt API selected → Tier 1 (contextual)")
                 return 1
             }
         } catch (e: Exception) {
