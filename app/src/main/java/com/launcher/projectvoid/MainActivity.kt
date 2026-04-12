@@ -208,14 +208,11 @@ class MainActivity : ComponentActivity() {
                     }
                     composable<NotificationPanelRoute> {
                         NotificationsScreen(
-                            onBack = { navController.popBackStack() },
                             notifications = notifications
                         )
                     }
                     composable<NotificationSummaryRoute> {
-                        NotificationSummaryScreen(
-                            onBack = { navController.popBackStack() }
-                        )
+                        NotificationSummaryScreen()
                     }
                     composable<WidgetsRoute> {
                         WidgetsScreen(

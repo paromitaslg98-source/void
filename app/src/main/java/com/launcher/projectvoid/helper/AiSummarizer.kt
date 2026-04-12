@@ -7,6 +7,7 @@ import com.google.mlkit.genai.summarization.FeatureStatus
 import com.google.mlkit.genai.summarization.Summarization
 import com.google.mlkit.genai.summarization.SummarizationRequest
 import com.google.mlkit.genai.summarization.Summarizer
+import com.google.mlkit.genai.common.FeatureStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -32,6 +33,20 @@ class AiSummarizer(private val context: Context) {
          */
         private val MODEL_DENYLIST_SUBSTRINGS = setOf<String>()
         private val MANUFACTURER_DENYLIST = setOf<String>()
+
+        /**
+         * Maps Prompt API feature status to a tier decision.
+         *
+         * Returning null keeps the caller in control of fallback behavior, which makes this helper easy to
+         * unit test and safer if ML Kit introduces new status values in future releases.
+         */
+        internal fun mapPromptStatusToTier(@FeatureStatus status: Int): Int? = when (status) {
+            FeatureStatus.AVAILABLE,
+            FeatureStatus.DOWNLOADABLE,
+            FeatureStatus.DOWNLOADING -> 1
+            FeatureStatus.UNAVAILABLE -> null
+            else -> null
+        }
 
         /** Deterministic prompt for Gemini Nano via Prompt API. */
         private const val SYSTEM_PROMPT = """ROLE: You are a concise notification summarizer.
@@ -222,6 +237,20 @@ STRICT RULES:
         return try {
             val summarizer = summarizerClient ?: Summarization.getClient(context).also { summarizerClient = it }
             summarizer.checkFeatureStatus().await()
+        // Try Tier 1: Prompt API
+        try {
+            val client = com.google.mlkit.genai.prompt.Generation.getClient()
+            val status = kotlinx.coroutines.runBlocking {
+                client.checkStatus()
+            }
+            val tierDecision = mapPromptStatusToTier(status)
+            Log.d(TAG, "Prompt API status=$status, mappedTier=$tierDecision")
+            if (tierDecision == 1) {
+                promptClient = client
+                detectedTier = 1
+                Log.d(TAG, "Prompt API selected → Tier 1 (contextual)")
+                return 1
+            }
         } catch (e: Exception) {
             Log.d(TAG, "Typed summarization probe failed: ${e.message}")
             null
@@ -269,7 +298,8 @@ STRICT RULES:
             val payload = buildString {
                 appendLine(SYSTEM_PROMPT)
                 appendLine()
-                appendLine("<notifications app=\"$appName\">")
+                appendLine("<notifications app=\"${escapeXmlAttribute(appName)}\">")
+                // Token budget: ~3000 words max. Truncate oldest if too long.
                 val truncated = truncateForTokenBudget(texts)
                 truncated.forEachIndexed { i, text -> appendLine("[${i + 1}] $text") }
                 appendLine("</notifications>")
@@ -358,7 +388,10 @@ STRICT RULES:
     // ── Tier 3: Structured Fallback ─────────────────────────────────────
 
     private fun fallbackSummarize(texts: List<String>): String {
-        return texts.joinToString("\n") { "• $it" }
+        return texts
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .joinToString("\n") { "• $it" }
     }
 
     // ── Utilities ───────────────────────────────────────────────────────
@@ -373,6 +406,14 @@ STRICT RULES:
             totalWords += wordCount
         }
         return result
+    }
+
+    private fun escapeXmlAttribute(value: String): String {
+        return value
+            .replace("&", "&amp;")
+            .replace("\"", "&quot;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
     }
 
     @Suppress("UNCHECKED_CAST")
