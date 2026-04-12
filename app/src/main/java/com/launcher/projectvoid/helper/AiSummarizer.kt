@@ -104,7 +104,7 @@ STRICT RULES:
      * - API feature status for prompt + summarization
      * - Device/API metadata and allow/deny checks
      */
-    private fun decideBestTier(): CapabilityDiagnostic {
+    private suspend fun decideBestTier(): CapabilityDiagnostic {
         val baseMetadata = CapabilityMetadata(
             sdkInt = Build.VERSION.SDK_INT,
             device = Build.DEVICE.orEmpty(),
