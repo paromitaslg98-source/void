@@ -15,6 +15,7 @@ import kotlinx.coroutines.withContext
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
+import com.google.mlkit.genai.common.FeatureStatus
 import com.google.common.util.concurrent.ListenableFuture
 
 /**
@@ -38,18 +39,8 @@ class AiSummarizer(private val context: Context) {
         private val MODEL_DENYLIST_SUBSTRINGS = setOf<String>()
         private val MANUFACTURER_DENYLIST = setOf<String>()
 
-        /** 
-         * Feature status constants as defined in GenAI common. 
-         * We use literals here to avoid unresolved reference issues with tiered beta libraries.
-         */
-        private const val STATUS_AVAILABLE = 0
-        private const val STATUS_DOWNLOADABLE = 1
-        private const val STATUS_DOWNLOADING = 2
-
         internal fun mapPromptStatusToTier(status: Int): Int? = when (status) {
-            STATUS_AVAILABLE,
-            STATUS_DOWNLOADABLE,
-            STATUS_DOWNLOADING -> 1
+            FeatureStatus.AVAILABLE -> 1
             else -> null
         }
 
@@ -161,7 +152,7 @@ STRICT RULES:
             null
         }
 
-        if (promptStatus == 0 || promptStatus == 1) {
+        if (promptStatus == FeatureStatus.AVAILABLE || promptStatus == FeatureStatus.DOWNLOADABLE) {
             return CapabilityDiagnostic(
                 tier = 1,
                 reason = "prompt_available_or_downloadable",
@@ -172,7 +163,7 @@ STRICT RULES:
         // Tier 2 probe (typed API only).
         val summarizationTypedStatus = tryTypedSummarizationStatus()
         if (summarizationTypedStatus != null &&
-            (summarizationTypedStatus == STATUS_AVAILABLE || summarizationTypedStatus == STATUS_DOWNLOADABLE)
+            (summarizationTypedStatus == FeatureStatus.AVAILABLE || summarizationTypedStatus == FeatureStatus.DOWNLOADABLE)
         ) {
             return CapabilityDiagnostic(
                 tier = 2,
