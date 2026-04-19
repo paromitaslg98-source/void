@@ -69,3 +69,9 @@ obj/
 
 # IDE run configurations
 .idea/runConfigurations/
+
+# Top-level scratch files and archives
+/*.kt
+/*.zip
+/*.tar.gz
+/*.rar
