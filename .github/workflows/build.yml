@@ -1,23 +1,22 @@
-name: Android Build - Develop, Stage, Master
+name: Android CI/CD Pipeline
 
 on:
   push:
     branches: [ master, stage, develop ]
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
 
   # ─────────────────────────────────────────────
-  # DEVELOP — Unit tests + lint only
+  # DEVELOP — Unit tests + Lint only
   # ─────────────────────────────────────────────
-  test-develop:
+  build-develop:
     if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -40,18 +39,26 @@ jobs:
         if: always()
         with:
           name: develop-reports
-          path: app/build/reports/
+          path: '**/build/reports/'
           retention-days: 14
+
 
   # ─────────────────────────────────────────────
   # STAGE — Debug build → GitHub Pre-release
   # ─────────────────────────────────────────────
-  build-debug-stage:
+  build-stage:
     if: github.ref == 'refs/heads/stage'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: stage-build
+      cancel-in-progress: true
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -72,49 +79,101 @@ jobs:
       - name: Build Debug APK
         run: ./gradlew assembleDebug
 
+      - name: Find Debug APK Path
+        id: locate
+        run: |
+          APK_PATH=$(find . -name "*debug.apk" | head -n 1)
+          echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
+
+      - name: Extract Version from Gradle
+        id: version
+        run: |
+          GRADLE_FILE=$(find . -maxdepth 2 -name "build.gradle" -o -name "build.gradle.kts" | head -n 1)
+          VERSION=""
+          if grep -q -E 'major\s*=\s*[0-9]+' "$GRADLE_FILE"; then
+            MAJOR=$(grep -E 'major\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+' | head -1)
+            MINOR=$(grep -E 'minor\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+' | head -1)
+            PATCH=$(grep -E 'patch\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+' | head -1)
+            BUILD=$(grep -E 'build\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+' | head -1)
+            VERSION="${MAJOR}.${MINOR}.${PATCH}.${BUILD}"
+          else
+            VERSION=$(grep -E 'versionName\s*=?\s*"[^\"]+"' "$GRADLE_FILE" | grep -v '\$' | head -1 | sed -E 's/.*versionName\s*=?\s*"([^"]+)".*/\1/')
+          fi
+          VERSION=${VERSION#v}
+          if [ -z "$VERSION" ]; then VERSION="unknown"; fi
+          echo "app_version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Generate Changelog
+        id: changelog
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            LOG=$(git log --pretty="- %s (%h)" HEAD)
+          else
+            LOG=$(git log --pretty="- %s (%h)" ${PREV_TAG}..HEAD)
+          fi
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$LOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Rename APK
+        id: rename
+        run: |
+          VERSION="${{ steps.version.outputs.app_version }}"
+          NEW_NAME="void-stage-v${VERSION}.apk"
+          mv "${{ steps.locate.outputs.apk_path }}" "${NEW_NAME}"
+          echo "renamed_apk=${NEW_NAME}" >> $GITHUB_OUTPUT
+
       - name: Upload Debug APK to Artifacts
         uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: stage-debug-apk
-          path: app/build/outputs/apk/debug/
+          name: void-stage-v${{ steps.version.outputs.app_version }}
+          path: ${{ steps.rename.outputs.renamed_apk }}
           retention-days: 30
 
-      - name: Upload Test & Lint Reports
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: stage-reports
-          path: app/build/reports/
-          retention-days: 14
-
-      - name: Create Pre-release and Upload Debug APK
+      - name: Create Pre-release and Upload APK
         if: success()
         uses: softprops/action-gh-release@v2
         with:
-          files: app/build/outputs/apk/debug/app-debug.apk
-          tag_name: stage-${{ github.run_number }}
-          name: "Stage Debug Build #${{ github.run_number }}"
+          files: ${{ steps.rename.outputs.renamed_apk }}
+          tag_name: stage-v${{ steps.version.outputs.app_version }}-${{ github.run_number }}
+          name: "Void Launcher v${{ steps.version.outputs.app_version }} (Stage #${{ github.run_number }})"
           body: |
-            🔧 Debug APK for internal testing (stage branch)
+            🔧 **Debug build for internal testing**
 
-            - **Commit:** ${{ github.sha }}
-            - **Branch:** stage
-            - **Build Number:** ${{ github.run_number }}
+            ## What's Changed
+            ${{ steps.changelog.outputs.changelog }}
+
+            ---
+            | Field | Value |
+            |---|---|
+            | **Version** | v${{ steps.version.outputs.app_version }} |
+            | **Branch** | stage |
+            | **Build** | #${{ github.run_number }} |
+            | **Commit** | ${{ github.sha }} |
+            | **Triggered by** | @${{ github.actor }} |
+
+            > ⚠️ This is a debug pre-release for internal testing only. Not for production use.
           draft: false
           prerelease: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+
   # ─────────────────────────────────────────────
   # MASTER — Signed Release build → GitHub Stable Release
   # ─────────────────────────────────────────────
-  build-release-master:
+  build-master:
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -132,27 +191,69 @@ jobs:
       - name: Run Lint Analysis
         run: ./gradlew lintRelease
 
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.SIGNING_KEY }}" | base64 --decode > ${{ github.workspace }}/release.jks
+
       - name: Build Release APK
         run: ./gradlew assembleRelease
-
-      - name: Sign APK
-        uses: r0adkll/sign-android-release@v1
-        id: sign_app
-        with:
-          releaseDirectory: app/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
-          alias: ${{ secrets.ALIAS }}
-          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
         env:
-          BUILD_TOOLS_VERSION: "35.0.0"
+          KEYSTORE_PATH: ${{ github.workspace }}/release.jks
+          ALIAS: ${{ secrets.ALIAS }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Find Release APK
+        id: locate
+        run: |
+          APK_PATH=$(find . -path "*/apk/release/*.apk" ! -name "*unsigned*" | head -n 1)
+          echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
+
+      - name: Extract Version from Gradle
+        id: version
+        run: |
+          GRADLE_FILE=$(find . -maxdepth 2 -name "build.gradle" -o -name "build.gradle.kts" | head -n 1)
+          VERSION=""
+          if grep -q -E 'major\s*=\s*[0-9]+' "$GRADLE_FILE"; then
+            MAJOR=$(grep -E 'major\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+' | head -1)
+            MINOR=$(grep -E 'minor\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+' | head -1)
+            PATCH=$(grep -E 'patch\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+' | head -1)
+            BUILD=$(grep -E 'build\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+' | head -1)
+            VERSION="${MAJOR}.${MINOR}.${PATCH}.${BUILD}"
+          else
+            VERSION=$(grep -E 'versionName\s*=?\s*"[^\"]+"' "$GRADLE_FILE" | grep -v '\$' | head -1 | sed -E 's/.*versionName\s*=?\s*"([^"]+)".*/\1/')
+          fi
+          VERSION=${VERSION#v}
+          if [ -z "$VERSION" ]; then VERSION="unknown"; fi
+          echo "app_version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Generate Changelog
+        id: changelog
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            LOG=$(git log --pretty="- %s (%h)" HEAD)
+          else
+            LOG=$(git log --pretty="- %s (%h)" ${PREV_TAG}..HEAD)
+          fi
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$LOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Rename APK
+        id: rename
+        run: |
+          VERSION="${{ steps.version.outputs.app_version }}"
+          NEW_NAME="void-release-v${VERSION}.apk"
+          mv "${{ steps.locate.outputs.apk_path }}" "${NEW_NAME}"
+          echo "renamed_apk=${NEW_NAME}" >> $GITHUB_OUTPUT
 
       - name: Upload Release APK to Artifacts
         uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: master-release-apk
-          path: ${{steps.sign_app.outputs.signedReleaseFile}}
+          name: void-release-v${{ steps.version.outputs.app_version }}
+          path: ${{ steps.rename.outputs.renamed_apk }}
           retention-days: 90
 
       - name: Upload Test & Lint Reports
@@ -160,22 +261,34 @@ jobs:
         if: always()
         with:
           name: master-reports
-          path: app/build/reports/
+          path: '**/build/reports/'
           retention-days: 30
 
       - name: Create Stable Release and Upload APK
         if: success()
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{steps.sign_app.outputs.signedReleaseFile}}
-          tag_name: release-${{ github.run_number }}
-          name: "Release Build #${{ github.run_number }}"
+          files: ${{ steps.rename.outputs.renamed_apk }}
+          tag_name: v${{ steps.version.outputs.app_version }}+${{ github.run_number }}
+          name: "Void Launcher v${{ steps.version.outputs.app_version }} (Stable Release)"
           body: |
-            🚀 Stable release ready for production
+            🚀 **Production Release `v${{ steps.version.outputs.app_version }}`**
 
-            - **Commit:** ${{ github.sha }}
-            - **Branch:** master
-            - **Build Number:** ${{ github.run_number }}
+            ## What's Changed
+            ${{ steps.changelog.outputs.changelog }}
+
+            ---
+            | Field | Value |
+            |---|---|
+            | **Version** | v${{ steps.version.outputs.app_version }} |
+            | **Branch** | master |
+            | **Build** | #${{ github.run_number }} |
+            | **Commit** | ${{ github.sha }} |
+            | **Triggered by** | @${{ github.actor }} |
+
+            ## Installation
+            Download `void-release-v${{ steps.version.outputs.app_version }}.apk` below.
+            Enable **Install from unknown sources** on your device if installing outside the Play Store.
           draft: false
           prerelease: false
         env:
