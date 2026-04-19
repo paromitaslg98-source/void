@@ -1,12 +1,46 @@
-# VOID Launcher
+<p align="center">
+  <img src="fastlane/metadata/android/en-US/images/icon.png" alt="VOID Launcher" width="128" height="128" style="border-radius: 20%;">
+</p>
 
-VOID Launcher is a high-performance, minimalist Android launcher built from the ground up using **Jetpack Compose** and **Material 3**. It is designed to reduce digital clutter while providing advanced modern features like on-device AI summarization and deep Android 15 integration.
+<h1 align="center">VOID Launcher</h1>
+
+<p align="center">
+  <em>A radically minimalist, high-performance Android launcher designed to combat digital addiction.</em>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Platform-Android-green?style=flat-square&logo=android" alt="Platform">
+  <img src="https://img.shields.io/badge/Min%20SDK-26%20(Oreo)-blue?style=flat-square" alt="Min SDK">
+  <img src="https://img.shields.io/badge/Target%20SDK-35%20(Android%2015)-blue?style=flat-square" alt="Target SDK">
+  <img src="https://img.shields.io/badge/Language-Kotlin-purple?style=flat-square&logo=kotlin" alt="Language">
+  <img src="https://img.shields.io/badge/UI-Jetpack_Compose-orange?style=flat-square&logo=jetpack-compose" alt="UI">
+  <img src="https://img.shields.io/badge/License-GPLv3-red?style=flat-square" alt="License">
+</p>
+
+---
+
+## 🌑 Philosophy
+
+**VOID** is built on the principle of intentionality. By stripping away colorful icons, notification badges, and complex grid layouts, VOID eliminates the psychological triggers that lead to mindless scrolling. It provides a hyper-clean, text-based interface where you are in control of your phone, not the other way around.
+
+---
+
+## ✨ Core Features
+
+- **Text-Only Home Screen**: Pin up to 10 of your most essential apps as clean text labels. No icons, no distractions.
+- **Smart Notification Grouping**: A dedicated screen that groups system notifications by app with smart summaries, categorized by conversation.
+- **On-Device AI Summarization**: Uses Gemini Nano (via ML Kit) to summarize your notifications locally, ensuring privacy and speed.
+- **Integrated Quick Notes**: Fast, text-based checklist for capturing thoughts instantly with priority ordering and reminders.
+- **Deep Android 15 Integration**: Full support for Private Space, allowing you to access hidden and secure apps directly from the drawer.
+- **Digital Wellbeing**: Screen time and unlock counts are integrated directly into the home screen for at-a-glance awareness.
+- **Fluid Gestures**: Intuitive navigation with swipe gestures for Apps, Notifications, and Custom Actions (Notes/Widgets).
+- **Modern UI**: Built with 100% Jetpack Compose and Material 3, providing smooth animations and dynamic theme support.
 
 ---
 
 ## 📱 Screen Flow & Navigation
 
-The application follows a intuitive gesture-based mental model for navigation:
+Navigate your device with a simple, gesture-based mental model:
 
 ```mermaid
 graph TD
@@ -20,83 +54,63 @@ graph TD
     B -- Back --> A
 ```
 
-- **Home Screen**: Your minimalist workspace. It displays the clock, date, and your pinned favorite apps.
-- **App Drawer**: A searchable list of all installed applications. Features instant keyboard launch for power users.
-- **Settings**: Comprehensive customization including theme modes, font selection, and gesture mapping.
-- **Utility Screens**: Configurable screens for **Notes**, **Widgets**, and **AI Notification Summary**.
+---
+
+## 🛠 Technical Architecture
+
+VOID Launcher leverages the latest Android development stack for maximum performance and a minimal footprint.
+
+- **UI Framework**: [Jetpack Compose](https://developer.android.com/compose) with [Material 3](https://m3.material.io/).
+- **Programming Language**: 100% Kotlin.
+- **State Management**: Clean Architecture with Fragments/Single-Activity and shared `MainViewModel` using Kotlin Coroutines and Flow.
+- **Intelligence**: Integrated with **ML Kit GenAI** for on-device notification processing.
+- **Background Tasks**: Powered by `WorkManager` for reliable, low-impact operations like wallpaper updates.
+- **Persistence**: Hybrid approach using `SharedPreferences` and JSON for lightweight, fast data access.
 
 ---
 
-## 🛠 Project Structure
+## 🚀 Getting Started
 
-The project follows a clean, modular architecture organized by functional layer:
+### Prerequisites
+- **Android Studio Koala** (or newer)
+- **JDK 17** or **JDK 21**
+- **Android SDK Platform 35**
 
-- **`com.knownassurajit.app.launcher.voidlauncher`**
-    - `MainActivity.kt`: The single-activity entry point hosting the Compose NavHost.
-    - `AppRoutes.kt`: Type-safe navigation routes using Kotlin Serialization.
-    - `MainViewModel.kt` / `MainUiViewModel.kt`: Hoisting UI state and business logic.
-- **`ui/`**
-    - `screen/`: Implementation of all Jetpack Compose screens.
-    - `theme/`: Material 3 design system tokens (Color, Type, Theme).
-- **`data/`**
-    - Repositories and models for Notes, Apps, and Preferences.
-- **`helper/`**
-    - `AiSummarizer.kt`: Integration with ML Kit GenAI for on-device summaries.
-    - `NotificationService.kt`: Background listener for processing incoming notifications.
-    - `AppCacheManager.kt`: Efficient caching of app metadata and icons.
-- **`listener/`**
-    - Hardware and OS listeners for device administration and profile changes.
+### Building from Source
 
----
-
-## 📖 User Manual
-
-### Gestures & Interaction
-- **Launch Apps**: Tap an app name on the home screen or search in the app drawer.
-- **Access Settings**: Long-press any empty area on the Home Screen.
-- **Quick Lock**: Double-tap on the Home Screen (requires Accessibility Service or Device Admin permission).
-- **Setup Gestures**: Go to `Settings > Gestures` to map left and right swipes to your preferred tools (Notes, Widgets, or AI Summary).
-
-### AI Notification Summary
-VOID uses Gemini Nano (via ML Kit) to summarize your notifications locally on your device. 
-- Enable the feature in Settings.
-- Swipe to the Notification Summary screen to see a distilled view of your recent alerts.
-- *Note: Requires a device with AICore support (e.g., Pixel 8+, Galaxy S24+).*
-
-### Private Space (Android 15+)
-- VOID automatically detects and isolates Private Space profiles.
-- Hidden apps appear in a dedicated section at the bottom of the App Drawer.
-- Profile locking/unlocking is synchronized with system biometric states.
-
----
-
-## 🚀 Build & Development
-
-### Prerequisite Environment
-- **JDK 21** (Required for current build toolchain)
-- **Android SDK 35**
-- **Gradle 8.7+**
-
-### Standard Commands
 ```bash
-# Clean and Build Debug APK
+# Clone the repository
+git clone https://github.com/knownassurajit/void.git
+cd void
+
+# Build the debug APK
 ./gradlew clean :app:assembleDebug
-
-# Run Unit Tests
-./gradlew :app:testDebugUnitTest
-
-# Run Lint Analysis
-./gradlew lintDebug
 ```
 
+The output APK will be located at `app/build/outputs/apk/debug/`.
+
 ---
 
-## ⚖️ License & Credits
+## 🛡 Privacy & Security
 
-- **License**: GPL-3.0
-- **Typography**: Inter (RSMS), Google Sans.
+VOID is designed with privacy as a first-class citizen:
+- **No Ads. No Tracking.**
+- **Local AI**: All summarization happens on-device using Gemini Nano. Your data never leaves your phone.
+- **Open Source**: The code is fully transparent and open for audit.
+
+---
+
+## 📄 License & Credits
+
+VOID is a heavily restructured and modernized fork of **Olauncher**. We credit the original project for the foundational concept of a minimalist, text-based launcher.
+
+- **License**: This project is licensed under the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.en.html).
+- **Original Base**: [Olauncher](https://github.com/tanujnotes/olauncher) by Tanuj.
+- **Typography**: Inter (RSMS) and Google Sans.
 - **Icons**: Material Symbols (Google).
 
 ---
 
-*“Are you using your phone, or is your phone using you?”* — VOID Launcher
+<p align="center">
+  <em>“Are you using your phone, or is your phone using you?”</em>
+</p>
