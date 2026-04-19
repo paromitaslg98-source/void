@@ -352,28 +352,6 @@ class EventLogWrapper(private val context: Context) {
     fun aggregateSimpleUsageStats(usageStats: List<SimpleUsageStat>): Long {
         return usageStats.sumOf { it.timeUsed }
     }
-
-    /**
-     * Retrieves the number of times the device was unlocked (KEYGUARD_HIDDEN events) in the given timeframe.
-     */
-    fun getScreenUnlocks(start: Long, end: Long): Int {
-        var unlocks = 0
-        try {
-            val events = usageStatsManager.queryEvents(start, end)
-            val event = UsageEvents.Event()
-            while (events.hasNextEvent()) {
-                events.getNextEvent(event)
-                // KEYGUARD_HIDDEN (18) indicates the device was unlocked
-                if (event.eventType == 18) {
-                    unlocks++
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        return unlocks
-    }
-    
     /**
      * Stores a class name and its corresponding package.
      */

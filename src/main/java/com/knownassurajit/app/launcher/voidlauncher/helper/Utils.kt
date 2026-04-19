@@ -85,15 +85,6 @@ suspend fun getAppsList(
             val collator = Collator.getInstance()
 
             for (profile in userManager.userProfiles) {
-                // If the profile is a Private Space, skip adding its apps to the regular mixed list.
-                // We handle these separately via explicit querying when the Private Space section is unlocked.
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-                    val userInfo = launcherApps.getLauncherUserInfo(profile)
-                    if (userInfo != null && userInfo.userType == UserManager.USER_TYPE_PROFILE_PRIVATE) {
-                        continue
-                    }
-                }
-
                 for (app in launcherApps.getActivityList(null, profile)) {
                     val appLabelShown = prefs.getAppRenameLabel(app.applicationInfo.packageName)
                         .ifBlank { app.label.toString() }

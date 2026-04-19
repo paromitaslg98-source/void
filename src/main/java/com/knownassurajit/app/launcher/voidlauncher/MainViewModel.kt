@@ -457,10 +457,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
         )
         val viewTimeSpent = appContext.formattedTimeSpent(timeSpent)
-        val unlocks = eventLogWrapper.getScreenUnlocks(startTime, endTime)
-        val text = if (unlocks > 0) "$viewTimeSpent • $unlocks unlocks" else viewTimeSpent
-        
-        screenTimeValue.postValue(text)
+        screenTimeValue.postValue(viewTimeSpent)
         prefs.screenTimeLastUpdated = endTime
     }
 
