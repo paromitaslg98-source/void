@@ -96,11 +96,8 @@ class MainActivity : ComponentActivity() {
                 // hardware inset even before the bar is programmatically hidden.
                 val density = LocalDensity.current
                 val statusBarHeightDp = with(density) {
-                    val heightPx = android.view.WindowInsets.CONSUMED.let {
-                        // Fallback: read from system resource
-                        val resourceId = resources.getIdentifier("status_bar_height", "dimen", "android")
-                        if (resourceId > 0) resources.getDimensionPixelSize(resourceId) else 0
-                    }
+                    val resourceId = resources.getIdentifier("status_bar_height", "dimen", "android")
+                    val heightPx = if (resourceId > 0) resources.getDimensionPixelSize(resourceId) else 0
                     if (heightPx > 0) (heightPx / density.density).dp else 24.dp
                 }
 
