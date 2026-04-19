@@ -1,8 +1,4 @@
-<<<<<<< HEAD:src/main/java/com/knownassurajit/app/launcher/voidlauncher/data/NoteRepository.kt
 package com.knownassurajit.app.launcher.voidlauncher.data
-=======
-package com.voidlauncher.app.data
->>>>>>> 7c83749 (rebasing develop from stage (#44)):app/src/main/java/com/launcher/projectvoid/data/NoteRepository.kt
 
 import android.content.Context
 import android.content.SharedPreferences

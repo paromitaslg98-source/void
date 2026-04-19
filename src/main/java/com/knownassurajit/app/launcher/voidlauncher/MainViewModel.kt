@@ -1,8 +1,4 @@
-<<<<<<< HEAD:src/main/java/com/knownassurajit/app/launcher/voidlauncher/MainViewModel.kt
 package com.knownassurajit.app.launcher.voidlauncher
-=======
-package com.voidlauncher.app
->>>>>>> 7c83749 (rebasing develop from stage (#44)):app/src/main/java/com/launcher/projectvoid/MainViewModel.kt
 
 import android.app.ActivityOptions
 import android.app.Application
@@ -14,7 +10,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkManager
-<<<<<<< HEAD:src/main/java/com/knownassurajit/app/launcher/voidlauncher/MainViewModel.kt
 import com.knownassurajit.app.launcher.voidlauncher.data.AppModel
 import com.knownassurajit.app.launcher.voidlauncher.data.Constants
 import com.knownassurajit.app.launcher.voidlauncher.data.Prefs
@@ -26,20 +21,6 @@ import com.knownassurajit.app.launcher.voidlauncher.helper.isVoidDefault
 import com.knownassurajit.app.launcher.voidlauncher.helper.isPackageInstalled
 import com.knownassurajit.app.launcher.voidlauncher.helper.showToast
 import com.knownassurajit.app.launcher.voidlauncher.helper.usageStats.EventLogWrapper
-=======
-import com.voidlauncher.app.data.AppModel
-import com.voidlauncher.app.data.Constants
-import com.voidlauncher.app.data.Prefs
-import com.voidlauncher.app.helper.SingleLiveEvent
-import com.voidlauncher.app.helper.WallpaperWorker
-import com.voidlauncher.app.helper.formattedTimeSpent
-import com.voidlauncher.app.helper.getAppsList
-import com.voidlauncher.app.helper.hasBeenMinutes
-import com.voidlauncher.app.helper.isVoidDefault
-import com.voidlauncher.app.helper.isPackageInstalled
-import com.voidlauncher.app.helper.showToast
-import com.voidlauncher.app.helper.usageStats.EventLogWrapper
->>>>>>> 7c83749 (rebasing develop from stage (#44)):app/src/main/java/com/launcher/projectvoid/MainViewModel.kt
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
@@ -448,23 +429,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun isVoidDefault() {
         isVoidDefault.value = isVoidDefault(appContext)
-    }
-
-    /**
-     * Daily wallpaper scheduling is DISABLED.
-     * VOID Launcher uses a solid system-adaptive background (black/white).
-     * Any pending wallpaper workers are cancelled instead of scheduled.
-     */
-    fun setWallpaperWorker() {
-        // No-op: cancel any existing wallpaper work
-        WorkManager.getInstance(appContext).cancelUniqueWork(Constants.WALLPAPER_WORKER_NAME)
-        prefs.dailyWallpaper = false
-    }
-
-    fun cancelWallpaperWorker() {
-        WorkManager.getInstance(appContext).cancelUniqueWork(Constants.WALLPAPER_WORKER_NAME)
-        prefs.dailyWallpaperUrl = ""
-        prefs.dailyWallpaper = false
     }
 
     fun updateHomeAlignment(gravity: Int) {

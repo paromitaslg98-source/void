@@ -2,14 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <uses-permission android:name="android.permission.SET_WALLPAPER" />
-    <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
     <uses-permission
         android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
-    <!--Used only for downloading wallpapers-->
-    <uses-permission android:name="android.permission.INTERNET" />
+
     <!--Used only for opening alarm app-->
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
     <uses-permission
@@ -26,15 +23,9 @@
         tools:ignore="ProtectedPermissions" />
 
     <application
-<<<<<<< HEAD:src/main/AndroidManifest.xml
-<<<<<<< HEAD:src/main/AndroidManifest.xml
         android:name=".VOIDApp"
-=======
->>>>>>> d08f02b (Revert "develop <- stage (#9)"):app/src/main/AndroidManifest.xml
-=======
-        android:name=".VoidApplication"
->>>>>>> 7c83749 (rebasing develop from stage (#44)):app/src/main/AndroidManifest.xml
         android:allowBackup="true"
+        android:usesCleartextTraffic="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
