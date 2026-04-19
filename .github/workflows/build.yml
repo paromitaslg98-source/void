@@ -132,24 +132,27 @@ jobs:
       - name: Run Lint Analysis
         run: ./gradlew lintRelease
 
-      - name: Decode Keystore
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > ${{ github.workspace }}/release.keystore
-
-      - name: Build Signed Release APK
+      - name: Build Release APK
         run: ./gradlew assembleRelease
+
+      - name: Sign APK
+        uses: r0adkll/sign-android-release@v1
+        id: sign_app
+        with:
+          releaseDirectory: app/build/outputs/apk/release
+          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
+          alias: ${{ secrets.ALIAS }}
+          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
         env:
-          SIGNING_STORE_FILE: ${{ github.workspace }}/release.keystore
-          SIGNING_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          SIGNING_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          BUILD_TOOLS_VERSION: "35.0.0"
 
       - name: Upload Release APK to Artifacts
         uses: actions/upload-artifact@v4
         if: success()
         with:
           name: master-release-apk
-          path: app/build/outputs/apk/release/
+          path: ${{steps.sign_app.outputs.signedReleaseFile}}
           retention-days: 90
 
       - name: Upload Test & Lint Reports
@@ -164,7 +167,7 @@ jobs:
         if: success()
         uses: softprops/action-gh-release@v2
         with:
-          files: app/build/outputs/apk/release/app-release.apk
+          files: ${{steps.sign_app.outputs.signedReleaseFile}}
           tag_name: release-${{ github.run_number }}
           name: "Release Build #${{ github.run_number }}"
           body: |
