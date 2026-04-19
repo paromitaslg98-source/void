@@ -15,7 +15,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.AnimationUtils
-import android.widget.TextView
+//import android.widget.TextView
 import androidx.appcompat.widget.SearchView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -40,6 +40,9 @@ import com.voidlauncher.app.helper.openUrl
 import com.voidlauncher.app.helper.showKeyboard
 import com.voidlauncher.app.helper.showToast
 import com.voidlauncher.app.helper.uninstall
+import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.Direction
+import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.applyDestinationTransitions
+import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.applyExitFor
 
 class AppDrawerFragment : Fragment() {
 
@@ -58,6 +61,11 @@ class AppDrawerFragment : Fragment() {
     private val viewModel: MainViewModel by activityViewModels()
     private var _binding: FragmentAppDrawerBinding? = null
     private val binding get() = _binding!!
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        applyDestinationTransitions(Direction.UP)
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -83,6 +91,11 @@ class AppDrawerFragment : Fragment() {
         initObservers()
         initClickListeners()
         listenForPrivateProfileUnlock()
+
+        // If Private Space exists and is already unlocked, load the apps immediately
+        if (privateProfileHandle != null && !isPrivateSpaceLocked()) {
+            loadAndInjectPrivateApps()
+        }
     }
 
     private fun initViews() {
@@ -98,9 +111,13 @@ class AppDrawerFragment : Fragment() {
                     androidx.appcompat.R.id.search_src_text
                 )
             searchAutoComplete?.apply {
-                setPadding(0, paddingTop, paddingRight, paddingBottom)
-                textSize = (prefs.textSizeScale * 18).toFloat()
-                gravity = prefs.appLabelAlignment
+                val density = resources.displayMetrics.density
+                val startPadding = (28 * density).toInt() // 20dp icon + 8dp gap
+                val verticalPadding = (8 * density).toInt()
+
+                setPadding(startPadding, verticalPadding, paddingRight, verticalPadding)
+                textSize = (prefs.appDrawerTextSizeScale * 24).toFloat()
+                gravity = prefs.appLabelAlignment or android.view.Gravity.CENTER_VERTICAL
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -112,7 +129,7 @@ class AppDrawerFragment : Fragment() {
 
     /**
      * Animates the search icon from left → right when the search bar gains focus,
-     * and back from right → left when it loses focus.
+     * and back from right → left when it loses focus (if the text is empty).
      */
     private fun initSearchIconAnimation() {
         try {
@@ -120,19 +137,37 @@ class AppDrawerFragment : Fragment() {
                 .findViewById<android.widget.AutoCompleteTextView>(
                     androidx.appcompat.R.id.search_src_text
                 ) ?: return
+
+            val density = resources.displayMetrics.density
+            val initialStartPadding = (28 * density).toInt()
+            val verticalPadding = (8 * density).toInt()
+            
             searchAutoComplete.setOnFocusChangeListener { _, hasFocus ->
+                // If losing focus but text is not empty, keep it translated
+                if (!hasFocus && searchAutoComplete.text.isNotEmpty()) {
+                    return@setOnFocusChangeListener
+                }
+
                 val searchIcon = binding.searchIcon
                 val parent = searchIcon.parent as? ViewGroup ?: return@setOnFocusChangeListener
                 // Wait for layout to know real width
                 parent.post {
-                    val maxTranslation = parent.width - searchIcon.width -
-                        searchIcon.paddingStart - searchIcon.paddingEnd - 40f // account for padding
+                    val maxTranslation = (parent.width - searchIcon.width - parent.paddingStart - parent.paddingEnd).toFloat()
                     val targetX = if (hasFocus) maxTranslation else 0f
+                    
                     ObjectAnimator.ofFloat(searchIcon, "translationX", targetX).apply {
                         duration = 300
                         interpolator = AccelerateDecelerateInterpolator()
                         start()
                     }
+
+                    // Remove padding when focused so text can use the space
+                    searchAutoComplete.setPadding(
+                        if (hasFocus) 0 else initialStartPadding,
+                        verticalPadding,
+                        searchAutoComplete.paddingRight,
+                        verticalPadding
+                    )
                 }
             }
         } catch (e: Exception) {
@@ -149,11 +184,13 @@ class AppDrawerFragment : Fragment() {
     private fun resolvePrivateProfile() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) return
         try {
-            val userManager = requireContext().getSystemService(UserManager::class.java) ?: return
-            // Any secondary profile (work or private) will be a separate UserHandle
-            val myHandle = android.os.Process.myUserHandle()
-            val profiles = userManager.userProfiles
-            privateProfileHandle = profiles.firstOrNull { it != myHandle }
+            val launcherApps = requireContext().getSystemService(LauncherApps::class.java) ?: return
+            privateProfileHandle = launcherApps.profiles.firstOrNull { user ->
+                try {
+                    val info = launcherApps.getLauncherUserInfo(user)
+                    info != null && info.userType == UserManager.USER_TYPE_PROFILE_PRIVATE
+                } catch (e: Exception) { false }
+            }
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -224,10 +261,7 @@ class AppDrawerFragment : Fragment() {
         profileUnavailableReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 if (intent?.action != Intent.ACTION_PROFILE_UNAVAILABLE) return
-                // Rebuild list from appFilteredList only (no private apps)
-                val drawerItems = adapter.appFilteredList
-                    .map { DrawerItem.AppItem(it) }.toMutableList<DrawerItem>()
-                adapter.submitList(drawerItems)
+                adapter.clearPrivateApps()
             }
         }
         ContextCompat.registerReceiver(
@@ -248,22 +282,31 @@ class AppDrawerFragment : Fragment() {
             val launcherApps = requireContext()
                 .getSystemService(LauncherApps::class.java) ?: return
             val infoList = launcherApps.getActivityList(null, handle)
-            val privateModels = infoList.map { info ->
+            val privateModels = infoList
+                // Intentional UX: keep private-space management in Settings, not app library.
+                .filterNot { info ->
+                    val label = info.label?.toString()?.trim().orEmpty()
+                    val packageName = info.applicationInfo.packageName
+                    // Hide ALL settings activities from Private Space section
+                    packageName == "com.android.settings" ||
+                    // Also catch any "Add" label regardless of package
+                    label.equals("Add", ignoreCase = true)
+                }
+                .mapNotNull { info ->
+                val label = info.label?.toString()?.trim().orEmpty()
+                val packageName = info.applicationInfo.packageName
+                val className = info.componentName.className
                 AppModel.App(
-                    appLabel = info.label.toString(),
+                    appLabel = label,
                     key = null,
-                    appPackage = info.applicationInfo.packageName,
-                    activityClassName = info.componentName.className,
+                    appPackage = packageName,
+                    activityClassName = className,
                     isNew = false,
                     user = handle
                 )
             }.sortedBy { it.appLabel }
             adapter.injectPrivateApps(privateModels)
-            // Also refresh the main app list from ViewModel so private profile apps
-            // appear in the full list (getAppsList iterates userManager.userProfiles)
             viewModel.getAppList()
-            if (privateModels.isNotEmpty())
-                binding.recyclerView.scrollToPosition(0)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -306,6 +349,29 @@ class AppDrawerFragment : Fragment() {
                     binding.appDrawerTip.visibility = View.GONE
                     binding.appRename.visibility =
                         if (canRename && newText.isNotBlank()) View.VISIBLE else View.GONE
+                        
+                    // If text is cleared, and we don't have focus, revert animation
+                    if (newText.isEmpty() && !binding.search.hasFocus()) {
+                        val searchIcon = binding.searchIcon
+                        ObjectAnimator.ofFloat(searchIcon, "translationX", 0f).apply {
+                            duration = 300
+                            interpolator = AccelerateDecelerateInterpolator()
+                            start()
+                        }
+                        try {
+                            val searchAutoComplete = binding.search.findViewById<android.widget.AutoCompleteTextView>(androidx.appcompat.R.id.search_src_text)
+                            val initialPadding = (28 * resources.displayMetrics.density).toInt()
+                            searchAutoComplete?.setPadding(
+                                initialPadding,
+                                searchAutoComplete.paddingTop,
+                                searchAutoComplete.paddingRight,
+                                searchAutoComplete.paddingBottom
+                            )
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+                    
                     return true
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -374,6 +440,7 @@ class AppDrawerFragment : Fragment() {
                     binding.search.hideKeyboard()
                     prefs.firstHide = false
                     viewModel.showDialog.postValue(Constants.Dialog.HIDDEN)
+                    applyExitFor(Direction.FADE)
                     findNavController().navigate(R.id.action_appListFragment_to_settingsFragment2)
                 }
                 viewModel.getAppList()

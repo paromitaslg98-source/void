@@ -22,31 +22,17 @@
         android:paddingBottom="8dp">
 
         <!-- Search bar card: Material search icon + SearchView + arrow -->
-        <LinearLayout
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:background="@drawable/md3_outlined_card"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
+            android:layout_height="52dp"
+            android:background="@drawable/search_bar_card"
             android:paddingStart="12dp"
-            android:paddingEnd="8dp">
-
-            <!-- Material search icon (animated left↔right on focus) -->
-            <ImageView
-                android:id="@+id/searchIcon"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:layout_marginEnd="8dp"
-                android:alpha="0.6"
-                android:contentDescription="Search"
-                android:src="@drawable/ic_search"
-                android:tint="?attr/primaryColor" />
+            android:paddingEnd="12dp">
 
             <androidx.appcompat.widget.SearchView
                 android:id="@+id/search"
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:layout_weight="1"
                 android:imeOptions="actionSearch"
                 android:textCursorDrawable="@null"
                 app:closeIcon="@null"
@@ -56,13 +42,25 @@
                 app:searchIcon="@null"
                 app:theme="@style/AppSearchText" />
 
+            <!-- Material search icon (animated left↔right on focus) -->
+            <ImageView
+                android:id="@+id/searchIcon"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center_vertical|start"
+                android:alpha="0.6"
+                android:contentDescription="Search"
+                android:src="@drawable/ic_search"
+                android:tint="?attr/primaryColor" />
+
             <!-- Rename action — conditionally shown -->
             <TextView
                 android:id="@+id/appRename"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical|end"
                 android:background="?attr/selectableItemBackground"
-                android:fontFamily="sans-serif-medium"
+                android:fontFamily="@font/google_sans_medium"
                 android:letterSpacing="0.08"
                 android:paddingVertical="6dp"
                 android:paddingHorizontal="8dp"
@@ -72,7 +70,7 @@
                 android:textSize="11sp"
                 android:visibility="gone" />
 
-        </LinearLayout>
+        </FrameLayout>
 
         <!-- Tip text -->
         <TextView
@@ -82,7 +80,7 @@
             android:layout_marginTop="8dp"
             android:layout_marginStart="4dp"
             android:ellipsize="marquee"
-            android:fontFamily="sans-serif"
+            android:fontFamily="@font/google_sans_regular"
             android:freezesText="true"
             android:letterSpacing="0.01"
             android:marqueeRepeatLimit="marquee_forever"
@@ -113,8 +111,6 @@
         android:layout_marginTop="120dp"
         android:clipChildren="false"
         android:clipToPadding="false"
-        android:fadingEdgeLength="40dp"
-        android:requiresFadingEdge="vertical"
         android:paddingBottom="72dp"
         android:paddingHorizontal="8dp" />
 

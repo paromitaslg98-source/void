@@ -1,4 +1,8 @@
+<<<<<<< HEAD:src/main/java/com/knownassurajit/app/launcher/voidlauncher/helper/NoteReminderReceiver.kt
 package com.knownassurajit.app.launcher.voidlauncher.helper
+=======
+package com.voidlauncher.app.helper
+>>>>>>> 7c83749 (rebasing develop from stage (#44)):app/src/main/java/com/launcher/projectvoid/helper/NoteReminderReceiver.kt
 
 import android.app.PendingIntent
 import android.app.NotificationChannel
@@ -10,20 +14,28 @@ import android.media.AudioManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+<<<<<<< HEAD:src/main/java/com/knownassurajit/app/launcher/voidlauncher/helper/NoteReminderReceiver.kt
 import com.knownassurajit.app.launcher.voidlauncher.MainActivity
 import com.knownassurajit.app.launcher.voidlauncher.R
+=======
+import com.voidlauncher.app.MainActivity
+import com.voidlauncher.app.R
+>>>>>>> 7c83749 (rebasing develop from stage (#44)):app/src/main/java/com/launcher/projectvoid/helper/NoteReminderReceiver.kt
 
 class NoteReminderReceiver : BroadcastReceiver() {
 
     companion object {
         const val CHANNEL_ID = "note_reminders"
+<<<<<<< HEAD:src/main/java/com/knownassurajit/app/launcher/voidlauncher/helper/NoteReminderReceiver.kt
         const val ACTION_IN_APP_REMINDER = "com.knownassurajit.app.launcher.voidlauncher.ACTION_IN_APP_REMINDER"
+=======
+        const val ACTION_IN_APP_REMINDER = "com.voidlauncher.app.ACTION_IN_APP_REMINDER"
+>>>>>>> 7c83749 (rebasing develop from stage (#44)):app/src/main/java/com/launcher/projectvoid/helper/NoteReminderReceiver.kt
         const val EXTRA_NOTE_ID = "note_id"
         const val EXTRA_NOTE_TITLE = "note_title"
         const val EXTRA_NOTE_TEXT = "note_text"
         const val NOTIFICATION_GROUP = "note_reminder_group"
 
-        @android.annotation.SuppressLint("MissingPermission")
         fun dispatchReminder(context: Context, noteId: Long, noteTitle: String?, noteText: String) {
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -85,7 +97,6 @@ class NoteReminderReceiver : BroadcastReceiver() {
                 builder.setDefaults(NotificationCompat.DEFAULT_SOUND)
             }
 
-            @android.annotation.SuppressLint("MissingPermission", "NotificationPermission")
             NotificationManagerCompat.from(context).notify(noteId.toInt(), builder.build())
         }
 

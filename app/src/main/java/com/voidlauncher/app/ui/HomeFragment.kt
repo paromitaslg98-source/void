@@ -1,6 +1,7 @@
 package com.voidlauncher.app.ui
 
 import android.app.admin.DevicePolicyManager
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.pm.LauncherApps
@@ -8,12 +9,18 @@ import android.content.res.Configuration
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.view.DragEvent
 import android.view.Gravity
+import android.view.HapticFeedbackConstants
+import android.view.ViewConfiguration
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
-import android.view.WindowInsets
 import android.widget.FrameLayout
+import android.widget.PopupMenu
 import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
@@ -23,6 +30,8 @@ import androidx.core.view.setPadding
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.voidlauncher.app.MainViewModel
 import com.voidlauncher.app.R
@@ -45,6 +54,10 @@ import com.voidlauncher.app.helper.setPlainWallpaperByTheme
 import com.voidlauncher.app.helper.showToast
 import com.voidlauncher.app.listener.OnSwipeTouchListener
 import com.voidlauncher.app.listener.ViewSwipeTouchListener
+import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.Direction
+import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.applyDestinationTransitions
+import com.voidlauncher.app.ui.navigation.NavTransitionPolicy.applyExitFor
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -57,6 +70,20 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
 
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
+
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var longPressRunnable: Runnable? = null
+
+    /** Tracks the currently selected home app in contextual edit mode. */
+    private var editModeView: TextView? = null
+    private var longPressTriggered = false
+    private var lastTouchDownX = 0f
+    private var lastTouchDownY = 0f
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        applyDestinationTransitions(Direction.FADE)
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
@@ -73,6 +100,7 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
         deviceManager = context?.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
 
         initObservers()
+        observeHomescreenPreferences()
         setHomeAlignment(prefs.homeAlignment)
         initSwipeTouchListener()
         initClickListeners()
@@ -81,9 +109,7 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
     override fun onResume() {
         super.onResume()
         populateHomeScreen(false)
-        viewModel.isOlauncherDefault()
-        if (prefs.showStatusBar) showStatusBar()
-        else hideStatusBar()
+        viewModel.isVoidDefault()
     }
 
     override fun onClick(view: View) {
@@ -131,16 +157,6 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
 
     override fun onLongClick(view: View): Boolean {
         when (view.id) {
-            R.id.homeApp1 -> showAppList(Constants.FLAG_SET_HOME_APP_1, prefs.appName1.isNotEmpty(), true)
-            R.id.homeApp2 -> showAppList(Constants.FLAG_SET_HOME_APP_2, prefs.appName2.isNotEmpty(), true)
-            R.id.homeApp3 -> showAppList(Constants.FLAG_SET_HOME_APP_3, prefs.appName3.isNotEmpty(), true)
-            R.id.homeApp4 -> showAppList(Constants.FLAG_SET_HOME_APP_4, prefs.appName4.isNotEmpty(), true)
-            R.id.homeApp5 -> showAppList(Constants.FLAG_SET_HOME_APP_5, prefs.appName5.isNotEmpty(), true)
-            R.id.homeApp6 -> showAppList(Constants.FLAG_SET_HOME_APP_6, prefs.appName6.isNotEmpty(), true)
-            R.id.homeApp7 -> showAppList(Constants.FLAG_SET_HOME_APP_7, prefs.appName7.isNotEmpty(), true)
-            R.id.homeApp8 -> showAppList(Constants.FLAG_SET_HOME_APP_8, prefs.appName8.isNotEmpty(), true)
-            R.id.homeApp9 -> showAppList(Constants.FLAG_SET_HOME_APP_9, prefs.appName9.isNotEmpty(), true)
-            R.id.homeApp10 -> showAppList(Constants.FLAG_SET_HOME_APP_10, prefs.appName10.isNotEmpty(), true)
             R.id.clock -> {
                 showAppList(Constants.FLAG_SET_CLOCK_APP)
                 prefs.clockAppPackage = ""
@@ -158,13 +174,32 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
             R.id.setDefaultLauncher -> {
                 prefs.hideSetDefaultLauncher = true
                 binding.setDefaultLauncher.visibility = View.GONE
-                if (viewModel.isOlauncherDefault.value != true) {
+                if (viewModel.isVoidDefault.value != true) {
                     requireContext().showToast(R.string.set_as_default_launcher)
+                    applyExitFor(Direction.FADE)
                     findNavController().navigate(R.id.action_mainFragment_to_settingsFragment)
                 }
             }
         }
         return true
+    }
+
+    private fun enterEditMode(view: TextView) {
+        exitEditMode()
+        editModeView = view
+        view.alpha = 0.75f
+        view.translationX = 8.dpToPx().toFloat()
+        view.paint.isFakeBoldText = true
+    }
+
+    private fun exitEditMode() {
+        editModeView?.let {
+            it.alpha = 1f
+            it.translationX = 0f
+            it.paint.isFakeBoldText = false
+            it.invalidate()
+        }
+        editModeView = null
     }
 
     private fun initObservers() {
@@ -176,19 +211,16 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
         viewModel.refreshHome.observe(viewLifecycleOwner) {
             populateHomeScreen(it)
         }
-        viewModel.isOlauncherDefault.observe(viewLifecycleOwner, Observer {
+        viewModel.isVoidDefault.observe(viewLifecycleOwner, Observer {
             if (it != true) {
                 if (prefs.dailyWallpaper) {
                     prefs.dailyWallpaper = false
                     viewModel.cancelWallpaperWorker()
                 }
-                prefs.homeBottomAlignment = false
                 setHomeAlignment()
             }
             if (binding.firstRunTips.visibility == View.VISIBLE) return@Observer
             binding.setDefaultLauncher.isVisible = it.not() && prefs.hideSetDefaultLauncher.not()
-//            if (it) binding.setDefaultLauncher.visibility = View.GONE
-//            else binding.setDefaultLauncher.visibility = View.VISIBLE
         })
         viewModel.homeAppAlignment.observe(viewLifecycleOwner) {
             setHomeAlignment(it)
@@ -201,19 +233,116 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
         }
     }
 
+    private fun observeHomescreenPreferences() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+                prefs.homescreenPreferences.collect {
+                    setHomeAlignment(it.horizontalAlignment)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        populateScreenTime()
+                    } else {
+                        binding.tvScreenTime.visibility = View.GONE
+                    }
+                    populateDateTime()
+                }
+            }
+        }
+    }
+
     private fun initSwipeTouchListener() {
         val context = requireContext()
         binding.mainLayout.setOnTouchListener(getSwipeGestureListener(context))
-        binding.homeApp1.setOnTouchListener(getViewSwipeTouchListener(context, binding.homeApp1))
-        binding.homeApp2.setOnTouchListener(getViewSwipeTouchListener(context, binding.homeApp2))
-        binding.homeApp3.setOnTouchListener(getViewSwipeTouchListener(context, binding.homeApp3))
-        binding.homeApp4.setOnTouchListener(getViewSwipeTouchListener(context, binding.homeApp4))
-        binding.homeApp5.setOnTouchListener(getViewSwipeTouchListener(context, binding.homeApp5))
-        binding.homeApp6.setOnTouchListener(getViewSwipeTouchListener(context, binding.homeApp6))
-        binding.homeApp7.setOnTouchListener(getViewSwipeTouchListener(context, binding.homeApp7))
-        binding.homeApp8.setOnTouchListener(getViewSwipeTouchListener(context, binding.homeApp8))
-        binding.homeApp9.setOnTouchListener(getViewSwipeTouchListener(context, binding.homeApp9))
-        binding.homeApp10.setOnTouchListener(getViewSwipeTouchListener(context, binding.homeApp10))
+        binding.homeApp1.setOnTouchListener(getHomeEntryTouchListener(context, binding.homeApp1))
+        binding.homeApp2.setOnTouchListener(getHomeEntryTouchListener(context, binding.homeApp2))
+        binding.homeApp3.setOnTouchListener(getHomeEntryTouchListener(context, binding.homeApp3))
+        binding.homeApp4.setOnTouchListener(getHomeEntryTouchListener(context, binding.homeApp4))
+        binding.homeApp5.setOnTouchListener(getHomeEntryTouchListener(context, binding.homeApp5))
+        binding.homeApp6.setOnTouchListener(getHomeEntryTouchListener(context, binding.homeApp6))
+        binding.homeApp7.setOnTouchListener(getHomeEntryTouchListener(context, binding.homeApp7))
+        binding.homeApp8.setOnTouchListener(getHomeEntryTouchListener(context, binding.homeApp8))
+        binding.homeApp9.setOnTouchListener(getHomeEntryTouchListener(context, binding.homeApp9))
+        binding.homeApp10.setOnTouchListener(getHomeEntryTouchListener(context, binding.homeApp10))
+        
+        // Setup DragListeners for Home Apps reordering
+        val dragListener = View.OnDragListener { v, event ->
+            when (event.action) {
+                DragEvent.ACTION_DRAG_STARTED -> true
+                DragEvent.ACTION_DRAG_ENTERED -> {
+                    v.alpha = 0.5f
+                    true
+                }
+                DragEvent.ACTION_DRAG_EXITED -> {
+                    v.alpha = 1.0f
+                    true
+                }
+                DragEvent.ACTION_DROP -> {
+                    v.alpha = 1.0f
+                    val fromLocation = event.clipData.getItemAt(0).text.toString().toIntOrNull()
+                    val toLocation = v.tag.toString().toIntOrNull()
+                    
+                    if (fromLocation != null && toLocation != null && fromLocation != toLocation)
+                        performHomeAppReorder(fromLocation, toLocation)
+                    true
+                }
+                DragEvent.ACTION_DRAG_ENDED -> {
+                    v.alpha = 1.0f
+                    exitEditMode()
+                    true
+                }
+                else -> false
+            }
+        }
+        
+        binding.homeApp1.setOnDragListener(dragListener)
+        binding.homeApp2.setOnDragListener(dragListener)
+        binding.homeApp3.setOnDragListener(dragListener)
+        binding.homeApp4.setOnDragListener(dragListener)
+        binding.homeApp5.setOnDragListener(dragListener)
+        binding.homeApp6.setOnDragListener(dragListener)
+        binding.homeApp7.setOnDragListener(dragListener)
+        binding.homeApp8.setOnDragListener(dragListener)
+        binding.homeApp9.setOnDragListener(dragListener)
+        binding.homeApp10.setOnDragListener(dragListener)
+    }
+
+    private fun performHomeAppReorder(fromLocation: Int, toLocation: Int) {
+        prefs.swapAppLocations(fromLocation, toLocation)
+        exitEditMode()
+        viewModel.refreshHome(false)
+    }
+
+
+    private fun showHomeAppContextMenu(view: TextView) {
+        val location = view.tag.toString().toIntOrNull() ?: return
+        val popupMenu = PopupMenu(requireContext(), view)
+        popupMenu.menu.add(0, 1, 0, getString(R.string.change_or_add_app))
+        popupMenu.menu.add(0, 2, 1, getString(R.string.reorder_apps))
+
+        popupMenu.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                1 -> {
+                    exitEditMode()
+                    showAppList(location)
+                }
+                2 -> startDrag(view)
+            }
+            true
+        }
+        popupMenu.setOnDismissListener {
+            if (editModeView == view) exitEditMode()
+        }
+        popupMenu.show()
+    }
+
+    private fun startDrag(view: View) {
+        val data = android.content.ClipData.newPlainText("location", view.tag.toString())
+        val shadowBuilder = View.DragShadowBuilder(view)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            view.startDragAndDrop(data, shadowBuilder, view, 0)
+        } else {
+            @Suppress("DEPRECATION")
+            view.startDrag(data, shadowBuilder, view, 0)
+        }
     }
 
     private fun initClickListeners() {
@@ -228,7 +357,7 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
     }
 
     private fun setHomeAlignment(horizontalGravity: Int = prefs.homeAlignment) {
-        val verticalGravity = if (prefs.homeBottomAlignment) Gravity.BOTTOM else Gravity.CENTER_VERTICAL
+        val verticalGravity = prefs.homeVerticalAlignment
         binding.homeAppsLayout.gravity = horizontalGravity or verticalGravity
         binding.dateTimeLayout.gravity = horizontalGravity
         binding.homeApp1.gravity = horizontalGravity
@@ -244,25 +373,32 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
     }
 
     private fun populateDateTime() {
-        binding.dateTimeLayout.isVisible = prefs.dateTimeVisibility != Constants.DateTime.OFF
-        binding.clock.isVisible = Constants.DateTime.isTimeVisible(prefs.dateTimeVisibility)
-        binding.date.isVisible = Constants.DateTime.isDateVisible(prefs.dateTimeVisibility)
+        binding.clock.isVisible = prefs.showClockWidget
+        binding.date.isVisible = prefs.showDateWidget
+        binding.dateTimeLayout.isVisible = binding.clock.isVisible || binding.date.isVisible || binding.tvScreenTime.isVisible
 
-//        var dateText = SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(Date())
         val dateFormat = SimpleDateFormat("EEE, d MMM", Locale.getDefault())
-        var dateText = dateFormat.format(Date())
-
-        if (!prefs.showStatusBar) {
-            val battery = (requireContext().getSystemService(Context.BATTERY_SERVICE) as BatteryManager)
-                .getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-            if (battery > 0)
-                dateText = getString(R.string.day_battery, dateText, battery)
-        }
+        val dateText = dateFormat.format(Date())
         binding.date.text = dateText.replace(".,", ",")
+
+        // Handle battery separately
+        val battery = (requireContext().getSystemService(Context.BATTERY_SERVICE) as BatteryManager)
+            .getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+        
+        if (battery > 0 && !prefs.showStatusBar) {
+            binding.tvBattery.text = "$battery%"
+            binding.tvBattery.visibility = View.VISIBLE
+        } else {
+            binding.tvBattery.visibility = View.GONE
+        }
     }
 
     @RequiresApi(Build.VERSION_CODES.Q)
     private fun populateScreenTime() {
+        if (!prefs.showScreenTimeWidget) {
+            binding.tvScreenTime.visibility = View.GONE
+            return
+        }
         if (requireContext().appUsagePermissionGranted().not()) return
 
         viewModel.getTodaysScreenTime()
@@ -369,6 +505,9 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
     }
 
     private fun setHomeAppText(textView: TextView, appName: String, packageName: String, userString: String, isShortcut: Boolean, shortcutId: String?): Boolean {
+        // Explicitly set home text size
+        textView.textSize = 15f * prefs.homeTextSizeScale
+
         // Get user handle for the app/shortcut
         val userHandle = getUserHandleFromString(requireContext(), userString)
         
@@ -419,6 +558,7 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
         binding.homeApp9.visibility = View.GONE
         binding.homeApp10.visibility = View.GONE
     }
+
 
     private fun launchAppOrShortcut(
         appName: String,
@@ -495,41 +635,18 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
     }
 
     private fun openSwipeRightApp() {
-        if (!prefs.swipeRightEnabled) return
-        launchAppOrShortcut(
-            appName = prefs.appNameSwipeRight,
-            packageName = prefs.appPackageSwipeRight,
-            activityClassName = prefs.appActivityClassNameRight,
-            shortcutId = prefs.shortcutIdSwipeRight,
-            isShortcut = prefs.isShortcutSwipeRight,
-            userString = prefs.appUserSwipeRight,
-            fallback = { openDialerApp(requireContext()) },
-            swipeDirection = "right"
-        )
-        try {
-            requireActivity().overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
-        } catch (_: Exception) {}
+        applyExitFor(Direction.RIGHT)
+        findNavController().navigate(R.id.action_mainFragment_to_notesFragment)
     }
 
     private fun openSwipeLeftApp() {
-        if (!prefs.swipeLeftEnabled) return
-        launchAppOrShortcut(
-            appName = prefs.appNameSwipeLeft,
-            packageName = prefs.appPackageSwipeLeft,
-            activityClassName = prefs.appActivityClassNameSwipeLeft,
-            shortcutId = prefs.shortcutIdSwipeLeft,
-            isShortcut = prefs.isShortcutSwipeLeft,
-            userString = prefs.appUserSwipeLeft,
-            fallback = { openCameraApp(requireContext()) },
-            swipeDirection = "left"
-        )
-        try {
-            requireActivity().overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
-        } catch (_: Exception) {}
+        applyExitFor(Direction.LEFT)
+        findNavController().navigate(R.id.action_mainFragment_to_notificationsFragment)
     }
 
     private fun showAppList(flag: Int, rename: Boolean = false, includeHiddenApps: Boolean = false) {
         viewModel.getAppList(includeHiddenApps)
+        applyExitFor(Direction.UP)
         try {
             findNavController().navigate(
                 R.id.action_mainFragment_to_appListFragment,
@@ -563,31 +680,11 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
                 deviceManager.lockNow()
             } catch (e: SecurityException) {
                 requireContext().showToast(getString(R.string.please_turn_on_double_tap_to_unlock), Toast.LENGTH_LONG)
+                applyExitFor(Direction.FADE)
                 findNavController().navigate(R.id.action_mainFragment_to_settingsFragment)
             } catch (e: Exception) {
                 requireContext().showToast(getString(R.string.launcher_failed_to_lock_device), Toast.LENGTH_LONG)
                 prefs.lockModeOn = false
-            }
-        }
-    }
-
-    private fun showStatusBar() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-            requireActivity().window.insetsController?.show(WindowInsets.Type.statusBars())
-        else
-            @Suppress("DEPRECATION", "InlinedApi")
-            requireActivity().window.decorView.apply {
-                systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-            }
-    }
-
-    private fun hideStatusBar() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-            requireActivity().window.insetsController?.hide(WindowInsets.Type.statusBars())
-        else {
-            @Suppress("DEPRECATION")
-            requireActivity().window.decorView.apply {
-                systemUiVisibility = View.SYSTEM_UI_FLAG_IMMERSIVE or View.SYSTEM_UI_FLAG_FULLSCREEN
             }
         }
     }
@@ -635,17 +732,17 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
         return object : OnSwipeTouchListener(context) {
             override fun onSwipeLeft() {
                 super.onSwipeLeft()
-                openSwipeLeftApp()
+                if (prefs.swipeLeftEnabled) openSwipeLeftApp()
             }
 
             override fun onSwipeRight() {
                 super.onSwipeRight()
-                openSwipeRightApp()
+                if (prefs.swipeRightEnabled) openSwipeRightApp()
             }
 
             override fun onSwipeUp() {
                 super.onSwipeUp()
-                showAppList(Constants.FLAG_LAUNCH_APP)
+                if (prefs.swipeUpEnabled) showAppList(Constants.FLAG_LAUNCH_APP)
             }
 
             override fun onSwipeDown() {
@@ -656,6 +753,7 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
             override fun onLongClick() {
                 super.onLongClick()
                 try {
+                    applyExitFor(Direction.FADE)
                     findNavController().navigate(R.id.action_mainFragment_to_settingsFragment)
                     viewModel.firstOpen(false)
                 } catch (e: Exception) {
@@ -682,17 +780,17 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
         return object : ViewSwipeTouchListener(context, view) {
             override fun onSwipeLeft() {
                 super.onSwipeLeft()
-                openSwipeLeftApp()
+                if (prefs.swipeLeftEnabled) openSwipeLeftApp()
             }
 
             override fun onSwipeRight() {
                 super.onSwipeRight()
-                openSwipeRightApp()
+                if (prefs.swipeRightEnabled) openSwipeRightApp()
             }
 
             override fun onSwipeUp() {
                 super.onSwipeUp()
-                showAppList(Constants.FLAG_LAUNCH_APP)
+                if (prefs.swipeUpEnabled) showAppList(Constants.FLAG_LAUNCH_APP)
             }
 
             override fun onSwipeDown() {
@@ -702,7 +800,7 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
 
             override fun onLongClick(view: View) {
                 super.onLongClick(view)
-                textOnLongClick(view)
+                // Long press handling for home entries is explicitly handled via timeout + handler.
             }
 
             override fun onClick(view: View) {
@@ -712,7 +810,52 @@ class HomeFragment : Fragment(), View.OnClickListener, View.OnLongClickListener 
         }
     }
 
+    @SuppressLint("ClickableViewAccessibility")
+    private fun getHomeEntryTouchListener(context: Context, view: TextView): View.OnTouchListener {
+        val swipeTouchListener = getViewSwipeTouchListener(context, view)
+        val longPressTimeoutMs = maxOf(400L, ViewConfiguration.getLongPressTimeout().toLong())
+
+        return View.OnTouchListener { v, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    if (editModeView != null && editModeView != view) exitEditMode()
+                    longPressTriggered = false
+                    lastTouchDownX = event.x
+                    lastTouchDownY = event.y
+                    longPressRunnable?.let(mainHandler::removeCallbacks)
+                    longPressRunnable = Runnable {
+                        longPressTriggered = true
+                        enterEditMode(view)
+                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                        showHomeAppContextMenu(view)
+                    }
+                    mainHandler.postDelayed(longPressRunnable!!, longPressTimeoutMs)
+                }
+
+                MotionEvent.ACTION_MOVE -> {
+                    val slop = ViewConfiguration.get(context).scaledTouchSlop
+                    if (kotlin.math.abs(event.x - lastTouchDownX) > slop || kotlin.math.abs(event.y - lastTouchDownY) > slop) {
+                        longPressRunnable?.let(mainHandler::removeCallbacks)
+                    }
+                }
+
+                MotionEvent.ACTION_UP,
+                MotionEvent.ACTION_CANCEL -> {
+                    longPressRunnable?.let(mainHandler::removeCallbacks)
+                    if (longPressTriggered) return@OnTouchListener true
+                    if (editModeView == view && event.actionMasked == MotionEvent.ACTION_UP) {
+                        startDrag(view)
+                        return@OnTouchListener true
+                    }
+                }
+            }
+            swipeTouchListener.onTouch(v, event)
+        }
+    }
+
     override fun onDestroyView() {
+        longPressRunnable?.let(mainHandler::removeCallbacks)
+        exitEditMode()
         super.onDestroyView()
         _binding = null
     }
