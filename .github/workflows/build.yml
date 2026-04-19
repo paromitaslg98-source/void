@@ -21,8 +21,8 @@ jobs:
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          java-version: "17"
+          distribution: "temurin"
           cache: gradle
 
       - name: Grant execute permission for gradlew
@@ -39,9 +39,8 @@ jobs:
         if: always()
         with:
           name: develop-reports
-          path: '**/build/reports/'
+          path: "**/build/reports/"
           retention-days: 14
-
 
   # ─────────────────────────────────────────────
   # STAGE — Debug build → GitHub Pre-release
@@ -63,8 +62,8 @@ jobs:
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          java-version: "17"
+          distribution: "temurin"
           cache: gradle
 
       - name: Grant execute permission for gradlew
@@ -82,25 +81,54 @@ jobs:
       - name: Find Debug APK Path
         id: locate
         run: |
-          APK_PATH=$(find . -name "*debug.apk" | head -n 1)
+          APK_PATH=$(find . -path "*/apk/debug/*.apk" | head -n 1)
+          if [ -z "$APK_PATH" ]; then
+            APK_PATH=$(find . -name "*debug*.apk" -path "*/build/outputs/*" | head -n 1)
+          fi
+          if [ -z "$APK_PATH" ]; then
+            echo "❌ No debug APK found. Listing all APKs:"
+            find . -name "*.apk"
+            exit 1
+          fi
+          echo "✅ Found APK: $APK_PATH"
           echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
 
       - name: Extract Version from Gradle
         id: version
         run: |
-          GRADLE_FILE=$(find . -maxdepth 2 -name "build.gradle" -o -name "build.gradle.kts" | head -n 1)
-          VERSION=""
-          if grep -q -E 'major\s*=\s*[0-9]+' "$GRADLE_FILE"; then
-            MAJOR=$(grep -E 'major\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+' | head -1)
-            MINOR=$(grep -E 'minor\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+' | head -1)
-            PATCH=$(grep -E 'patch\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+' | head -1)
-            BUILD=$(grep -E 'build\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+' | head -1)
-            VERSION="${MAJOR}.${MINOR}.${PATCH}.${BUILD}"
-          else
-            VERSION=$(grep -E 'versionName\s*=?\s*"[^\"]+"' "$GRADLE_FILE" | grep -v '\$' | head -1 | sed -E 's/.*versionName\s*=?\s*"([^"]+)".*/\1/')
+          # Prefer .kts (stage), fall back to .gradle (master), skip root build dir
+          GRADLE_FILE=$(find . -maxdepth 3 -name "build.gradle.kts" ! -path "./build/*" | head -n 1)
+          if [ -z "$GRADLE_FILE" ]; then
+            GRADLE_FILE=$(find . -maxdepth 3 -name "build.gradle" ! -path "./build/*" | head -n 1)
           fi
+          echo "Using Gradle file: $GRADLE_FILE"
+
+          VERSION=""
+
+          # Pattern 1: val major/minor/patch/build variables (stage branch)
+          if grep -q -E 'val\s+major\s*=\s*[0-9]+' "$GRADLE_FILE"; then
+            MAJOR=$(grep -E 'val\s+major\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+')
+            MINOR=$(grep -E 'val\s+minor\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+')
+            PATCH=$(grep -E 'val\s+patch\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+')
+            BUILD=$(grep -E 'val\s+build\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+')
+            VERSION="${MAJOR}.${MINOR}.${PATCH}.${BUILD}"
+
+          # Pattern 2: versionName = "x.x.x" (.kts literal string)
+          elif grep -q -E 'versionName\s*=\s*"[0-9]+\.[0-9]' "$GRADLE_FILE"; then
+            VERSION=$(grep -E 'versionName\s*=\s*"[0-9]+\.[0-9]' "$GRADLE_FILE" | head -1 | sed -E 's/.*"([0-9][^"]+)".*/\1/')
+
+          # Pattern 3: versionName "x.x.x" (Groovy literal string)
+          elif grep -q -E 'versionName\s+"[^$][^"]*"' "$GRADLE_FILE"; then
+            VERSION=$(grep -E 'versionName\s+"[^$][^"]*"' "$GRADLE_FILE" | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+          fi
+
           VERSION=${VERSION#v}
-          if [ -z "$VERSION" ]; then VERSION="unknown"; fi
+          if [ -z "$VERSION" ]; then
+            VERSION=$(date +'%Y.%m.%d')
+            echo "⚠️ Could not extract version, using date: $VERSION"
+          fi
+
+          echo "✅ Final version: $VERSION"
           echo "app_version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Generate Changelog
@@ -108,7 +136,7 @@ jobs:
         run: |
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           if [ -z "$PREV_TAG" ]; then
-            LOG=$(git log --pretty="- %s (%h)" HEAD)
+            LOG=$(git log --oneline -20 --pretty="- %s (%h)")
           else
             LOG=$(git log --pretty="- %s (%h)" ${PREV_TAG}..HEAD)
           fi
@@ -160,7 +188,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-
   # ─────────────────────────────────────────────
   # MASTER — Signed Release build → GitHub Stable Release
   # ─────────────────────────────────────────────
@@ -178,8 +205,8 @@ jobs:
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          java-version: "17"
+          distribution: "temurin"
           cache: gradle
 
       - name: Grant execute permission for gradlew
@@ -191,40 +218,74 @@ jobs:
       - name: Run Lint Analysis
         run: ./gradlew lintRelease
 
-      - name: Decode Keystore
-        run: |
-          echo "${{ secrets.SIGNING_KEY }}" | base64 --decode > ${{ github.workspace }}/release.jks
-
       - name: Build Release APK
         run: ./gradlew assembleRelease
-        env:
-          KEYSTORE_PATH: ${{ github.workspace }}/release.jks
-          ALIAS: ${{ secrets.ALIAS }}
-          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-      - name: Find Release APK
+      - name: Find Release APK Directory
         id: locate
         run: |
-          APK_PATH=$(find . -path "*/apk/release/*.apk" ! -name "*unsigned*" | head -n 1)
-          echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
+          # Find the directory containing the unsigned release APK for the signing action
+          APK_FILE=$(find . -path "*/apk/release/*.apk" | head -n 1)
+          if [ -z "$APK_FILE" ]; then
+            APK_FILE=$(find . -name "*.apk" -path "*/build/outputs/*" | grep -i release | head -n 1)
+          fi
+          if [ -z "$APK_FILE" ]; then
+            echo "❌ No release APK found. Listing all APKs:"
+            find . -name "*.apk"
+            exit 1
+          fi
+          RELEASE_DIR=$(dirname "$APK_FILE")
+          echo "✅ Found release dir: $RELEASE_DIR"
+          echo "dir=$RELEASE_DIR" >> $GITHUB_OUTPUT
+
+      - name: Sign APK
+        uses: r0adkll/sign-android-release@v1
+        id: sign_app
+        with:
+          releaseDirectory: ${{ steps.locate.outputs.dir }}
+          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
+          alias: ${{ secrets.ALIAS }}
+          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+        env:
+          BUILD_TOOLS_VERSION: "35.0.0"
 
       - name: Extract Version from Gradle
         id: version
         run: |
-          GRADLE_FILE=$(find . -maxdepth 2 -name "build.gradle" -o -name "build.gradle.kts" | head -n 1)
-          VERSION=""
-          if grep -q -E 'major\s*=\s*[0-9]+' "$GRADLE_FILE"; then
-            MAJOR=$(grep -E 'major\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+' | head -1)
-            MINOR=$(grep -E 'minor\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+' | head -1)
-            PATCH=$(grep -E 'patch\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+' | head -1)
-            BUILD=$(grep -E 'build\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+' | head -1)
-            VERSION="${MAJOR}.${MINOR}.${PATCH}.${BUILD}"
-          else
-            VERSION=$(grep -E 'versionName\s*=?\s*"[^\"]+"' "$GRADLE_FILE" | grep -v '\$' | head -1 | sed -E 's/.*versionName\s*=?\s*"([^"]+)".*/\1/')
+          # Prefer .kts (stage), fall back to .gradle (master), skip root build dir
+          GRADLE_FILE=$(find . -maxdepth 3 -name "build.gradle.kts" ! -path "./build/*" | head -n 1)
+          if [ -z "$GRADLE_FILE" ]; then
+            GRADLE_FILE=$(find . -maxdepth 3 -name "build.gradle" ! -path "./build/*" | head -n 1)
           fi
+          echo "Using Gradle file: $GRADLE_FILE"
+
+          VERSION=""
+
+          # Pattern 1: val major/minor/patch/build variables (stage branch)
+          if grep -q -E 'val\s+major\s*=\s*[0-9]+' "$GRADLE_FILE"; then
+            MAJOR=$(grep -E 'val\s+major\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+')
+            MINOR=$(grep -E 'val\s+minor\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+')
+            PATCH=$(grep -E 'val\s+patch\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+')
+            BUILD=$(grep -E 'val\s+build\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+')
+            VERSION="${MAJOR}.${MINOR}.${PATCH}.${BUILD}"
+
+          # Pattern 2: versionName = "x.x.x" (.kts literal string)
+          elif grep -q -E 'versionName\s*=\s*"[0-9]+\.[0-9]' "$GRADLE_FILE"; then
+            VERSION=$(grep -E 'versionName\s*=\s*"[0-9]+\.[0-9]' "$GRADLE_FILE" | head -1 | sed -E 's/.*"([0-9][^"]+)".*/\1/')
+
+          # Pattern 3: versionName "x.x.x" (Groovy literal string)
+          elif grep -q -E 'versionName\s+"[^$][^"]*"' "$GRADLE_FILE"; then
+            VERSION=$(grep -E 'versionName\s+"[^$][^"]*"' "$GRADLE_FILE" | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+          fi
+
           VERSION=${VERSION#v}
-          if [ -z "$VERSION" ]; then VERSION="unknown"; fi
+          if [ -z "$VERSION" ]; then
+            VERSION=$(date +'%Y.%m.%d')
+            echo "⚠️ Could not extract version, using date: $VERSION"
+          fi
+
+          echo "✅ Final version: $VERSION"
           echo "app_version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Generate Changelog
@@ -232,7 +293,7 @@ jobs:
         run: |
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           if [ -z "$PREV_TAG" ]; then
-            LOG=$(git log --pretty="- %s (%h)" HEAD)
+            LOG=$(git log --oneline -20 --pretty="- %s (%h)")
           else
             LOG=$(git log --pretty="- %s (%h)" ${PREV_TAG}..HEAD)
           fi
@@ -244,8 +305,14 @@ jobs:
         id: rename
         run: |
           VERSION="${{ steps.version.outputs.app_version }}"
+          OLD_APK="${{ steps.sign_app.outputs.signedReleaseFile }}"
           NEW_NAME="void-release-v${VERSION}.apk"
-          mv "${{ steps.locate.outputs.apk_path }}" "${NEW_NAME}"
+          if [ -z "$OLD_APK" ] || [ ! -f "$OLD_APK" ]; then
+            echo "❌ Signed APK not found at: $OLD_APK"
+            find . -name "*.apk"
+            exit 1
+          fi
+          mv "$OLD_APK" "${NEW_NAME}"
           echo "renamed_apk=${NEW_NAME}" >> $GITHUB_OUTPUT
 
       - name: Upload Release APK to Artifacts
@@ -261,7 +328,7 @@ jobs:
         if: always()
         with:
           name: master-reports
-          path: '**/build/reports/'
+          path: "**/build/reports/"
           retention-days: 30
 
       - name: Create Stable Release and Upload APK
