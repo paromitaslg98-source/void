@@ -137,6 +137,10 @@ jobs:
           mv "$DIS_APK" "${NEW_DIS_NAME}"
           echo "disintegrated_apk=${NEW_DIS_NAME}" >> $GITHUB_OUTPUT
 
+      - name: Extract Timestamp
+        id: timestamp
+        run: echo "time=$(date +'%Y-%m-%d %H:%M:%S %Z')" >> $GITHUB_OUTPUT
+
       - name: Create Pre-release and Upload APKs
         if: success()
         uses: softprops/action-gh-release@v2
@@ -148,6 +152,9 @@ jobs:
           name: "Void Launcher v${{ steps.version.outputs.app_version }} (Stage #${{ github.run_number }})"
           body: |
             🔧 **Debug build for internal testing**
+            
+            ⏱ **Build generated on:** ${{ steps.timestamp.outputs.time }}
+            🏷 **Run Number:** #${{ github.run_number }}
             
             ### Included Builds
             - **`void-integrated-stage-v${{ steps.version.outputs.app_version }}.apk`**: Full featured build including ML Kit GenAI capabilities, Widget integrations, and Notification service features.
@@ -290,6 +297,10 @@ jobs:
             ${{ steps.rename.outputs.disintegrated_aab }}
           retention-days: 90
 
+      - name: Extract Timestamp
+        id: timestamp
+        run: echo "time=$(date +'%Y-%m-%d %H:%M:%S %Z')" >> $GITHUB_OUTPUT
+
       - name: Create Stable Release and Upload Builds
         if: success()
         uses: softprops/action-gh-release@v2
@@ -301,6 +312,9 @@ jobs:
           name: "Void Launcher v${{ steps.version.outputs.app_version }} (Stable Release)"
           body: |
             🚀 **Production Release `v${{ steps.version.outputs.app_version }}`**
+            
+            ⏱ **Build generated on:** ${{ steps.timestamp.outputs.time }}
+            🏷 **Run Number:** #${{ github.run_number }}
             
             ### Included Builds and Intent
             - **`void-integrated-release-v${{ steps.version.outputs.app_version }}.apk`**: 
