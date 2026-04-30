@@ -110,6 +110,7 @@ import android.content.pm.LauncherApps
 import android.os.UserManager
 import com.knownassurajit.app.launcher.voidlauncher.LocalFixedStatusBarHeight
 import androidx.compose.foundation.layout.padding
+import com.knownassurajit.app.launcher.voidlauncher.helper.PrivateSpaceHelper
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
@@ -146,16 +147,7 @@ fun SettingsScreen(onBack: () -> Unit) {
 
     // Check if Private Space is actually configured on the device
     val isPrivateSpaceConfigured = remember {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-            try {
-                val userManager = context.getSystemService(android.content.Context.USER_SERVICE) as UserManager
-                val launcherApps = context.getSystemService(android.content.Context.LAUNCHER_APPS_SERVICE) as LauncherApps
-                userManager.userProfiles.any { profile ->
-                    profile != android.os.Process.myUserHandle() &&
-                    try { launcherApps.getLauncherUserInfo(profile)?.userType == "android.os.usertype.profile.PRIVATE" } catch (_: Exception) { false }
-                }
-            } catch (_: Exception) { false }
-        } else false
+        PrivateSpaceHelper.getPrivateSpaceProfile(context) != null
     }
 
     if (showDeveloperInfo) {

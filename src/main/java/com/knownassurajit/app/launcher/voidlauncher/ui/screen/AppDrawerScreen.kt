@@ -68,6 +68,7 @@ import java.text.Collator
 import kotlin.math.abs
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.knownassurajit.app.launcher.voidlauncher.helper.AppCacheManager
+import com.knownassurajit.app.launcher.voidlauncher.helper.PrivateSpaceHelper
 
 @Composable
 fun AppDrawerScreen(
@@ -92,7 +93,7 @@ fun AppDrawerScreen(
 
     LaunchedEffect(Unit) {
         if (prefs.privateSpaceEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-            val profile = getPrivateSpaceProfile(context)
+            val profile = PrivateSpaceHelper.getPrivateSpaceProfile(context)
             hasPrivateSpace = profile != null
             if (profile != null) {
                 val um = context.getSystemService(Context.USER_SERVICE) as UserManager
@@ -100,7 +101,7 @@ fun AppDrawerScreen(
                 // KEY FIX: Load private apps immediately if space is already unlocked
                 if (!isPrivateSpaceLocked) {
                     scope.launch {
-                        val pApps = loadPrivateSpaceApps(context, prefs)
+                        val pApps = PrivateSpaceHelper.loadPrivateSpaceApps(context, prefs)
                         privateApps.clear()
                         privateApps.addAll(pApps)
                     }
@@ -116,13 +117,13 @@ fun AppDrawerScreen(
             override fun onReceive(ctx: Context?, intent: Intent?) {
                 if (!prefs.privateSpaceEnabled) return
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-                    val profile = getPrivateSpaceProfile(context)
+                    val profile = PrivateSpaceHelper.getPrivateSpaceProfile(context)
                     if (profile != null) {
                         val um = context.getSystemService(Context.USER_SERVICE) as UserManager
                         isPrivateSpaceLocked = um.isQuietModeEnabled(profile)
                         if (!isPrivateSpaceLocked) {
                             scope.launch {
-                                val pApps = loadPrivateSpaceApps(context, prefs)
+                                val pApps = PrivateSpaceHelper.loadPrivateSpaceApps(context, prefs)
                                 privateApps.clear()
                                 privateApps.addAll(pApps)
                             }
@@ -228,11 +229,11 @@ fun AppDrawerScreen(
                         IconButton(
                             onClick = {
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-                                    togglePrivateSpace(context)
+                                    PrivateSpaceHelper.togglePrivateSpace(context)
                                     isPrivateSpaceLocked = !isPrivateSpaceLocked
                                     if (!isPrivateSpaceLocked) {
                                         scope.launch {
-                                            val pApps = loadPrivateSpaceApps(context, prefs)
+                                            val pApps = PrivateSpaceHelper.loadPrivateSpaceApps(context, prefs)
                                             privateApps.clear()
                                             privateApps.addAll(pApps)
                                         }
@@ -281,11 +282,11 @@ fun AppDrawerScreen(
                                 .fillMaxWidth()
                                 .clickable {
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-                                        togglePrivateSpace(context)
+                                        PrivateSpaceHelper.togglePrivateSpace(context)
                                         isPrivateSpaceLocked = !isPrivateSpaceLocked
                                         if (!isPrivateSpaceLocked) {
                                             scope.launch {
-                                                val pApps = loadPrivateSpaceApps(context, prefs)
+                                                val pApps = PrivateSpaceHelper.loadPrivateSpaceApps(context, prefs)
                                                 privateApps.clear()
                                                 privateApps.addAll(pApps)
                                             }
@@ -421,63 +422,4 @@ fun AppDrawerScreen(
     }
 }
 
-// ── Private Space helpers ──
-
-private fun getPrivateSpaceProfile(context: Context): android.os.UserHandle? {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) return null
-    val um = context.getSystemService(Context.USER_SERVICE) as UserManager
-    val la = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
-    // Use UserManager.userProfiles instead of la.profiles for better detection of hidden profiles
-    return um.userProfiles.firstOrNull { profile ->
-        try {
-            val info = la.getLauncherUserInfo(profile)
-            info?.userType == UserManager.USER_TYPE_PROFILE_PRIVATE
-        } catch (_: Exception) { false }
-    }
-}
-
-@androidx.annotation.RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
-private fun togglePrivateSpace(context: Context) {
-    val profile = getPrivateSpaceProfile(context) ?: return
-    val um = context.getSystemService(Context.USER_SERVICE) as UserManager
-    val locked = um.isQuietModeEnabled(profile)
-    
-    // On Android 15+, requestQuietModeEnabled handles the biometric/PIN challenge automatically
-    um.requestQuietModeEnabled(!locked, profile)
-}
-
-private suspend fun loadPrivateSpaceApps(
-    context: Context, prefs: Prefs
-): List<AppModel> = withContext(Dispatchers.IO) {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) return@withContext emptyList()
-    val pApps = mutableListOf<AppModel>()
-    val um = context.getSystemService(Context.USER_SERVICE) as UserManager
-    val la = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
-    val collator = Collator.getInstance()
-    // Use UserManager.userProfiles for finding the hidden profile
-    for (profile in um.userProfiles) {
-        try {
-            val info = la.getLauncherUserInfo(profile)
-            if (info?.userType != UserManager.USER_TYPE_PROFILE_PRIVATE) continue
-            // Only load apps if the profile is NOT in quiet mode (unlocked)
-            if (!um.isQuietModeEnabled(profile)) {
-                for (app in la.getActivityList(null, profile)) {
-                    val label = prefs.getAppRenameLabel(app.applicationInfo.packageName)
-                        .ifBlank { app.label.toString() }
-                    pApps.add(
-                        AppModel.App(
-                            appLabel = label,
-                            key = collator.getCollationKey(label),
-                            appPackage = app.applicationInfo.packageName,
-                            activityClassName = app.componentName.className,
-                            isNew = false,
-                            user = profile
-                        )
-                    )
-                }
-            }
-        } catch (_: Exception) {}
-    }
-    pApps.sortWith(compareBy(collator) { it.appLabel })
-    pApps
-}
+// ── Private Space helpers moved to PrivateSpaceHelper ──

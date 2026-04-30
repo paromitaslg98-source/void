@@ -13,14 +13,7 @@
         android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
 
-    <!-- Permissions for querying and managing Android 15 Private Space -->
-    <uses-permission android:name="android.permission.ACCESS_HIDDEN_PROFILES" />
-    <uses-permission android:name="android.permission.MODIFY_QUIET_MODE"
-        tools:ignore="ProtectedPermissions" />
-    <uses-permission android:name="android.permission.INTERACT_ACROSS_PROFILES"
-        tools:ignore="ProtectedPermissions" />
-    <uses-permission android:name="android.permission.MANAGE_USERS"
-        tools:ignore="ProtectedPermissions" />
+
 
     <application
         android:name=".VOIDApp"
