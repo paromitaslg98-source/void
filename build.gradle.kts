@@ -49,6 +49,16 @@ android {
         }
     }
 
+    flavorDimensions += "integration"
+    productFlavors {
+        create("integrated") {
+            dimension = "integration"
+        }
+        create("disintegrated") {
+            dimension = "integration"
+        }
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -89,9 +99,9 @@ dependencies {
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
 
     // ML Kit GenAI
-    implementation("com.google.mlkit:genai-summarization:1.0.0-beta1")
-    implementation("com.google.mlkit:genai-prompt:1.0.0-beta2")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
+    "integratedImplementation"("com.google.mlkit:genai-summarization:1.0.0-beta1")
+    "integratedImplementation"("com.google.mlkit:genai-prompt:1.0.0-beta2")
+    "integratedImplementation"("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
 
     testImplementation(libs.junit)
 }

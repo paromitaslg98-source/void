@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:animateLayoutChanges="true"
+    android:background="?attr/colorSurface">
+
+    <!-- ─── Search header ─── -->
+    <LinearLayout
+        android:id="@+id/searchHeader"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:animateLayoutChanges="true"
+        android:elevation="4dp"
+        android:orientation="vertical"
+        android:background="?attr/colorSurface"
+        android:paddingTop="56dp"
+        android:paddingHorizontal="20dp"
+        android:paddingBottom="8dp">
+
+        <!-- Search bar card: Material search icon + SearchView + arrow -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:background="@drawable/search_bar_card"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp">
+
+            <androidx.appcompat.widget.SearchView
+                android:id="@+id/search"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:imeOptions="actionSearch"
+                android:textCursorDrawable="@null"
+                app:closeIcon="@null"
+                app:iconifiedByDefault="false"
+                app:queryBackground="@null"
+                app:queryHint=""
+                app:searchIcon="@null"
+                app:theme="@style/AppSearchText" />
+
+            <!-- Material search icon (animated left↔right on focus) -->
+            <ImageView
+                android:id="@+id/searchIcon"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center_vertical|start"
+                android:alpha="0.6"
+                android:contentDescription="Search"
+                android:src="@drawable/ic_search"
+                android:tint="?attr/primaryColor" />
+
+            <!-- Rename action — conditionally shown -->
+            <TextView
+                android:id="@+id/appRename"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical|end"
+                android:background="?attr/selectableItemBackground"
+                android:fontFamily="@font/google_sans_medium"
+                android:letterSpacing="0.08"
+                android:paddingVertical="6dp"
+                android:paddingHorizontal="8dp"
+                android:text="@string/rename"
+                android:textAllCaps="true"
+                android:textColor="?attr/primaryColor"
+                android:textSize="11sp"
+                android:visibility="gone" />
+
+        </FrameLayout>
+
+        <!-- Tip text -->
+        <TextView
+            android:id="@+id/appDrawerTip"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginStart="4dp"
+            android:ellipsize="marquee"
+            android:fontFamily="@font/google_sans_regular"
+            android:freezesText="true"
+            android:letterSpacing="0.01"
+            android:marqueeRepeatLimit="marquee_forever"
+            android:maxLines="1"
+            android:scrollHorizontally="true"
+            android:singleLine="true"
+            android:text="@string/app_drawer_tips"
+            android:textColor="?attr/primaryColorTrans80"
+            android:textSize="12sp"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+    <!-- Gradient shadow below search header -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="12dp"
+        android:layout_gravity="top"
+        android:layout_marginTop="120dp"
+        android:background="@drawable/search_header_shadow"
+        android:elevation="4dp" />
+
+    <!-- App list -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="120dp"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:paddingBottom="72dp"
+        android:paddingHorizontal="8dp" />
+
+    <!-- Zero-size stub — binding reference for Kotlin compat -->
+    <View
+        android:id="@+id/privateSpaceRow"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
+
+</FrameLayout>

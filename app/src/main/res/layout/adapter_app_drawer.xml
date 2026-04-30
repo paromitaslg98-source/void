@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:animateLayoutChanges="true">
+
+    <!-- App label row -->
+    <TextView
+        android:id="@+id/appTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/google_sans_medium"
+        android:letterSpacing="0.005"
+        android:maxLines="1"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="14dp"
+        android:text="@string/app"
+        android:textColor="?attr/primaryColor"
+        android:textSize="18sp" />
+
+    <!-- Work/private-profile lock icon -->
+    <ImageView
+        android:id="@+id/otherProfileIndicator"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_gravity="center_vertical|end"
+        android:layout_marginEnd="20dp"
+        android:src="@drawable/ic_lock"
+        android:visibility="gone"
+        app:tint="?attr/primaryColorTrans80" />
+
+    <!-- App actions (long-press context menu) — full-width overlay -->
+    <LinearLayout
+        android:id="@+id/appHideLayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginVertical="2dp"
+        android:animateLayoutChanges="true"
+        android:background="@drawable/md3_outlined_card"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center_vertical|end"
+        android:orientation="horizontal"
+        android:paddingHorizontal="8dp"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <!-- Uninstall -->
+        <TextView
+            android:id="@+id/appDelete"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:fontFamily="@font/google_sans_medium"
+            android:gravity="center"
+            android:letterSpacing="0.06"
+            android:maxLines="1"
+            android:paddingVertical="14dp"
+            android:text="@string/delete"
+            android:textColor="?attr/primaryColor"
+            android:textSize="11sp"
+            android:textAllCaps="true" />
+
+        <!-- Vertical divider -->
+        <View
+            android:layout_width="1dp"
+            android:layout_height="20dp"
+            android:layout_gravity="center_vertical"
+            android:background="?attr/colorOutline" />
+
+        <!-- Rename -->
+        <TextView
+            android:id="@+id/appRename"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:fontFamily="@font/google_sans_medium"
+            android:gravity="center"
+            android:letterSpacing="0.06"
+            android:maxLines="1"
+            android:paddingVertical="14dp"
+            android:text="@string/rename"
+            android:textColor="?attr/primaryColor"
+            android:textSize="11sp"
+            android:textAllCaps="true" />
+
+        <!-- Vertical divider -->
+        <View
+            android:layout_width="1dp"
+            android:layout_height="20dp"
+            android:layout_gravity="center_vertical"
+            android:background="?attr/colorOutline" />
+
+        <!-- Hide -->
+        <TextView
+            android:id="@+id/appHide"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:fontFamily="@font/google_sans_medium"
+            android:gravity="center"
+            android:letterSpacing="0.06"
+            android:maxLines="1"
+            android:paddingVertical="14dp"
+            android:text="@string/hide"
+            android:textColor="?attr/primaryColor"
+            android:textSize="11sp"
+            android:textAllCaps="true" />
+
+        <!-- Vertical divider -->
+        <View
+            android:layout_width="1dp"
+            android:layout_height="20dp"
+            android:layout_gravity="center_vertical"
+            android:background="?attr/colorOutline" />
+
+        <!-- Info -->
+        <TextView
+            android:id="@+id/appInfo"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:fontFamily="@font/google_sans_medium"
+            android:gravity="center"
+            android:letterSpacing="0.06"
+            android:maxLines="1"
+            android:paddingVertical="14dp"
+            android:text="@string/info"
+            android:textColor="?attr/primaryColor"
+            android:textSize="11sp"
+            android:textAllCaps="true" />
+
+        <!-- Vertical divider -->
+        <View
+            android:layout_width="1dp"
+            android:layout_height="20dp"
+            android:layout_gravity="center_vertical"
+            android:background="?attr/colorOutline" />
+
+        <!-- Close -->
+        <TextView
+            android:id="@+id/appMenuClose"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:fontFamily="@font/google_sans_medium"
+            android:gravity="center"
+            android:letterSpacing="0.06"
+            android:maxLines="1"
+            android:paddingVertical="14dp"
+            android:text="@string/close"
+            android:textColor="?attr/primaryColor"
+            android:textSize="11sp"
+            android:textAllCaps="true" />
+
+    </LinearLayout>
+
+    <!-- Rename inline field -->
+    <LinearLayout
+        android:id="@+id/renameLayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:animateLayoutChanges="true"
+        android:background="@drawable/md3_outlined_card"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:visibility="gone"
+        tools:visibility="gone">
+
+        <androidx.appcompat.widget.AppCompatEditText
+            android:id="@+id/etAppRename"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="20dp"
+            android:layout_marginEnd="8dp"
+            android:layout_weight="1"
+            android:background="@null"
+            android:fontFamily="@font/google_sans_medium"
+            android:gravity="center_vertical"
+            android:inputType="textCapWords"
+            android:maxLength="30"
+            android:maxLines="1"
+            android:paddingVertical="14dp"
+            android:textColor="?attr/primaryColor"
+            android:textColorHint="?attr/primaryColorTrans50"
+            android:textSize="18sp" />
+
+        <!-- Vertical divider -->
+        <View
+            android:layout_width="1dp"
+            android:layout_height="20dp"
+            android:layout_gravity="center_vertical"
+            android:background="?attr/colorOutline" />
+
+        <TextView
+            android:id="@+id/tvSaveRename"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="8dp"
+            android:fontFamily="@font/google_sans_medium"
+            android:gravity="center"
+            android:letterSpacing="0.06"
+            android:maxLines="1"
+            android:paddingVertical="14dp"
+            android:paddingHorizontal="12dp"
+            android:text="@string/rename"
+            android:textAllCaps="true"
+            android:textColor="?attr/primaryColor"
+            android:textSize="11sp" />
+
+        <!-- Vertical divider -->
+        <View
+            android:layout_width="1dp"
+            android:layout_height="20dp"
+            android:layout_gravity="center_vertical"
+            android:background="?attr/colorOutline" />
+
+        <TextView
+            android:id="@+id/appRenameClose"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="8dp"
+            android:fontFamily="@font/google_sans_medium"
+            android:gravity="center"
+            android:letterSpacing="0.06"
+            android:maxLines="1"
+            android:paddingVertical="14dp"
+            android:paddingHorizontal="12dp"
+            android:text="@string/close"
+            android:textAllCaps="true"
+            android:textColor="?attr/primaryColor"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+</FrameLayout>

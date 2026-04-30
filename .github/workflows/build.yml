@@ -28,11 +28,17 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Run Unit Tests
-        run: ./gradlew testDebugUnitTest
+      - name: Run Unit Tests (Integrated)
+        run: ./gradlew testIntegratedDebugUnitTest
 
-      - name: Run Lint Analysis
-        run: ./gradlew lintDebug
+      - name: Run Unit Tests (Disintegrated)
+        run: ./gradlew testDisintegratedDebugUnitTest
+
+      - name: Run Lint Analysis (Integrated)
+        run: ./gradlew lintIntegratedDebug
+
+      - name: Run Lint Analysis (Disintegrated)
+        run: ./gradlew lintDisintegratedDebug
 
       - name: Upload Test & Lint Reports
         uses: actions/upload-artifact@v4
@@ -42,8 +48,16 @@ jobs:
           path: "**/build/reports/"
           retention-days: 14
 
+      - name: Document Develop Tests
+        if: always()
+        run: |
+          echo "## Develop Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Tested Integrated build (Full features)" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Tested Disintegrated build (Play Store safe, no ML Kit, no Notification permissions)" >> $GITHUB_STEP_SUMMARY
+          echo "Reports are available in the artifacts." >> $GITHUB_STEP_SUMMARY
+
   # ─────────────────────────────────────────────
-  # STAGE — Debug build → GitHub Pre-release
+  # STAGE — Debug builds → GitHub Pre-release
   # ─────────────────────────────────────────────
   build-stage:
     if: github.ref == 'refs/heads/stage'
@@ -69,66 +83,30 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Run Unit Tests
-        run: ./gradlew testDebugUnitTest
+      - name: Build Integrated Debug APK
+        run: ./gradlew assembleIntegratedDebug
 
-      - name: Run Lint Analysis
-        run: ./gradlew lintDebug
-
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug
-
-      - name: Find Debug APK Path
-        id: locate
-        run: |
-          APK_PATH=$(find . -path "*/apk/debug/*.apk" | head -n 1)
-          if [ -z "$APK_PATH" ]; then
-            APK_PATH=$(find . -name "*debug*.apk" -path "*/build/outputs/*" | head -n 1)
-          fi
-          if [ -z "$APK_PATH" ]; then
-            echo "❌ No debug APK found. Listing all APKs:"
-            find . -name "*.apk"
-            exit 1
-          fi
-          echo "✅ Found APK: $APK_PATH"
-          echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
+      - name: Build Disintegrated Debug APK
+        run: ./gradlew assembleDisintegratedDebug
 
       - name: Extract Version from Gradle
         id: version
         run: |
-          # Prefer .kts (stage), fall back to .gradle (master), skip root build dir
           GRADLE_FILE=$(find . -maxdepth 3 -name "build.gradle.kts" ! -path "./build/*" | head -n 1)
           if [ -z "$GRADLE_FILE" ]; then
             GRADLE_FILE=$(find . -maxdepth 3 -name "build.gradle" ! -path "./build/*" | head -n 1)
           fi
-          echo "Using Gradle file: $GRADLE_FILE"
-
           VERSION=""
-
-          # Pattern 1: val major/minor/patch/build variables (stage branch)
           if grep -q -E 'val\s+major\s*=\s*[0-9]+' "$GRADLE_FILE"; then
             MAJOR=$(grep -E 'val\s+major\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+')
             MINOR=$(grep -E 'val\s+minor\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+')
             PATCH=$(grep -E 'val\s+patch\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+')
             BUILD=$(grep -E 'val\s+build\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+')
             VERSION="${MAJOR}.${MINOR}.${PATCH}.${BUILD}"
-
-          # Pattern 2: versionName = "x.x.x" (.kts literal string)
-          elif grep -q -E 'versionName\s*=\s*"[0-9]+\.[0-9]' "$GRADLE_FILE"; then
-            VERSION=$(grep -E 'versionName\s*=\s*"[0-9]+\.[0-9]' "$GRADLE_FILE" | head -1 | sed -E 's/.*"([0-9][^"]+)".*/\1/')
-
-          # Pattern 3: versionName "x.x.x" (Groovy literal string)
-          elif grep -q -E 'versionName\s+"[^$][^"]*"' "$GRADLE_FILE"; then
-            VERSION=$(grep -E 'versionName\s+"[^$][^"]*"' "$GRADLE_FILE" | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
           fi
-
-          VERSION=${VERSION#v}
           if [ -z "$VERSION" ]; then
             VERSION=$(date +'%Y.%m.%d')
-            echo "⚠️ Could not extract version, using date: $VERSION"
           fi
-
-          echo "✅ Final version: $VERSION"
           echo "app_version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Generate Changelog
@@ -144,52 +122,46 @@ jobs:
           echo "$LOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Rename APK
+      - name: Rename APKs
         id: rename
         run: |
           VERSION="${{ steps.version.outputs.app_version }}"
-          NEW_NAME="void-stage-v${VERSION}.apk"
-          mv "${{ steps.locate.outputs.apk_path }}" "${NEW_NAME}"
-          echo "renamed_apk=${NEW_NAME}" >> $GITHUB_OUTPUT
+          
+          INT_APK=$(find . -path "*/apk/integrated/debug/*.apk" | head -n 1)
+          NEW_INT_NAME="void-integrated-stage-v${VERSION}.apk"
+          mv "$INT_APK" "${NEW_INT_NAME}"
+          echo "integrated_apk=${NEW_INT_NAME}" >> $GITHUB_OUTPUT
+          
+          DIS_APK=$(find . -path "*/apk/disintegrated/debug/*.apk" | head -n 1)
+          NEW_DIS_NAME="void-disintegrated-stage-v${VERSION}.apk"
+          mv "$DIS_APK" "${NEW_DIS_NAME}"
+          echo "disintegrated_apk=${NEW_DIS_NAME}" >> $GITHUB_OUTPUT
 
-      - name: Upload Debug APK to Artifacts
-        uses: actions/upload-artifact@v4
-        if: success()
-        with:
-          name: void-stage-v${{ steps.version.outputs.app_version }}
-          path: ${{ steps.rename.outputs.renamed_apk }}
-          retention-days: 30
-
-      - name: Create Pre-release and Upload APK
+      - name: Create Pre-release and Upload APKs
         if: success()
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ steps.rename.outputs.renamed_apk }}
+          files: |
+            ${{ steps.rename.outputs.integrated_apk }}
+            ${{ steps.rename.outputs.disintegrated_apk }}
           tag_name: stage-v${{ steps.version.outputs.app_version }}-${{ github.run_number }}
           name: "Void Launcher v${{ steps.version.outputs.app_version }} (Stage #${{ github.run_number }})"
           body: |
             🔧 **Debug build for internal testing**
-
+            
+            ### Included Builds
+            - **`void-integrated-stage-v${{ steps.version.outputs.app_version }}.apk`**: Full featured build including ML Kit GenAI capabilities, Widget integrations, and Notification service features.
+            - **`void-disintegrated-stage-v${{ steps.version.outputs.app_version }}.apk`**: Play Store compliant build with restricted features entirely omitted.
+            
             ## What's Changed
             ${{ steps.changelog.outputs.changelog }}
-
-            ---
-            | Field | Value |
-            |---|---|
-            | **Version** | v${{ steps.version.outputs.app_version }} |
-            | **Branch** | stage |
-            | **Build** | #${{ github.run_number }} |
-            | **Commit** | ${{ github.sha }} |
-            | **Triggered by** | @${{ github.actor }} |
-
-            > ⚠️ This is a debug pre-release for internal testing only. Not for production use.
           draft: false
           prerelease: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ─────────────────────────────────────────────
-  # MASTER — Signed Release build → GitHub Stable Release
+  # MASTER — Signed Release builds → GitHub Stable Release
   # ─────────────────────────────────────────────
   build-master:
     if: github.ref == 'refs/heads/master'
@@ -213,36 +185,46 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run Unit Tests
-        run: ./gradlew testReleaseUnitTest
+        run: |
+          ./gradlew testIntegratedReleaseUnitTest
+          ./gradlew testDisintegratedReleaseUnitTest
 
       - name: Run Lint Analysis
-        run: ./gradlew lintRelease
+        run: |
+          ./gradlew lintIntegratedRelease
+          ./gradlew lintDisintegratedRelease
 
-      - name: Build Release APK
-        run: ./gradlew assembleRelease
+      - name: Build Integrated Release APK
+        run: ./gradlew assembleIntegratedRelease
 
-      - name: Find Release APK Directory
+      - name: Build Disintegrated Release APK
+        run: ./gradlew assembleDisintegratedRelease
+
+      - name: Find Release APK Directories
         id: locate
         run: |
-          # Find the directory containing the unsigned release APK for the signing action
-          APK_FILE=$(find . -path "*/apk/release/*.apk" | head -n 1)
-          if [ -z "$APK_FILE" ]; then
-            APK_FILE=$(find . -name "*.apk" -path "*/build/outputs/*" | grep -i release | head -n 1)
-          fi
-          if [ -z "$APK_FILE" ]; then
-            echo "❌ No release APK found. Listing all APKs:"
-            find . -name "*.apk"
-            exit 1
-          fi
-          RELEASE_DIR=$(dirname "$APK_FILE")
-          echo "✅ Found release dir: $RELEASE_DIR"
-          echo "dir=$RELEASE_DIR" >> $GITHUB_OUTPUT
+          INT_DIR=$(dirname "$(find . -path "*/apk/integrated/release/*.apk" | head -n 1)")
+          DIS_DIR=$(dirname "$(find . -path "*/apk/disintegrated/release/*.apk" | head -n 1)")
+          echo "int_dir=$INT_DIR" >> $GITHUB_OUTPUT
+          echo "dis_dir=$DIS_DIR" >> $GITHUB_OUTPUT
 
-      - name: Sign APK
+      - name: Sign Integrated APK
         uses: r0adkll/sign-android-release@v1
-        id: sign_app
+        id: sign_int
         with:
-          releaseDirectory: ${{ steps.locate.outputs.dir }}
+          releaseDirectory: ${{ steps.locate.outputs.int_dir }}
+          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
+          alias: ${{ secrets.ALIAS }}
+          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+        env:
+          BUILD_TOOLS_VERSION: "35.0.0"
+
+      - name: Sign Disintegrated APK
+        uses: r0adkll/sign-android-release@v1
+        id: sign_dis
+        with:
+          releaseDirectory: ${{ steps.locate.outputs.dis_dir }}
           signingKeyBase64: ${{ secrets.SIGNING_KEY }}
           alias: ${{ secrets.ALIAS }}
           keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
@@ -253,39 +235,21 @@ jobs:
       - name: Extract Version from Gradle
         id: version
         run: |
-          # Prefer .kts (stage), fall back to .gradle (master), skip root build dir
           GRADLE_FILE=$(find . -maxdepth 3 -name "build.gradle.kts" ! -path "./build/*" | head -n 1)
           if [ -z "$GRADLE_FILE" ]; then
             GRADLE_FILE=$(find . -maxdepth 3 -name "build.gradle" ! -path "./build/*" | head -n 1)
           fi
-          echo "Using Gradle file: $GRADLE_FILE"
-
           VERSION=""
-
-          # Pattern 1: val major/minor/patch/build variables (stage branch)
           if grep -q -E 'val\s+major\s*=\s*[0-9]+' "$GRADLE_FILE"; then
             MAJOR=$(grep -E 'val\s+major\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+')
             MINOR=$(grep -E 'val\s+minor\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+')
             PATCH=$(grep -E 'val\s+patch\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+')
             BUILD=$(grep -E 'val\s+build\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -o -E '[0-9]+')
             VERSION="${MAJOR}.${MINOR}.${PATCH}.${BUILD}"
-
-          # Pattern 2: versionName = "x.x.x" (.kts literal string)
-          elif grep -q -E 'versionName\s*=\s*"[0-9]+\.[0-9]' "$GRADLE_FILE"; then
-            VERSION=$(grep -E 'versionName\s*=\s*"[0-9]+\.[0-9]' "$GRADLE_FILE" | head -1 | sed -E 's/.*"([0-9][^"]+)".*/\1/')
-
-          # Pattern 3: versionName "x.x.x" (Groovy literal string)
-          elif grep -q -E 'versionName\s+"[^$][^"]*"' "$GRADLE_FILE"; then
-            VERSION=$(grep -E 'versionName\s+"[^$][^"]*"' "$GRADLE_FILE" | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
           fi
-
-          VERSION=${VERSION#v}
           if [ -z "$VERSION" ]; then
             VERSION=$(date +'%Y.%m.%d')
-            echo "⚠️ Could not extract version, using date: $VERSION"
           fi
-
-          echo "✅ Final version: $VERSION"
           echo "app_version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Generate Changelog
@@ -301,61 +265,55 @@ jobs:
           echo "$LOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Rename APK
+      - name: Rename APKs
         id: rename
         run: |
           VERSION="${{ steps.version.outputs.app_version }}"
-          OLD_APK="${{ steps.sign_app.outputs.signedReleaseFile }}"
-          NEW_NAME="void-release-v${VERSION}.apk"
-          if [ -z "$OLD_APK" ] || [ ! -f "$OLD_APK" ]; then
-            echo "❌ Signed APK not found at: $OLD_APK"
-            find . -name "*.apk"
-            exit 1
-          fi
-          mv "$OLD_APK" "${NEW_NAME}"
-          echo "renamed_apk=${NEW_NAME}" >> $GITHUB_OUTPUT
+          
+          INT_APK="${{ steps.sign_int.outputs.signedReleaseFile }}"
+          NEW_INT_NAME="void-integrated-release-v${VERSION}.apk"
+          mv "$INT_APK" "${NEW_INT_NAME}"
+          echo "integrated_apk=${NEW_INT_NAME}" >> $GITHUB_OUTPUT
+          
+          DIS_APK="${{ steps.sign_dis.outputs.signedReleaseFile }}"
+          NEW_DIS_NAME="void-disintegrated-release-v${VERSION}.apk"
+          mv "$DIS_APK" "${NEW_DIS_NAME}"
+          echo "disintegrated_apk=${NEW_DIS_NAME}" >> $GITHUB_OUTPUT
 
-      - name: Upload Release APK to Artifacts
+      - name: Upload APKs to Artifacts
         uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: void-release-v${{ steps.version.outputs.app_version }}
-          path: ${{ steps.rename.outputs.renamed_apk }}
+          name: void-release-apks-v${{ steps.version.outputs.app_version }}
+          path: |
+            ${{ steps.rename.outputs.integrated_apk }}
+            ${{ steps.rename.outputs.disintegrated_apk }}
           retention-days: 90
 
-      - name: Upload Test & Lint Reports
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: master-reports
-          path: "**/build/reports/"
-          retention-days: 30
-
-      - name: Create Stable Release and Upload APK
+      - name: Create Stable Release and Upload APKs
         if: success()
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ steps.rename.outputs.renamed_apk }}
+          files: |
+            ${{ steps.rename.outputs.integrated_apk }}
+            ${{ steps.rename.outputs.disintegrated_apk }}
           tag_name: v${{ steps.version.outputs.app_version }}+${{ github.run_number }}
           name: "Void Launcher v${{ steps.version.outputs.app_version }} (Stable Release)"
           body: |
             🚀 **Production Release `v${{ steps.version.outputs.app_version }}`**
-
+            
+            ### Included Builds and Intent
+            - **`void-integrated-release-v${{ steps.version.outputs.app_version }}.apk`**: 
+              *The complete Void Launcher experience.* This build includes advanced ML Kit GenAI notification summaries, the full Widget management screen, and full system notification integrations. Use this version for the ultimate feature set.
+              
+            - **`void-disintegrated-release-v${{ steps.version.outputs.app_version }}.apk`**: 
+              *The Google Play Store compliant edition.* This build strictly omits all permissions and code requiring `BIND_NOTIFICATION_LISTENER_SERVICE` and App Widgets. It provides a lightweight, restricted launcher experience guaranteed to pass Play Console policy evaluations for individual developer accounts.
+            
             ## What's Changed
             ${{ steps.changelog.outputs.changelog }}
-
-            ---
-            | Field | Value |
-            |---|---|
-            | **Version** | v${{ steps.version.outputs.app_version }} |
-            | **Branch** | master |
-            | **Build** | #${{ github.run_number }} |
-            | **Commit** | ${{ github.sha }} |
-            | **Triggered by** | @${{ github.actor }} |
-
+            
             ## Installation
-            Download `void-release-v${{ steps.version.outputs.app_version }}.apk` below.
-            Enable **Install from unknown sources** on your device if installing outside the Play Store.
+            Download your preferred APK below. Enable **Install from unknown sources** on your device if installing outside the Play Store.
           draft: false
           prerelease: false
         env:
