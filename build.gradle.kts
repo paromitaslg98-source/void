@@ -10,7 +10,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.knownassurajit.app.launcher.void"
+        applicationId = "com.voidlauncher.app"
         minSdk = 26
         targetSdk = 36
 
