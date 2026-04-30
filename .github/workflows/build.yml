@@ -197,14 +197,14 @@ jobs:
       - name: Build Integrated Release APK
         run: ./gradlew assembleIntegratedRelease
 
-      - name: Build Disintegrated Release APK
-        run: ./gradlew assembleDisintegratedRelease
+      - name: Build Disintegrated Release AAB
+        run: ./gradlew bundleDisintegratedRelease
 
-      - name: Find Release APK Directories
+      - name: Find Release Build Directories
         id: locate
         run: |
           INT_DIR=$(dirname "$(find . -path "*/apk/integrated/release/*.apk" | head -n 1)")
-          DIS_DIR=$(dirname "$(find . -path "*/apk/disintegrated/release/*.apk" | head -n 1)")
+          DIS_DIR=$(dirname "$(find . -path "*/bundle/disintegratedRelease/*.aab" | head -n 1)")
           echo "int_dir=$INT_DIR" >> $GITHUB_OUTPUT
           echo "dis_dir=$DIS_DIR" >> $GITHUB_OUTPUT
 
@@ -220,7 +220,7 @@ jobs:
         env:
           BUILD_TOOLS_VERSION: "35.0.0"
 
-      - name: Sign Disintegrated APK
+      - name: Sign Disintegrated AAB
         uses: r0adkll/sign-android-release@v1
         id: sign_dis
         with:
@@ -265,7 +265,7 @@ jobs:
           echo "$LOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Rename APKs
+      - name: Rename Builds
         id: rename
         run: |
           VERSION="${{ steps.version.outputs.app_version }}"
@@ -275,28 +275,28 @@ jobs:
           mv "$INT_APK" "${NEW_INT_NAME}"
           echo "integrated_apk=${NEW_INT_NAME}" >> $GITHUB_OUTPUT
           
-          DIS_APK="${{ steps.sign_dis.outputs.signedReleaseFile }}"
-          NEW_DIS_NAME="void-disintegrated-release-v${VERSION}.apk"
-          mv "$DIS_APK" "${NEW_DIS_NAME}"
-          echo "disintegrated_apk=${NEW_DIS_NAME}" >> $GITHUB_OUTPUT
+          DIS_AAB="${{ steps.sign_dis.outputs.signedReleaseFile }}"
+          NEW_DIS_NAME="void-disintegrated-release-v${VERSION}.aab"
+          mv "$DIS_AAB" "${NEW_DIS_NAME}"
+          echo "disintegrated_aab=${NEW_DIS_NAME}" >> $GITHUB_OUTPUT
 
-      - name: Upload APKs to Artifacts
+      - name: Upload Builds to Artifacts
         uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: void-release-apks-v${{ steps.version.outputs.app_version }}
+          name: void-release-builds-v${{ steps.version.outputs.app_version }}
           path: |
             ${{ steps.rename.outputs.integrated_apk }}
-            ${{ steps.rename.outputs.disintegrated_apk }}
+            ${{ steps.rename.outputs.disintegrated_aab }}
           retention-days: 90
 
-      - name: Create Stable Release and Upload APKs
+      - name: Create Stable Release and Upload Builds
         if: success()
         uses: softprops/action-gh-release@v2
         with:
           files: |
             ${{ steps.rename.outputs.integrated_apk }}
-            ${{ steps.rename.outputs.disintegrated_apk }}
+            ${{ steps.rename.outputs.disintegrated_aab }}
           tag_name: v${{ steps.version.outputs.app_version }}+${{ github.run_number }}
           name: "Void Launcher v${{ steps.version.outputs.app_version }} (Stable Release)"
           body: |
@@ -304,16 +304,16 @@ jobs:
             
             ### Included Builds and Intent
             - **`void-integrated-release-v${{ steps.version.outputs.app_version }}.apk`**: 
-              *The complete Void Launcher experience.* This build includes advanced ML Kit GenAI notification summaries, the full Widget management screen, and full system notification integrations. Use this version for the ultimate feature set.
+              *The complete Void Launcher experience.* This build includes advanced ML Kit GenAI notification summaries, the full Widget management screen, and full system notification integrations. Use this version for sideloading the ultimate feature set.
               
-            - **`void-disintegrated-release-v${{ steps.version.outputs.app_version }}.apk`**: 
-              *The Google Play Store compliant edition.* This build strictly omits all permissions and code requiring `BIND_NOTIFICATION_LISTENER_SERVICE` and App Widgets. It provides a lightweight, restricted launcher experience guaranteed to pass Play Console policy evaluations for individual developer accounts.
+            - **`void-disintegrated-release-v${{ steps.version.outputs.app_version }}.aab`**: 
+              *The Google Play Store compliant App Bundle.* This build strictly omits all permissions and code requiring `BIND_NOTIFICATION_LISTENER_SERVICE` and App Widgets. It is prepared as an Android App Bundle (.aab) specifically for Play Console release.
             
             ## What's Changed
             ${{ steps.changelog.outputs.changelog }}
             
             ## Installation
-            Download your preferred APK below. Enable **Install from unknown sources** on your device if installing outside the Play Store.
+            Download your preferred build below. Enable **Install from unknown sources** on your device if installing the APK outside the Play Store. The AAB file is intended for Play Console publishing.
           draft: false
           prerelease: false
         env:
