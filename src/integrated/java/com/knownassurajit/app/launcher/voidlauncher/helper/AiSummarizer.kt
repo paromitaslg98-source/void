@@ -313,11 +313,25 @@ STRICT RULES:
     }
 
     // ── Tier 3: Structured Fallback ─────────────────────────────────────
+    // Produces minimum-token output: extracts title + truncated body rather than
+    // dumping full notification text, keeping each bullet under ~80 characters.
 
     private fun fallbackSummarize(texts: List<String>): String {
         return texts
             .map { it.trim() }
             .filter { it.isNotBlank() }
+            .map { text ->
+                val colonIdx = text.indexOf(':').takeIf { it in 1..50 }
+                when {
+                    colonIdx != null -> {
+                        val title = text.substring(0, colonIdx).trim()
+                        val body = text.substring(colonIdx + 1).trim()
+                        if (body.isBlank()) title else "$title: ${body.take(70)}"
+                    }
+                    text.length > 80 -> text.take(80) + "…"
+                    else -> text
+                }
+            }
             .joinToString("\n") { "• $it" }
     }
 

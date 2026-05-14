@@ -1056,6 +1056,11 @@ class Prefs(context: Context) {
     var widgetSpans: Set<String>
         get() = prefs.getStringSet("WIDGET_SPANS", emptySet()) ?: emptySet()
         set(value) = prefs.edit { putStringSet("WIDGET_SPANS", value).apply() }
+
+    /** Allocated AppWidget IDs encoded as "provider|appWidgetId" */
+    var widgetAllocatedIds: Set<String>
+        get() = prefs.getStringSet("WIDGET_ALLOCATED_IDS", emptySet()) ?: emptySet()
+        set(value) = prefs.edit { putStringSet("WIDGET_ALLOCATED_IDS", value).apply() }
         
     var maxHomeApps: Int
         get() = prefs.getInt(MAX_HOME_APPS, 10)

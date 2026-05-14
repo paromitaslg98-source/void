@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.knownassurajit.app.launcher.voidlauncher"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.voidlauncher.app"
