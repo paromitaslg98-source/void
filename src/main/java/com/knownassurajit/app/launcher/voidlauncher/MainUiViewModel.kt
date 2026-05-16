@@ -63,6 +63,13 @@ data class HomeApp(
     val shortcutId: String = ""
 )
 
+/**
+ * UI-state ViewModel. Exposes a single immutable [MainUiState] StateFlow that the
+ * Compose layer collects with lifecycle awareness. Owns the time ticker, battery
+ * receiver, and prefs-driven UI state propagation.
+ *
+ * App-launching and persistence side effects live in [MainViewModel].
+ */
 class MainUiViewModel(application: Application) : AndroidViewModel(application) {
     private val appContext = application.applicationContext
     private val prefs = Prefs(appContext)

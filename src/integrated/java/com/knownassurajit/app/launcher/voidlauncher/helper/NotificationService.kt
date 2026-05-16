@@ -2,7 +2,11 @@ package com.knownassurajit.app.launcher.voidlauncher.helper
 
 import android.app.Notification
 import android.app.NotificationManager
+import android.content.Intent
+import android.os.Binder
 import android.os.Build
+import android.os.IBinder
+import android.os.Process
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
@@ -54,6 +58,18 @@ class NotificationService : NotificationListenerService() {
                 Log.e(TAG, "Failed to dismiss all notifications: ${e.message}")
             }
         }
+    }
+
+    override fun onBind(intent: Intent?): IBinder? {
+        // Fail closed: only the system server (UID 1000) is allowed to bind a
+        // NotificationListenerService. Reject any other caller defensively, in case
+        // a future OEM build or test harness attempts to bind without the permission check.
+        val uid = Binder.getCallingUid()
+        if (uid != Process.SYSTEM_UID && uid != Process.myUid()) {
+            Log.w(TAG, "Rejected onBind from unexpected uid=$uid")
+            return null
+        }
+        return super.onBind(intent)
     }
 
     override fun onListenerConnected() {

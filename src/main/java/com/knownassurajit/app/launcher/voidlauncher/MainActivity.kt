@@ -56,6 +56,43 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.util.Log
+
+/**
+ * Best-effort access to the hidden `StatusBarManager.expandNotificationsPanel` method.
+ * The class and method are on Android's non-SDK greylist and may be blocked on
+ * `targetSdk` 28+. We cache the result of the first lookup so we don't repeatedly
+ * pay the reflection cost — and so a single failure permanently disables the path
+ * instead of spamming the log on every gesture.
+ */
+private object StatusBarPanelOpener {
+    private const val TAG = "StatusBarPanelOpener"
+
+    @Volatile private var resolved = false
+    @Volatile private var method: java.lang.reflect.Method? = null
+
+    fun expandNotificationsPanel(context: Context) {
+        if (!resolved) synchronized(this) {
+            if (!resolved) {
+                method = try {
+                    @Suppress("PrivateApi")
+                    Class.forName("android.app.StatusBarManager")
+                        .getMethod("expandNotificationsPanel")
+                } catch (t: Throwable) {
+                    Log.w(TAG, "StatusBarManager.expandNotificationsPanel unavailable: ${t.javaClass.simpleName}")
+                    null
+                }
+                resolved = true
+            }
+        }
+        val m = method ?: return
+        try {
+            m.invoke(context.getSystemService("statusbar"))
+        } catch (t: Throwable) {
+            Log.w(TAG, "expandNotificationsPanel invoke failed: ${t.javaClass.simpleName}")
+        }
+    }
+}
 
 /** Physical status bar height, available to all screens regardless of bar visibility. */
 val LocalFixedStatusBarHeight = compositionLocalOf<Dp> { 24.dp }
@@ -136,15 +173,7 @@ class MainActivity : ComponentActivity() {
                                     totalX += deltaX
                                     totalY += deltaY
                                     if (uiState.showStatusBar && isTopEdge && totalY > 120f) {
-                                        try {
-                                            @Suppress("PrivateApi")
-                                            val sbservice = getSystemService("statusbar")
-                                            val statusbarManager = Class.forName("android.app.StatusBarManager")
-                                            val expands = statusbarManager.getMethod("expandNotificationsPanel")
-                                            expands.invoke(sbservice)
-                                        } catch (e: Exception) {
-                                            e.printStackTrace()
-                                        }
+                                        StatusBarPanelOpener.expandNotificationsPanel(this@MainActivity)
                                         break
                                     }
                                     if (!change.pressed) break
@@ -167,15 +196,7 @@ class MainActivity : ComponentActivity() {
                             onOpenSettings = { navController.navigate(SettingsRoute) { launchSingleTop = true } },
                             onOpenNotifications = {
                                 if (uiState.showStatusBar) {
-                                    try {
-                                        @Suppress("PrivateApi")
-                                        val sbservice = getSystemService("statusbar")
-                                        val statusbarManager = Class.forName("android.app.StatusBarManager")
-                                        val expands = statusbarManager.getMethod("expandNotificationsPanel")
-                                        expands.invoke(sbservice)
-                                    } catch (e: Exception) {
-                                        e.printStackTrace()
-                                    }
+                                    StatusBarPanelOpener.expandNotificationsPanel(this@MainActivity)
                                 }
                             },
                             onOpenNotificationSummary = { navController.navigate(NotificationSummaryRoute) { launchSingleTop = true } },

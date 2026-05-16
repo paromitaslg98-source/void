@@ -72,36 +72,36 @@ android {
 }
 
 dependencies {
-    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
     implementation(libs.kotlin.stdlib)
     implementation(libs.core.ktx)
     implementation(libs.lifecycle.process)
     implementation(libs.work.runtime.ktx)
     implementation(libs.material)
 
-    // Compose BOM 
-    implementation(platform("androidx.compose:compose-bom:2025.05.01"))
-    androidTestImplementation(platform("androidx.compose:compose-bom:2025.05.01"))
-    
-    implementation("androidx.activity:activity-compose:1.10.1")
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material-icons-core")
-    implementation("androidx.compose.material:material-icons-extended")
-    implementation("androidx.navigation:navigation-compose:2.8.9")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
-    implementation("androidx.compose.ui:ui-text-google-fonts:1.10.6")
-    
-    debugImplementation("androidx.compose.ui:ui-tooling")
-    implementation("androidx.profileinstaller:profileinstaller:1.4.1")
+    // Compose BOM controls every other androidx.compose.* artifact's version.
+    implementation(platform(libs.compose.bom))
+    androidTestImplementation(platform(libs.compose.bom))
 
-    // ML Kit GenAI
-    "integratedImplementation"("com.google.mlkit:genai-summarization:1.0.0-beta1")
-    "integratedImplementation"("com.google.mlkit:genai-prompt:1.0.0-beta2")
-    "integratedImplementation"("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
+    implementation(libs.activity.compose)
+    implementation(libs.compose.ui)
+    implementation(libs.compose.ui.tooling.preview)
+    implementation(libs.compose.material3)
+    implementation(libs.compose.material.icons.core)
+    implementation(libs.compose.material.icons.extended)
+    implementation(libs.navigation.compose)
+    implementation(libs.lifecycle.runtime.compose)
+    implementation(libs.lifecycle.viewmodel.compose)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.compose.ui.text.google.fonts)
+
+    debugImplementation(libs.compose.ui.tooling)
+    implementation(libs.profileinstaller)
+
+    // ML Kit GenAI — integrated flavor only. The disintegrated AAB ships without
+    // these so the resulting bundle has no GenAI surface for Play to review.
+    "integratedImplementation"(libs.mlkit.genai.summarization)
+    "integratedImplementation"(libs.mlkit.genai.prompt)
+    "integratedImplementation"(libs.kotlinx.coroutines.play.services)
 
     testImplementation(libs.junit)
 }

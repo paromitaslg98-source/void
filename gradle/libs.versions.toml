@@ -1,34 +1,55 @@
 [versions]
-appcompat = "1.7.0"
+agp = "8.8.0"
 coreKtx = "1.15.0"
-gradle = "8.7.2"
 kotlinStdlib = "2.1.0"
-lifecycleExtensions = "2.2.0"
 lifecycleViewmodelKtx = "2.8.7"
 material = "1.12.0"
-navigationFragmentKtx = "2.8.5"
-recyclerview = "1.3.2"
 workRuntimeKtx = "2.10.0"
+activityCompose = "1.10.1"
+composeBom = "2025.05.01"
+navigationCompose = "2.8.9"
+serializationJson = "1.7.3"
+googleFonts = "1.10.6"
+profileinstaller = "1.4.1"
+mlkitSummarization = "1.0.0-beta1"
+mlkitPrompt = "1.0.0-beta2"
+coroutinesPlayServices = "1.8.1"
 
 [libraries]
-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
 core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
-gradle = { module = "com.android.tools.build:gradle", version.ref = "gradle" }
-kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlinStdlib" }
-kotlin-compose-plugin = { module = "org.jetbrains.kotlin:compose-compiler-gradle-plugin", version.ref = "kotlinStdlib" }
-kotlin-serialization-plugin = { module = "org.jetbrains.kotlin:kotlin-serialization", version.ref = "kotlinStdlib" }
 kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlinStdlib" }
-lifecycle-extensions = { module = "androidx.lifecycle:lifecycle-extensions", version.ref = "lifecycleExtensions" }
 lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", version.ref = "lifecycleViewmodelKtx" }
-lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "lifecycleViewmodelKtx" }
+lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycleViewmodelKtx" }
+lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycleViewmodelKtx" }
 material = { module = "com.google.android.material:material", version.ref = "material" }
-navigation-fragment-ktx = { module = "androidx.navigation:navigation-fragment-ktx", version.ref = "navigationFragmentKtx" }
-recyclerview = { module = "androidx.recyclerview:recyclerview", version.ref = "recyclerview" }
 work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workRuntimeKtx" }
+
+# Compose
+compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
+activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
+compose-ui = { module = "androidx.compose.ui:ui" }
+compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
+compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
+compose-material3 = { module = "androidx.compose.material3:material3" }
+compose-material-icons-core = { module = "androidx.compose.material:material-icons-core" }
+compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
+compose-ui-text-google-fonts = { module = "androidx.compose.ui:ui-text-google-fonts", version.ref = "googleFonts" }
+navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
+
+# Misc
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serializationJson" }
+profileinstaller = { module = "androidx.profileinstaller:profileinstaller", version.ref = "profileinstaller" }
+
+# Integrated-flavor only (ML Kit GenAI)
+mlkit-genai-summarization = { module = "com.google.mlkit:genai-summarization", version.ref = "mlkitSummarization" }
+mlkit-genai-prompt = { module = "com.google.mlkit:genai-prompt", version.ref = "mlkitPrompt" }
+kotlinx-coroutines-play-services = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services", version.ref = "coroutinesPlayServices" }
+
+# Test
 junit = "junit:junit:4.13.2"
 
 [plugins]
-android-application = { id = "com.android.application", version.ref = "gradle" }
+android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlinStdlib" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlinStdlib" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlinStdlib" }

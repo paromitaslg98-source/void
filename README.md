@@ -83,11 +83,12 @@ VOID Launcher leverages the latest Android development stack for maximum perform
 git clone https://github.com/knownassurajit/void.git
 cd void
 
-# Build the debug APK
-./gradlew clean :app:assembleDebug
+# Build a debug APK for the desired flavor
+./gradlew clean assembleIntegratedDebug      # full feature set
+./gradlew clean assembleDisintegratedDebug   # Play-policy compliant
 ```
 
-The output APK will be located at `app/build/outputs/apk/debug/`.
+Output APKs land under `build/outputs/apk/{integrated|disintegrated}/debug/`.
 
 ---
 

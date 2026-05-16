@@ -1,19 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Widget hosting (integrated-only: disintegrated has stub WidgetsScreen). -->
+    <uses-permission android:name="android.permission.BIND_APPWIDGET" />
 
     <!-- Permissions for querying and managing Android 15 Private Space -->
     <uses-permission android:name="android.permission.ACCESS_HIDDEN_PROFILES" />
     <uses-permission android:name="android.permission.MODIFY_QUIET_MODE"
-        xmlns:tools="http://schemas.android.com/tools"
         tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.INTERACT_ACROSS_PROFILES"
-        xmlns:tools="http://schemas.android.com/tools"
         tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.MANAGE_USERS"
-        xmlns:tools="http://schemas.android.com/tools"
         tools:ignore="ProtectedPermissions" />
 
     <application>
+
+        <!-- Notification listener: integrated-only. The disintegrated AAB must not
+             declare this service to remain Play-policy compliant. -->
         <service
             android:name=".helper.NotificationService"
             android:label="@string/app_name"
@@ -23,6 +27,17 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+
+        <!-- Widget pin-request handling is integrated-only; disintegrated rejects pin requests. -->
+        <activity
+            android:name=".helper.PinItemActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.content.pm.action.CONFIRM_PIN_APPWIDGET" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
     </application>
 
 </manifest>

@@ -6,7 +6,6 @@
         android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
-    <uses-permission android:name="android.permission.BIND_APPWIDGET" />
 
     <!--Used only for opening alarm app-->
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
@@ -32,7 +31,7 @@
 
         <activity
             android:name=".MainActivity"
-            android:configChanges="uiMode"
+            android:configChanges="uiMode|orientation|screenSize|screenLayout|smallestScreenSize|density|keyboardHidden|navigation"
             android:excludeFromRecents="true"
             android:exported="true"
             android:launchMode="singleTask"
@@ -58,10 +57,7 @@
                 <action android:name="android.content.pm.action.CONFIRM_PIN_SHORTCUT" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-            <intent-filter>
-                <action android:name="android.content.pm.action.CONFIRM_PIN_APPWIDGET" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
+            <!-- CONFIRM_PIN_APPWIDGET filter is added by the integrated flavor only. -->
         </activity>
 
 

@@ -26,6 +26,14 @@ import java.util.Calendar
 import java.util.concurrent.TimeUnit
 
 
+/**
+ * Side-effect ViewModel. Owns app-launching, home/swipe slot persistence, screen-time
+ * aggregation, and other one-shot actions. Exposes LiveData for legacy interop.
+ *
+ * State observation lives in [MainUiViewModel] (StateFlow). Do not migrate side-effect
+ * methods here into [MainUiViewModel] — keeping side effects out of the UI state holder
+ * preserves CLAUDE.md's "Never place business logic in UI" rule.
+ */
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val appContext by lazy { application.applicationContext }
     private val prefs = Prefs(appContext)
